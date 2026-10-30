@@ -27,6 +27,7 @@
 #include <QString>
 #include <QIcon>
 #include <QPixmap>
+#include <QImage>
 #include <QColor>
 
 class QMenu;
@@ -74,6 +75,8 @@ class FancyTabWidget : public QTabWidget {
   void AddSpacer();
   void AddBottomWidget(QWidget *widget_view);
   void SetBackgroundPixmap(const QPixmap &pixmap);
+  // The cover of the playing song, used for the album cover sidebar background.
+  void SetAlbumCoverImage(const QImage &image);
   int IndexOfTab(QWidget *widget);
 
   static QColor DefaultTabbarBgColor();
@@ -108,6 +111,28 @@ class FancyTabWidget : public QTabWidget {
   bool bg_color_system_;
   bool bg_gradient_;
   QColor bg_color_;
+
+  // Sidebar background, see AppearanceSettings::TabBarBackground. The strawberry graphics set with SetBackgroundPixmap() are only used for the default background.
+  QPixmap sprite_pixmap_;
+  int bg_mode_ = 0;
+  bool bg_gradient_custom_colors_ = false;
+  QColor bg_gradient_start_color_;
+  QColor bg_gradient_end_color_;
+  int bg_gradient_direction_ = 0;
+  QString bg_image_filename_;
+  QPixmap bg_image_;
+  QImage bg_album_cover_;
+  int bg_image_position_ = 3;
+  int bg_image_max_size_ = 0;
+  bool bg_image_stretch_ = true;
+  bool bg_image_keep_aspect_ratio_ = true;
+  bool bg_image_do_not_cut_ = false;
+  bool bg_image_tile_ = false;
+  int bg_image_blur_radius_ = 0;
+  int bg_image_opacity_ = 100;
+  bool bg_image_tint_ = false;
+
+  void UpdateBackgroundImage();
   int iconsize_smallsidebar_;
   int iconsize_largesidebar_;
 };

@@ -62,6 +62,37 @@ constexpr char kTabBarSystemColor[] = "tab_system_color";
 constexpr char kTabBarGradient[] = "tab_gradient";
 constexpr char kTabBarColor[] = "tab_color";
 
+// Background of the sidebar tabbar: the strawberry graphics over the color, only the color or gradient, a custom image or the album cover of the playing song.
+enum class TabBarBackground {
+  Strawberry = 0,
+  Gradient = 1,
+  CustomImage = 2,
+  AlbumCover = 3
+};
+
+enum class TabBarGradientDirection {
+  Horizontal = 0,
+  Vertical = 1,
+  Diagonal = 2
+};
+
+constexpr char kTabBarBackground[] = "tab_background";
+constexpr char kTabBarGradientCustomColors[] = "tab_gradient_custom_colors";
+constexpr char kTabBarGradientStartColor[] = "tab_gradient_start_color";
+constexpr char kTabBarGradientEndColor[] = "tab_gradient_end_color";
+constexpr char kTabBarGradientDirection[] = "tab_gradient_direction";
+constexpr char kTabBarImage[] = "tab_background_image";
+// The image options are the same as for the playlist background image, plus tiling and tinting.
+constexpr char kTabBarImagePosition[] = "tab_background_image_position";
+constexpr char kTabBarImageMaxSize[] = "tab_background_image_max_size";
+constexpr char kTabBarImageStretch[] = "tab_background_image_stretch";
+constexpr char kTabBarImageKeepAspectRatio[] = "tab_background_image_keep_aspect_ratio";
+constexpr char kTabBarImageDoNotCut[] = "tab_background_image_do_not_cut";
+constexpr char kTabBarImageTile[] = "tab_background_image_tile";
+constexpr char kTabBarImageBlurRadius[] = "tab_background_image_blur_radius";
+constexpr char kTabBarImageOpacity[] = "tab_background_image_opacity";
+constexpr char kTabBarImageTint[] = "tab_background_image_tint";
+
 constexpr char kPlaylistPlayingSongColor[] = "playlist_playing_song_color";
 
 constexpr char kBackgroundImageType[] = "background_image_type";
@@ -87,6 +118,19 @@ constexpr bool kDefaultSystemIcons = false;
 constexpr bool kDefaultUseCustomColorSet = false;
 constexpr bool kDefaultTabBarSystemColor = false;
 constexpr bool kDefaultTabBarGradient = true;
+constexpr TabBarBackground kDefaultTabBarBackground = TabBarBackground::Strawberry;
+constexpr bool kDefaultTabBarGradientCustomColors = false;
+constexpr TabBarGradientDirection kDefaultTabBarGradientDirection = TabBarGradientDirection::Horizontal;
+// By default the image fills the sidebar, keeping its aspect ratio and cutting the sides.
+constexpr int kDefaultTabBarImagePosition = 3;  // BackgroundImagePosition::Middle
+constexpr int kDefaultTabBarImageMaxSize = 0;
+constexpr bool kDefaultTabBarImageStretch = true;
+constexpr bool kDefaultTabBarImageKeepAspectRatio = true;
+constexpr bool kDefaultTabBarImageDoNotCut = false;
+constexpr bool kDefaultTabBarImageTile = false;
+constexpr int kDefaultTabBarImageBlurRadius = 0;
+constexpr int kDefaultTabBarImageOpacity = 100;
+constexpr bool kDefaultTabBarImageTint = false;
 
 constexpr BackgroundImageType kDefaultBackgroundImageType = BackgroundImageType::Default;
 constexpr BackgroundImagePosition kDefaultBackgroundImagePosition = BackgroundImagePosition::BottomRight;

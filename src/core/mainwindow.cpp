@@ -508,6 +508,8 @@ MainWindow::MainWindow(Application *app,
   // Add the playing widget to the fancy tab widget
   ui_->tabs->AddBottomWidget(ui_->widget_playing);
   ui_->tabs->SetBackgroundPixmap(QPixmap(u":/pictures/sidebar-background.png"_s));
+  // The album cover of the playing song for the album cover sidebar background.
+  QObject::connect(this, &MainWindow::AlbumCoverReady, ui_->tabs, [this](const Song&, const QImage &image) { ui_->tabs->SetAlbumCoverImage(image); });
   ui_->tabs->LoadSettings(QLatin1String(MainWindowSettings::kSettingsGroup));
 
   track_position_timer_->setInterval(kTrackPositionUpdateTimeMs);

@@ -145,7 +145,25 @@ void FancyTabWidget::ReloadSettings() {
   }
   iconsize_smallsidebar_ = s.value(AppearanceSettings::kIconSizeTabbarSmallMode, IconSize_SmallSidebar).toInt();
   iconsize_largesidebar_ = s.value(AppearanceSettings::kIconSizeTabbarLargeMode, IconSize_LargeSidebar).toInt();
+  bg_mode_ = s.value(AppearanceSettings::kTabBarBackground, static_cast<int>(AppearanceSettings::kDefaultTabBarBackground)).toInt();
+  bg_gradient_custom_colors_ = s.value(AppearanceSettings::kTabBarGradientCustomColors, AppearanceSettings::kDefaultTabBarGradientCustomColors).toBool();
+  bg_gradient_start_color_ = s.value(AppearanceSettings::kTabBarGradientStartColor, bg_color_.lighter(117)).value<QColor>();
+  bg_gradient_end_color_ = s.value(AppearanceSettings::kTabBarGradientEndColor, StyleHelper::shadowColor(false).darker(109)).value<QColor>();
+  bg_gradient_direction_ = s.value(AppearanceSettings::kTabBarGradientDirection, static_cast<int>(AppearanceSettings::kDefaultTabBarGradientDirection)).toInt();
+  bg_image_filename_ = s.value(AppearanceSettings::kTabBarImage).toString();
+  bg_image_position_ = s.value(AppearanceSettings::kTabBarImagePosition, AppearanceSettings::kDefaultTabBarImagePosition).toInt();
+  bg_image_max_size_ = s.value(AppearanceSettings::kTabBarImageMaxSize, AppearanceSettings::kDefaultTabBarImageMaxSize).toInt();
+  bg_image_stretch_ = s.value(AppearanceSettings::kTabBarImageStretch, AppearanceSettings::kDefaultTabBarImageStretch).toBool();
+  bg_image_keep_aspect_ratio_ = s.value(AppearanceSettings::kTabBarImageKeepAspectRatio, AppearanceSettings::kDefaultTabBarImageKeepAspectRatio).toBool();
+  bg_image_do_not_cut_ = s.value(AppearanceSettings::kTabBarImageDoNotCut, AppearanceSettings::kDefaultTabBarImageDoNotCut).toBool();
+  bg_image_tile_ = s.value(AppearanceSettings::kTabBarImageTile, AppearanceSettings::kDefaultTabBarImageTile).toBool();
+  bg_image_blur_radius_ = qBound(0, s.value(AppearanceSettings::kTabBarImageBlurRadius, AppearanceSettings::kDefaultTabBarImageBlurRadius).toInt(), 100);
+  bg_image_opacity_ = qBound(0, s.value(AppearanceSettings::kTabBarImageOpacity, AppearanceSettings::kDefaultTabBarImageOpacity).toInt(), 100);
+  bg_image_tint_ = s.value(AppearanceSettings::kTabBarImageTint, AppearanceSettings::kDefaultTabBarImageTint).toBool();
   s.endGroup();
+
+  background_pixmap_ = bg_mode_ == static_cast<int>(AppearanceSettings::TabBarBackground::Strawberry) ? sprite_pixmap_ : QPixmap();
+  UpdateBackgroundImage();
 
 #ifndef Q_OS_MACOS
   if (mode() == Mode::LargeSidebar) {
@@ -267,9 +285,45 @@ void FancyTabWidget::AddBottomWidget(QWidget *widget_view) {
   bottom_widget_ = widget_view;
 }
 
+void FancyTabWidget::SetAlbumCoverImage(const QImage &image) {
+
+  bg_album_cover_ = image;
+  if (bg_mode_ == static_cast<int>(AppearanceSettings::TabBarBackground::AlbumCover)) {
+    UpdateBackgroundImage();
+    update();
+  }
+
+}
+
+// Loads the custom image or takes the album cover, and blurs it like the playlist background image, the opacity is applied when drawing.
+void FancyTabWidget::UpdateBackgroundImage() {
+
+  QImage image;
+  if (bg_mode_ == static_cast<int>(AppearanceSettings::TabBarBackground::CustomImage) && !bg_image_filename_.isEmpty()) {
+    image = QImage(bg_image_filename_);
+  }
+  else if (bg_mode_ == static_cast<int>(AppearanceSettings::TabBarBackground::AlbumCover)) {
+    image = bg_album_cover_;
+  }
+
+  if (!image.isNull() && bg_image_blur_radius_ > 0) {
+    QImage source = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    QImage blurred(source.size(), QImage::Format_ARGB32_Premultiplied);
+    blurred.fill(Qt::transparent);
+    QPainter blur_painter(&blurred);
+    qt_blurImage(&blur_painter, source, bg_image_blur_radius_, true, false);
+    blur_painter.end();
+    image = blurred;
+  }
+
+  bg_image_ = image.isNull() ? QPixmap() : QPixmap::fromImage(image);
+
+}
+
 void FancyTabWidget::SetBackgroundPixmap(const QPixmap &pixmap) {
 
-  background_pixmap_ = pixmap;
+  sprite_pixmap_ = pixmap;
+  background_pixmap_ = bg_mode_ == static_cast<int>(AppearanceSettings::TabBarBackground::Strawberry) ? sprite_pixmap_ : QPixmap();
   update();
 
 }
@@ -317,6 +371,9 @@ void FancyTabWidget::paintEvent(QPaintEvent *pe) {
   backgroundRect.setWidth(tabBar()->width());
 
   QString key = QString::asprintf("mh_vertical %d %d %d %d %d", backgroundRect.width(), backgroundRect.height(), bg_color_.rgb(), (bg_gradient_ ? 1 : 0), (background_pixmap_.isNull() ? 0 : 1));
+  key += QString::asprintf(" %d %d %u %u %d %lld %d %d %d %d %d %d %d %d", bg_mode_, (bg_gradient_custom_colors_ ? 1 : 0), bg_gradient_start_color_.rgba(), bg_gradient_end_color_.rgba(), bg_gradient_direction_, static_cast<long long>(bg_image_.cacheKey()), bg_image_position_, bg_image_max_size_, (bg_image_stretch_ ? 1 : 0), (bg_image_keep_aspect_ratio_ ? 1 : 0), (bg_image_do_not_cut_ ? 1 : 0), (bg_image_tile_ ? 1 : 0), bg_image_opacity_, (bg_image_tint_ ? 1 : 0));
+  // The plain gradient background is always a gradient.
+  const bool draw_gradient = bg_gradient_ || bg_mode_ == static_cast<int>(AppearanceSettings::TabBarBackground::Gradient);
 
   QPixmap pixmap;
   if (!QPixmapCache::find(key, &pixmap)) {
@@ -326,14 +383,24 @@ void FancyTabWidget::paintEvent(QPaintEvent *pe) {
     p.fillRect(backgroundRect, bg_color_);
 
     // Draw the gradient fill.
-    if (bg_gradient_) {
+    if (draw_gradient) {
 
       QRect rect(0, 0, backgroundRect.width(), backgroundRect.height());
 
       QColor shadow = StyleHelper::shadowColor(false);
       QLinearGradient grad(backgroundRect.topRight(), backgroundRect.topLeft());
-      grad.setColorAt(0, bg_color_.lighter(117));
-      grad.setColorAt(1, shadow.darker(109));
+      switch (static_cast<AppearanceSettings::TabBarGradientDirection>(bg_gradient_direction_)) {
+        case AppearanceSettings::TabBarGradientDirection::Horizontal:
+          break;
+        case AppearanceSettings::TabBarGradientDirection::Vertical:
+          grad = QLinearGradient(backgroundRect.topLeft(), backgroundRect.bottomLeft());
+          break;
+        case AppearanceSettings::TabBarGradientDirection::Diagonal:
+          grad = QLinearGradient(backgroundRect.topRight(), backgroundRect.bottomLeft());
+          break;
+      }
+      grad.setColorAt(0, bg_gradient_custom_colors_ ? bg_gradient_start_color_ : bg_color_.lighter(117));
+      grad.setColorAt(1, bg_gradient_custom_colors_ ? bg_gradient_end_color_ : shadow.darker(109));
       p.fillRect(rect, grad);
 
       QColor light(255, 255, 255, 80);
@@ -361,6 +428,64 @@ void FancyTabWidget::paintEvent(QPaintEvent *pe) {
         }
         pixmap_rect.moveTop(pixmap_rect.bottom() - 10);
       }
+    }
+
+    // Draw the custom image or the album cover over the color or gradient, with the same options as the playlist background image.
+    if ((bg_mode_ == static_cast<int>(AppearanceSettings::TabBarBackground::CustomImage) || bg_mode_ == static_cast<int>(AppearanceSettings::TabBarBackground::AlbumCover)) && !bg_image_.isNull()) {
+      const QRect image_rect(0, 0, backgroundRect.width(), backgroundRect.height());
+      QPixmap image = bg_image_;
+      if (!bg_image_stretch_ && bg_image_max_size_ > 0 && (image.width() > bg_image_max_size_ || image.height() > bg_image_max_size_)) {
+        image = image.scaled(bg_image_max_size_, bg_image_max_size_, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+      }
+      p.save();
+      p.setClipRect(image_rect);
+      p.setOpacity(static_cast<qreal>(bg_image_opacity_) / 100.0);
+      if (bg_image_tile_) {
+        p.drawTiledPixmap(image_rect, image);
+      }
+      else {
+        if (bg_image_stretch_) {
+          if (!bg_image_keep_aspect_ratio_) {
+            image = image.scaled(image_rect.size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+          }
+          else {
+            image = image.scaled(image_rect.size(), bg_image_do_not_cut_ ? Qt::KeepAspectRatio : Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
+          }
+        }
+        else if (image.width() > image_rect.width() || image.height() > image_rect.height()) {
+          image = image.scaled(image_rect.size(), Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        }
+        int x = 0;
+        int y = 0;
+        switch (static_cast<AppearanceSettings::BackgroundImagePosition>(bg_image_position_)) {
+          case AppearanceSettings::BackgroundImagePosition::UpperLeft:
+            break;
+          case AppearanceSettings::BackgroundImagePosition::UpperRight:
+            x = image_rect.width() - image.width();
+            break;
+          case AppearanceSettings::BackgroundImagePosition::BottomLeft:
+            y = image_rect.height() - image.height();
+            break;
+          case AppearanceSettings::BackgroundImagePosition::BottomRight:
+            x = image_rect.width() - image.width();
+            y = image_rect.height() - image.height();
+            break;
+          case AppearanceSettings::BackgroundImagePosition::Middle:
+          default:
+            x = (image_rect.width() - image.width()) / 2;
+            y = (image_rect.height() - image.height()) / 2;
+            break;
+        }
+        p.drawPixmap(x, y, image);
+      }
+      if (bg_image_tint_) {
+        // Tint the image with the tabbar color.
+        p.setOpacity(1.0);
+        QColor tint(bg_color_);
+        tint.setAlpha(110);
+        p.fillRect(image_rect, tint);
+      }
+      p.restore();
     }
 
     // Shadow effect of the background

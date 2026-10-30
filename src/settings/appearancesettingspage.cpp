@@ -100,6 +100,19 @@ AppearanceSettingsPage::AppearanceSettingsPage(SettingsDialog *dialog, SharedPtr
 
   QObject::connect(ui_->select_tabbar_color, &QPushButton::pressed, this, &AppearanceSettingsPage::TabBarSelectBGColor);
   QObject::connect(ui_->tabbar_system_color, &QRadioButton::toggled, this, &AppearanceSettingsPage::TabBarSystemColor);
+  QObject::connect(ui_->tabbar_background_strawberry, &QRadioButton::toggled, this, &AppearanceSettingsPage::TabBarBackgroundChanged);
+  QObject::connect(ui_->tabbar_background_gradient, &QRadioButton::toggled, this, &AppearanceSettingsPage::TabBarBackgroundChanged);
+  QObject::connect(ui_->tabbar_background_album, &QRadioButton::toggled, this, &AppearanceSettingsPage::TabBarBackgroundChanged);
+  QObject::connect(ui_->tabbar_background_custom, &QRadioButton::toggled, this, &AppearanceSettingsPage::TabBarBackgroundChanged);
+  QObject::connect(ui_->tabbar_gradient_custom_colors, &QCheckBox::toggled, this, &AppearanceSettingsPage::TabBarBackgroundChanged);
+  QObject::connect(ui_->tabbar_background_image_stretch, &QCheckBox::toggled, this, &AppearanceSettingsPage::TabBarBackgroundChanged);
+  QObject::connect(ui_->tabbar_background_image_keep_aspect_ratio, &QCheckBox::toggled, this, &AppearanceSettingsPage::TabBarBackgroundChanged);
+  QObject::connect(ui_->tabbar_background_image_tile, &QCheckBox::toggled, this, &AppearanceSettingsPage::TabBarBackgroundChanged);
+  QObject::connect(ui_->tabbar_background_image_blur, &QSlider::valueChanged, this, [this](const int value) { ui_->tabbar_background_image_blur_radius->setText(QStringLiteral("%1px").arg(value)); });
+  QObject::connect(ui_->tabbar_background_image_opacity, &QSlider::valueChanged, this, [this](const int value) { ui_->tabbar_background_image_opacity_level->setText(QStringLiteral("%1%").arg(value)); });
+  QObject::connect(ui_->select_tabbar_gradient_start_color, &QPushButton::pressed, this, [this]() { TabBarSelectGradientColor(true); });
+  QObject::connect(ui_->select_tabbar_gradient_end_color, &QPushButton::pressed, this, [this]() { TabBarSelectGradientColor(false); });
+  QObject::connect(ui_->select_tabbar_background_image, &QPushButton::pressed, this, &AppearanceSettingsPage::TabBarSelectBackgroundImage);
 
   QObject::connect(ui_->select_playlist_playing_song_color, &QPushButton::pressed, this, &AppearanceSettingsPage::PlaylistPlayingSongSelectColor);
   QObject::connect(ui_->playlist_playing_song_color_system, &QRadioButton::toggled, this, &AppearanceSettingsPage::PlaylistPlayingSongColorSystem);
@@ -184,6 +197,43 @@ void AppearanceSettingsPage::Load() {
 
   UpdateColorSelectorColor(ui_->select_tabbar_color, current_tabbar_bg_color_);
   TabBarSystemColor(ui_->tabbar_system_color->isChecked());
+
+  // Tabbar background
+  switch (static_cast<TabBarBackground>(s.value(kTabBarBackground, static_cast<int>(kDefaultTabBarBackground)).toInt())) {
+    case TabBarBackground::Gradient:
+      ui_->tabbar_background_gradient->setChecked(true);
+      break;
+    case TabBarBackground::CustomImage:
+      ui_->tabbar_background_custom->setChecked(true);
+      break;
+    case TabBarBackground::AlbumCover:
+      ui_->tabbar_background_album->setChecked(true);
+      break;
+    case TabBarBackground::Strawberry:
+    default:
+      ui_->tabbar_background_strawberry->setChecked(true);
+      break;
+  }
+  ui_->tabbar_gradient_custom_colors->setChecked(s.value(kTabBarGradientCustomColors, kDefaultTabBarGradientCustomColors).toBool());
+  current_tabbar_gradient_start_color_ = s.value(kTabBarGradientStartColor, current_tabbar_bg_color_.lighter(117)).value<QColor>();
+  current_tabbar_gradient_end_color_ = s.value(kTabBarGradientEndColor, StyleHelper::shadowColor(false).darker(109)).value<QColor>();
+  UpdateColorSelectorColor(ui_->select_tabbar_gradient_start_color, current_tabbar_gradient_start_color_);
+  UpdateColorSelectorColor(ui_->select_tabbar_gradient_end_color, current_tabbar_gradient_end_color_);
+  ui_->tabbar_gradient_direction->setCurrentIndex(qBound(0, s.value(kTabBarGradientDirection, static_cast<int>(kDefaultTabBarGradientDirection)).toInt(), ui_->tabbar_gradient_direction->count() - 1));
+  ui_->tabbar_background_image->setText(s.value(kTabBarImage).toString());
+  // The positions are BackgroundImagePosition, from 1.
+  ui_->tabbar_background_image_position->setCurrentIndex(qBound(0, s.value(kTabBarImagePosition, kDefaultTabBarImagePosition).toInt() - 1, ui_->tabbar_background_image_position->count() - 1));
+  ui_->tabbar_background_image_maxsize->setValue(s.value(kTabBarImageMaxSize, kDefaultTabBarImageMaxSize).toInt());
+  ui_->tabbar_background_image_stretch->setChecked(s.value(kTabBarImageStretch, kDefaultTabBarImageStretch).toBool());
+  ui_->tabbar_background_image_keep_aspect_ratio->setChecked(s.value(kTabBarImageKeepAspectRatio, kDefaultTabBarImageKeepAspectRatio).toBool());
+  ui_->tabbar_background_image_do_not_cut->setChecked(s.value(kTabBarImageDoNotCut, kDefaultTabBarImageDoNotCut).toBool());
+  ui_->tabbar_background_image_tile->setChecked(s.value(kTabBarImageTile, kDefaultTabBarImageTile).toBool());
+  ui_->tabbar_background_image_blur->setValue(s.value(kTabBarImageBlurRadius, kDefaultTabBarImageBlurRadius).toInt());
+  ui_->tabbar_background_image_blur_radius->setText(QStringLiteral("%1px").arg(ui_->tabbar_background_image_blur->value()));
+  ui_->tabbar_background_image_opacity->setValue(s.value(kTabBarImageOpacity, kDefaultTabBarImageOpacity).toInt());
+  ui_->tabbar_background_image_opacity_level->setText(QStringLiteral("%1%").arg(ui_->tabbar_background_image_opacity->value()));
+  ui_->tabbar_background_image_tint->setChecked(s.value(kTabBarImageTint, kDefaultTabBarImageTint).toBool());
+  TabBarBackgroundChanged();
 
   // Currently playing song color
   current_playlist_playing_song_color_ = s.value(kPlaylistPlayingSongColor).value<QColor>();
@@ -307,6 +357,27 @@ void AppearanceSettingsPage::Save() {
   s.setValue(kTabBarSystemColor, ui_->tabbar_system_color->isChecked());
   s.setValue(kTabBarGradient, ui_->tabbar_gradient->isChecked());
   s.setValue(kTabBarColor, current_tabbar_bg_color_);
+
+  // Tabbar background
+  TabBarBackground tabbar_background = TabBarBackground::Strawberry;
+  if (ui_->tabbar_background_gradient->isChecked()) tabbar_background = TabBarBackground::Gradient;
+  else if (ui_->tabbar_background_custom->isChecked()) tabbar_background = TabBarBackground::CustomImage;
+  else if (ui_->tabbar_background_album->isChecked()) tabbar_background = TabBarBackground::AlbumCover;
+  s.setValue(kTabBarBackground, static_cast<int>(tabbar_background));
+  s.setValue(kTabBarGradientCustomColors, ui_->tabbar_gradient_custom_colors->isChecked());
+  s.setValue(kTabBarGradientStartColor, current_tabbar_gradient_start_color_);
+  s.setValue(kTabBarGradientEndColor, current_tabbar_gradient_end_color_);
+  s.setValue(kTabBarGradientDirection, ui_->tabbar_gradient_direction->currentIndex());
+  s.setValue(kTabBarImage, ui_->tabbar_background_image->text());
+  s.setValue(kTabBarImagePosition, ui_->tabbar_background_image_position->currentIndex() + 1);
+  s.setValue(kTabBarImageMaxSize, ui_->tabbar_background_image_maxsize->value());
+  s.setValue(kTabBarImageStretch, ui_->tabbar_background_image_stretch->isChecked());
+  s.setValue(kTabBarImageKeepAspectRatio, ui_->tabbar_background_image_keep_aspect_ratio->isChecked());
+  s.setValue(kTabBarImageDoNotCut, ui_->tabbar_background_image_do_not_cut->isChecked());
+  s.setValue(kTabBarImageTile, ui_->tabbar_background_image_tile->isChecked());
+  s.setValue(kTabBarImageBlurRadius, ui_->tabbar_background_image_blur->value());
+  s.setValue(kTabBarImageOpacity, ui_->tabbar_background_image_opacity->value());
+  s.setValue(kTabBarImageTint, ui_->tabbar_background_image_tint->isChecked());
 
   // Currently playing song color
   if (ui_->playlist_playing_song_color_system->isChecked()) {
@@ -622,6 +693,47 @@ void AppearanceSettingsPage::TabBarSystemColor(const bool checked) {
   }
   ui_->layout_tabbar_color->setEnabled(!checked);
   ui_->select_tabbar_color->setEnabled(!checked);
+
+}
+
+void AppearanceSettingsPage::TabBarBackgroundChanged() {
+
+  const bool custom_image = ui_->tabbar_background_custom->isChecked();
+  const bool image = custom_image || ui_->tabbar_background_album->isChecked();
+  ui_->select_tabbar_gradient_start_color->setEnabled(ui_->tabbar_gradient_custom_colors->isChecked());
+  ui_->select_tabbar_gradient_end_color->setEnabled(ui_->tabbar_gradient_custom_colors->isChecked());
+  ui_->tabbar_background_image->setEnabled(custom_image);
+  ui_->select_tabbar_background_image->setEnabled(custom_image);
+  // Same dependencies as the playlist background image options.
+  ui_->widget_tabbar_background_image_options->setEnabled(image);
+  const bool tile = ui_->tabbar_background_image_tile->isChecked();
+  ui_->tabbar_background_image_stretch->setEnabled(!tile);
+  ui_->tabbar_background_image_keep_aspect_ratio->setEnabled(!tile && ui_->tabbar_background_image_stretch->isChecked());
+  ui_->tabbar_background_image_do_not_cut->setEnabled(!tile && ui_->tabbar_background_image_stretch->isChecked() && ui_->tabbar_background_image_keep_aspect_ratio->isChecked());
+  ui_->tabbar_background_image_maxsize->setEnabled(!ui_->tabbar_background_image_stretch->isChecked() || tile);
+  ui_->tabbar_background_image_position->setEnabled(!tile);
+
+}
+
+void AppearanceSettingsPage::TabBarSelectGradientColor(const bool start) {
+
+  QColor &color = start ? current_tabbar_gradient_start_color_ : current_tabbar_gradient_end_color_;
+  const QColor color_selected = QColorDialog::getColor(color);
+  if (!color_selected.isValid()) return;
+  color = color_selected;
+  UpdateColorSelectorColor(start ? ui_->select_tabbar_gradient_start_color : ui_->select_tabbar_gradient_end_color, color);
+
+  set_changed();
+
+}
+
+void AppearanceSettingsPage::TabBarSelectBackgroundImage() {
+
+  const QString selected_filename = QFileDialog::getOpenFileName(this, tr("Select tabbar background image"), ui_->tabbar_background_image->text(), tr(kLoadImageFileFilter) + u";;"_s + tr(kAllFilesFilterSpec));
+  if (selected_filename.isEmpty()) return;
+  ui_->tabbar_background_image->setText(selected_filename);
+
+  set_changed();
 
 }
 

@@ -65,6 +65,9 @@ class AppearanceSettingsPage : public SettingsPage {
   void BackgroundImageOpacityLevelChanged(const int percent);
   void TabBarSystemColor(const bool checked);
   void TabBarSelectBGColor();
+  void TabBarBackgroundChanged();
+  void TabBarSelectGradientColor(const bool start);
+  void TabBarSelectBackgroundImage();
   void PlaylistPlayingSongColorSystem(const bool checked);
   void PlaylistPlayingSongSelectColor();
 
@@ -100,6 +103,8 @@ class AppearanceSettingsPage : public SettingsPage {
   QMap<QPalette::ColorRole, QPointer<QPushButton>> color_selectors_;
   QColor current_tabbar_bg_color_;
   QColor original_tabbar_bg_color_;
+  QColor current_tabbar_gradient_start_color_;
+  QColor current_tabbar_gradient_end_color_;
   AppearanceSettings::BackgroundImageType background_image_type_;
   QString background_image_filename_;
   QString original_background_image_filename_;
