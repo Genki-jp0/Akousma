@@ -45,6 +45,18 @@ constexpr char kSystemThemeIcons[] = "system_icons";
 constexpr char kDarkMode[] = "dark_mode";
 constexpr char kUseCustomColorSet[] = "use-custom-color-set";
 
+// Windows only: system backdrop behind the main window (Settings > Appearance > Window backdrop).
+constexpr char kWindowBackdrop[] = "window_backdrop";
+// Also show the backdrop through the lists (playlist, collection, context...). Text there then loses ClearType.
+constexpr char kWindowBackdropTranslucentContent[] = "window_backdrop_translucent_content";
+
+enum class WindowBackdrop {
+  None = 0,
+  Mica = 1,
+  MicaAlt = 2,
+  Acrylic = 3
+};
+
 // Per-QPalette-role custom colors (the "central roles" from https://doc.qt.io/qt-6/qpalette.html).
 constexpr char kColorWindow[] = "color-window";
 constexpr char kColorWindowText[] = "color-window-text";
@@ -116,6 +128,8 @@ constexpr char kIconSizeConfigureButtons[] = "icon_size_configure_buttons";
 constexpr bool kDefaultDarkMode = false;
 constexpr bool kDefaultSystemIcons = false;
 constexpr bool kDefaultUseCustomColorSet = false;
+constexpr WindowBackdrop kDefaultWindowBackdrop = WindowBackdrop::None;
+constexpr bool kDefaultWindowBackdropTranslucentContent = false;
 constexpr bool kDefaultTabBarSystemColor = false;
 constexpr bool kDefaultTabBarGradient = true;
 constexpr TabBarBackground kDefaultTabBarBackground = TabBarBackground::Strawberry;

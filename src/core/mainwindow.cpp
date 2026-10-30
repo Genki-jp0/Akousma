@@ -232,6 +232,7 @@
 
 #ifdef Q_OS_WIN32
 #  include "core/windows7thumbbar.h"
+#  include "core/mainwindowbackdrop.h"
 #endif
 #ifdef _MSC_VER
 #  include "core/winsystemmediatransportcontrols.h"
@@ -452,6 +453,12 @@ MainWindow::MainWindow(Application *app,
 
   // Initialize the UI
   ui_->setupUi(this);
+
+#ifdef Q_OS_WIN32
+  // Settings > Appearance > Window backdrop: the window has to be made translucent before its native window is created (winId() below).
+  window_backdrop_ = new MainWindowBackdrop(this, ui_->tabs, ui_->centralWidget);
+  window_backdrop_->Init();
+#endif
 
 #ifdef _MSC_VER
   if (!smtc_->Initialize(reinterpret_cast<HWND>(winId()))) {
@@ -1426,6 +1433,10 @@ void MainWindow::ReloadSettings() {
 #endif
 
   ui_->tabs->ReloadSettings();
+
+#ifdef Q_OS_WIN32
+  window_backdrop_->ReloadSettings();
+#endif
 
 }
 

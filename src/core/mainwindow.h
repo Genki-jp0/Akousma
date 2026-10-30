@@ -97,6 +97,7 @@ class StreamingFavoritesView;
 class SmartPlaylistsViewContainer;
 #ifdef Q_OS_WIN32
 class Windows7ThumbBar;
+class MainWindowBackdrop;
 #endif
 #ifdef _MSC_VER
 class WinSystemMediaTransportControls;
@@ -326,6 +327,7 @@ class MainWindow : public QMainWindow, public PlatformInterface {
   Ui_MainWindow *ui_;
 #ifdef Q_OS_WIN32
   Windows7ThumbBar *thumbbar_;
+  MainWindowBackdrop *window_backdrop_ = nullptr;
 #endif
 #ifdef _MSC_VER
   WinSystemMediaTransportControls *smtc_;

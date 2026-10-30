@@ -78,6 +78,8 @@ class FancyTabWidget : public QTabWidget {
   // The cover of the playing song, used for the album cover sidebar background.
   void SetAlbumCoverImage(const QImage &image);
   int IndexOfTab(QWidget *widget);
+  // Alpha of the default background while the main window shows a window backdrop (Windows), 255 is opaque (no backdrop).
+  void SetBackdropAlpha(const int alpha);
 
   static QColor DefaultTabbarBgColor();
 
@@ -131,6 +133,7 @@ class FancyTabWidget : public QTabWidget {
   int bg_image_blur_radius_ = 0;
   int bg_image_opacity_ = 100;
   bool bg_image_tint_ = false;
+  int backdrop_alpha_ = 255;
 
   void UpdateBackgroundImage();
   int iconsize_smallsidebar_;

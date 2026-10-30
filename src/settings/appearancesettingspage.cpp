@@ -60,6 +60,11 @@
 #include "settingspage.h"
 #include "settingsdialog.h"
 #include "ui_appearancesettingspage.h"
+#ifdef Q_OS_WIN32
+#  include <QStandardItemModel>
+#  include <QStandardItem>
+#  include "core/mainwindowbackdrop.h"
+#endif
 
 using namespace Qt::Literals::StringLiterals;
 using namespace AppearanceSettings;
@@ -82,6 +87,30 @@ AppearanceSettingsPage::AppearanceSettingsPage(SettingsDialog *dialog, SharedPtr
   for (const QString &style : styles) {
     ui_->combobox_style->addItem(style, style);
   }
+
+  ui_->combobox_window_backdrop->setItemData(0, static_cast<int>(WindowBackdrop::None));
+  ui_->combobox_window_backdrop->setItemData(1, static_cast<int>(WindowBackdrop::Mica));
+  ui_->combobox_window_backdrop->setItemData(2, static_cast<int>(WindowBackdrop::MicaAlt));
+  ui_->combobox_window_backdrop->setItemData(3, static_cast<int>(WindowBackdrop::Acrylic));
+#ifdef Q_OS_WIN32
+  // Mica and Mica Alt need Windows 11 22H2, Acrylic has a fallback for Windows 10.
+  if (QStandardItemModel *backdrop_model = qobject_cast<QStandardItemModel*>(ui_->combobox_window_backdrop->model())) {
+    for (int i = 0; i < backdrop_model->rowCount(); ++i) {
+      const WindowBackdrop backdrop = static_cast<WindowBackdrop>(ui_->combobox_window_backdrop->itemData(i).toInt());
+      if (!MainWindowBackdrop::IsAvailable(backdrop)) {
+        QStandardItem *item = backdrop_model->item(i);
+        item->setEnabled(false);
+        item->setToolTip(tr("Needs Windows 11 22H2 or later"));
+      }
+    }
+  }
+  // The lists stay opaque by default, so their text keeps ClearType.
+  QObject::connect(ui_->combobox_window_backdrop, &QComboBox::currentIndexChanged, this, [this]() {
+    ui_->checkbox_window_backdrop_translucent_content->setEnabled(ui_->combobox_window_backdrop->currentData().toInt() != static_cast<int>(WindowBackdrop::None));
+  });
+#else
+  ui_->widget_window_backdrop->hide();
+#endif
 
   CreateColorSelectors();
 
@@ -162,6 +191,17 @@ void AppearanceSettingsPage::Load() {
 
 #if !defined(Q_OS_MACOS) && !defined(Q_OS_WIN32)
   ui_->checkbox_system_icons->setChecked(s.value(kSystemThemeIcons, kDefaultSystemIcons).toBool());
+#endif
+
+#ifdef Q_OS_WIN32
+  {
+    const WindowBackdrop backdrop = MainWindowBackdrop::LoadSetting();
+    int backdrop_index = ui_->combobox_window_backdrop->findData(static_cast<int>(MainWindowBackdrop::IsAvailable(backdrop) ? backdrop : WindowBackdrop::None));
+    if (backdrop_index < 0) backdrop_index = 0;
+    ui_->combobox_window_backdrop->setCurrentIndex(backdrop_index);
+    ui_->checkbox_window_backdrop_translucent_content->setChecked(MainWindowBackdrop::LoadTranslucentContentSetting());
+    ui_->checkbox_window_backdrop_translucent_content->setEnabled(ui_->combobox_window_backdrop->currentData().toInt() != static_cast<int>(WindowBackdrop::None));
+  }
 #endif
 
   original_dark_mode_ = s.value(kDarkMode, kDefaultDarkMode).toBool();
@@ -337,6 +377,11 @@ void AppearanceSettingsPage::Save() {
 #endif
 
   s.setValue(kDarkMode, Utilities::StyleHasDarkModeSupport(selected_style) ? ui_->checkbox_dark_mode->isChecked() : false);
+
+#ifdef Q_OS_WIN32
+  s.setValue(kWindowBackdrop, ui_->combobox_window_backdrop->currentData().toInt());
+  s.setValue(kWindowBackdropTranslucentContent, ui_->checkbox_window_backdrop_translucent_content->isChecked());
+#endif
 
   // Colors
   const bool use_custom_color_set = Utilities::StyleHasCustomPaletteColorsSupport(selected_style) && ui_->use_custom_color_set->isChecked();

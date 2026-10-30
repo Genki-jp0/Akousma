@@ -1372,9 +1372,13 @@ if(WIN32)
     src/engine/mmaudiodevicelister.cpp
     src/engine/asioaudiodevicelister.cpp
     src/core/windows7thumbbar.cpp
+    src/utilities/winbackdrop.cpp
+    src/core/mainwindowbackdrop.cpp
+    src/core/mainwindowbackdropstylesheet.cpp
   )
   list(APPEND HEADERS
     src/core/windows7thumbbar.h
+    src/core/mainwindowbackdrop.h
   )
 endif()
 

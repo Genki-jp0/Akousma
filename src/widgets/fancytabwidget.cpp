@@ -328,6 +328,15 @@ void FancyTabWidget::SetBackgroundPixmap(const QPixmap &pixmap) {
 
 }
 
+void FancyTabWidget::SetBackdropAlpha(const int alpha) {
+
+  const int backdrop_alpha = qBound(0, alpha, 255);
+  if (backdrop_alpha == backdrop_alpha_) return;
+  backdrop_alpha_ = backdrop_alpha;
+  update();
+
+}
+
 void FancyTabWidget::SetCurrentIndex(int idx) {
 
   Q_ASSERT(count() > 0);
@@ -372,6 +381,7 @@ void FancyTabWidget::paintEvent(QPaintEvent *pe) {
 
   QString key = QString::asprintf("mh_vertical %d %d %d %d %d", backgroundRect.width(), backgroundRect.height(), bg_color_.rgb(), (bg_gradient_ ? 1 : 0), (background_pixmap_.isNull() ? 0 : 1));
   key += QString::asprintf(" %d %d %u %u %d %lld %d %d %d %d %d %d %d %d", bg_mode_, (bg_gradient_custom_colors_ ? 1 : 0), bg_gradient_start_color_.rgba(), bg_gradient_end_color_.rgba(), bg_gradient_direction_, static_cast<long long>(bg_image_.cacheKey()), bg_image_position_, bg_image_max_size_, (bg_image_stretch_ ? 1 : 0), (bg_image_keep_aspect_ratio_ ? 1 : 0), (bg_image_do_not_cut_ ? 1 : 0), (bg_image_tile_ ? 1 : 0), bg_image_opacity_, (bg_image_tint_ ? 1 : 0));
+  if (backdrop_alpha_ < 255) key += QString::asprintf(" backdrop %d", backdrop_alpha_);
   // The plain gradient background is always a gradient.
   const bool draw_gradient = bg_gradient_ || bg_mode_ == static_cast<int>(AppearanceSettings::TabBarBackground::Gradient);
 
@@ -379,8 +389,18 @@ void FancyTabWidget::paintEvent(QPaintEvent *pe) {
   if (!QPixmapCache::find(key, &pixmap)) {
 
     pixmap = QPixmap(backgroundRect.size());
+    // With a window backdrop the default color and gradient are translucent, a custom gradient and images are drawn as they are.
+    const bool translucent = backdrop_alpha_ < 255;
+    if (translucent) pixmap.fill(Qt::transparent);
     QPainter p(&pixmap);
-    p.fillRect(backgroundRect, bg_color_);
+    if (!translucent) {
+      p.fillRect(backgroundRect, bg_color_);
+    }
+    else if (!draw_gradient) {
+      QColor color(bg_color_);
+      color.setAlpha(color.alpha() * backdrop_alpha_ / 255);
+      p.fillRect(backgroundRect, color);
+    }
 
     // Draw the gradient fill.
     if (draw_gradient) {
@@ -399,8 +419,14 @@ void FancyTabWidget::paintEvent(QPaintEvent *pe) {
           grad = QLinearGradient(backgroundRect.topRight(), backgroundRect.bottomLeft());
           break;
       }
-      grad.setColorAt(0, bg_gradient_custom_colors_ ? bg_gradient_start_color_ : bg_color_.lighter(117));
-      grad.setColorAt(1, bg_gradient_custom_colors_ ? bg_gradient_end_color_ : shadow.darker(109));
+      QColor gradient_start = bg_gradient_custom_colors_ ? bg_gradient_start_color_ : bg_color_.lighter(117);
+      QColor gradient_end = bg_gradient_custom_colors_ ? bg_gradient_end_color_ : shadow.darker(109);
+      if (translucent && !bg_gradient_custom_colors_) {
+        gradient_start.setAlpha(gradient_start.alpha() * backdrop_alpha_ / 255);
+        gradient_end.setAlpha(gradient_end.alpha() * backdrop_alpha_ / 255);
+      }
+      grad.setColorAt(0, gradient_start);
+      grad.setColorAt(1, gradient_end);
       p.fillRect(rect, grad);
 
       QColor light(255, 255, 255, 80);

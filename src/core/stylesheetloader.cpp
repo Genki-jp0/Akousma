@@ -58,6 +58,20 @@ constexpr float kAlternateBaseColorDifferenceLight = 0.025F;
 constexpr float kAlternateBaseColorDifferenceDark = 0.025F;
 constexpr bool kUseTextColorForAlternateBase = false;
 #endif
+
+QString CssColor(const QColor &color) {
+
+#ifdef Q_OS_WIN32
+  // With a window backdrop (Settings > Appearance) the main window's palette colors are translucent, keep their alpha.
+  if (color.alpha() < 255) {
+    return QStringLiteral("rgba(%1,%2,%3,%4)").arg(color.red()).arg(color.green()).arg(color.blue()).arg(color.alpha());
+  }
+#endif
+
+  return color.name();
+
+}
+
 }  // namespace
 
 using std::make_shared;
@@ -149,9 +163,9 @@ void StyleSheetLoader::UpdateStyleSheet(QWidget *widget, SharedPtr<StyleSheetDat
 
 void StyleSheetLoader::ReplaceColor(QString *css, const QString &name, const QPalette &palette, const QPalette::ColorRole role) {
 
-  css->replace(u"%palette-"_s + name + u"-lighter"_s, palette.color(role).lighter().name(), Qt::CaseInsensitive);
-  css->replace(u"%palette-"_s + name + u"-darker"_s, palette.color(role).darker().name(), Qt::CaseInsensitive);
-  css->replace(u"%palette-"_s + name, palette.color(role).name(), Qt::CaseInsensitive);
+  css->replace(u"%palette-"_s + name + u"-lighter"_s, CssColor(palette.color(role).lighter()), Qt::CaseInsensitive);
+  css->replace(u"%palette-"_s + name + u"-darker"_s, CssColor(palette.color(role).darker()), Qt::CaseInsensitive);
+  css->replace(u"%palette-"_s + name, CssColor(palette.color(role)), Qt::CaseInsensitive);
 
 }
 
