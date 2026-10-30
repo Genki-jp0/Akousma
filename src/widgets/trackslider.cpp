@@ -207,10 +207,7 @@ TrackSlider::SeekbarMode TrackSlider::LoadSeekbarMode() {
 
 #if defined(HAVE_MOODBAR) || defined(HAVE_WAVEFORM)
 
-  Settings s;
-  s.beginGroup(SeekbarSettings::kSettingsGroup);
-  const SeekbarMode seekbar_mode = static_cast<SeekbarMode>(s.value(QLatin1String(SeekbarSettings::kMode), static_cast<int>(SeekbarSettings::kDefaultMode)).toInt());
-  s.endGroup();
+  const SeekbarMode seekbar_mode = SeekbarSettings::LoadMode();
 
   switch (seekbar_mode) {
     case SeekbarMode::Normal:
@@ -230,10 +227,8 @@ void TrackSlider::SetSeekbarMode(const SeekbarMode seekbar_mode) {
   seekbar_mode_ = seekbar_mode;
 
   // The seekbar mode is the single source of truth, persisted here so the controllers (which gate generation on it) and the next startup agree on what to show.
-  Settings s;
-  s.beginGroup(SeekbarSettings::kSettingsGroup);
-  s.setValue(QLatin1String(SeekbarSettings::kMode), static_cast<int>(seekbar_mode));
-  s.endGroup();
+  // The moodbar settings page shows and changes the same setting.
+  SeekbarSettings::SaveMode(seekbar_mode);
 
   // Both proxy styles drive the slider's vertical size policy in NextState() (MinimumExpanding when shown, Fixed when hidden), and the last writer wins.
   // So disable the inactive proxy first and enable the active one last — otherwise switching to a mode would leave the just-disabled proxy's Fixed policy in force and the visualization would render too small.

@@ -43,6 +43,7 @@
 #endif
 
 #include "constants/moodbarsettings.h"
+#include "constants/seekbarsettings.h"
 #include "moodbarsettingspage.h"
 #include "ui_moodbarsettingspage.h"
 
@@ -70,6 +71,9 @@ MoodbarSettingsPage::~MoodbarSettingsPage() { delete ui_; }
 
 void MoodbarSettingsPage::Load() {
 
+  // Whether the moodbar is shown is the seekbar mode, which is also changed from the right-click menu of the seekbar.
+  ui_->moodbar_show->setChecked(SeekbarSettings::LoadMode() == SeekbarSettings::Mode::Moodbar);
+
   Settings s;
   s.beginGroup(kSettingsGroup);
   ui_->moodbar_style->setCurrentIndex(s.value(kStyle, static_cast<int>(kDefaultStyle)).toInt());
@@ -91,6 +95,14 @@ void MoodbarSettingsPage::Save() {
   s.setValue(kStyle, ui_->moodbar_style->currentIndex());
   s.setValue(kSave, ui_->moodbar_save->isChecked());
   s.endGroup();
+
+  // Unchecking it only changes the seekbar mode when the moodbar is shown, the waveform stays shown.
+  if (ui_->moodbar_show->isChecked()) {
+    SeekbarSettings::SaveMode(SeekbarSettings::Mode::Moodbar);
+  }
+  else if (SeekbarSettings::LoadMode() == SeekbarSettings::Mode::Moodbar) {
+    SeekbarSettings::SaveMode(SeekbarSettings::Mode::Normal);
+  }
 
 }
 

@@ -46,10 +46,7 @@ WaveformController::WaveformController(const SharedPtr<PlayerInterface> player, 
 
 void WaveformController::ReloadSettings() {
 
-  Settings s;
-  s.beginGroup(SeekbarSettings::kSettingsGroup);
-  const bool enabled = static_cast<SeekbarSettings::Mode>(s.value(QLatin1String(SeekbarSettings::kMode), static_cast<int>(SeekbarSettings::kDefaultMode)).toInt()) == SeekbarSettings::Mode::Waveform;
-  s.endGroup();
+  const bool enabled = SeekbarSettings::LoadMode() == SeekbarSettings::Mode::Waveform;
 
   const bool was_enabled = enabled_;
   enabled_ = enabled;
