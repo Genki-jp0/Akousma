@@ -33,6 +33,7 @@
 
 #include <QWidget>
 #include <QBasicTimer>
+#include <QElapsedTimer>
 #include <QString>
 #include <QPainter>
 
@@ -44,6 +45,7 @@ class QHideEvent;
 class QShowEvent;
 class QPaintEvent;
 class QTimerEvent;
+class VsyncTicker;
 
 class AnalyzerBase : public QWidget {
   Q_OBJECT
@@ -57,6 +59,13 @@ class AnalyzerBase : public QWidget {
 
   void ChangeTimeout(const int timeout);
 
+  // Vsync mode: instead of a fixed timer, a new frame is started every time the monitor refreshes (Windows, through the DWM).
+  // Other platforms keep using the timer, which the AnalyzerContainer then sets to the refresh rate of the monitor.
+  void SetVsync(const bool vsync);
+
+  // Start a new frame: used by the timer and by the vsync ticker
+  void Tick();
+
   virtual void framerateChanged() {}
 
  protected:
@@ -67,6 +76,10 @@ class AnalyzerBase : public QWidget {
   void showEvent(QShowEvent *e) override;
   void paintEvent(QPaintEvent *e) override;
   void timerEvent(QTimerEvent *e) override;
+
+  void StartTicking();
+  void StopTicking();
+  void MeasureFrameInterval();
 
   int resizeExponent(int exp);
   int resizeForBands(const int bands);
@@ -87,6 +100,17 @@ class AnalyzerBase : public QWidget {
   bool new_frame_;
   bool is_playing_;
   int timeout_;
+
+ private:
+  bool vsync_;
+  VsyncTicker *vsync_ticker_;
+
+  // In vsync mode the real time between two frames is measured, so that the animation speed follows the monitor when its refresh rate changes
+  // or when frames get dropped, instead of staying at the rate that was asked for
+  QElapsedTimer frame_clock_;
+  double last_frame_ms_;
+  double frame_interval_ms_;  // moving average
+  int frame_samples_;
 };
 
 #endif  // ANALYZERBASE_H

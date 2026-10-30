@@ -31,6 +31,10 @@
 #include <QMenu>
 #include <QAction>
 #include <QActionGroup>
+#include <QInputDialog>
+#include <QGuiApplication>
+#include <QScreen>
+#include <QWindow>
 #include <QSettings>
 #include <QtEvents>
 
@@ -56,17 +60,28 @@ namespace {
 constexpr char kSettingsGroup[] = "Analyzer";
 constexpr char kSettingsType[] = "type";
 constexpr char kSettingsFramerate[] = "framerate";
+constexpr char kSettingsVsync[] = "vsync";
 constexpr int kLowFramerate = 20;
 constexpr int kMediumFramerate = 25;
 constexpr int kHighFramerate = 30;
 constexpr int kSuperHighFramerate = 60;
+constexpr int kMinFramerate = 1;
+constexpr int kMaxFramerate = 1000;
+
+// Timer interval in milliseconds for a framerate, rounded to the nearest millisecond and never below 1.
+int TimeoutForFramerate(const int framerate) {
+  return qMax(1, qRound(1000.0 / qBound(kMinFramerate, framerate, kMaxFramerate)));
+}
 }  // namespace
 
 AnalyzerContainer::AnalyzerContainer(QWidget *parent)
     : QWidget(parent),
       current_framerate_(kMediumFramerate),
+      vsync_(false),
       context_menu_(new QMenu(this)),
       context_menu_framerate_(new QMenu(tr("Framerate"), this)),
+      vsync_action_(nullptr),
+      custom_framerate_action_(nullptr),
       group_(new QActionGroup(this)),
       group_framerate_(new QActionGroup(this)),
       double_click_timer_(new QTimer(this)),
@@ -83,6 +98,17 @@ AnalyzerContainer::AnalyzerContainer(QWidget *parent)
   AddFramerate(tr("Medium (%1 fps)").arg(kMediumFramerate), kMediumFramerate);
   AddFramerate(tr("High (%1 fps)").arg(kHighFramerate), kHighFramerate);
   AddFramerate(tr("Super high (%1 fps)").arg(kSuperHighFramerate), kSuperHighFramerate);
+
+  // Has to come after the presets: UpdateFramerateActions() looks the presets up by their position in the group
+  vsync_action_ = context_menu_framerate_->addAction(tr("Monitor refresh rate (vsync)"));
+  vsync_action_->setCheckable(true);
+  group_framerate_->addAction(vsync_action_);
+  QObject::connect(vsync_action_, &QAction::triggered, this, &AnalyzerContainer::EnableVsync);
+
+  custom_framerate_action_ = context_menu_framerate_->addAction(tr("Custom..."));
+  custom_framerate_action_->setCheckable(true);
+  group_framerate_->addAction(custom_framerate_action_);
+  QObject::connect(custom_framerate_action_, &QAction::triggered, this, &AnalyzerContainer::ChooseCustomFramerate);
 
   context_menu_->addMenu(context_menu_framerate_);
   context_menu_->addSeparator();
@@ -106,6 +132,33 @@ AnalyzerContainer::AnalyzerContainer(QWidget *parent)
   QObject::connect(double_click_timer_, &QTimer::timeout, this, &AnalyzerContainer::ShowPopupMenu);
 
   Load();
+
+}
+
+void AnalyzerContainer::showEvent(QShowEvent *e) {
+
+  QWidget::showEvent(e);
+
+  // Follow the monitor the window is on: it can be moved to one with another refresh rate
+  QWindow *window_handle = window() ? window()->windowHandle() : nullptr;
+  if (window_handle && window_handle != tracked_window_) {
+    tracked_window_ = window_handle;
+    QObject::connect(window_handle, &QWindow::screenChanged, this, &AnalyzerContainer::TrackScreen);
+  }
+  TrackScreen();
+
+}
+
+void AnalyzerContainer::TrackScreen() {
+
+  QObject::disconnect(refresh_rate_connection_);
+  refresh_rate_connection_ = QMetaObject::Connection();
+
+  if (tracked_window_ && tracked_window_->screen()) {
+    refresh_rate_connection_ = QObject::connect(tracked_window_->screen(), &QScreen::refreshRateChanged, this, [this]() { if (vsync_) ApplyFramerate(); });
+  }
+
+  if (vsync_) ApplyFramerate();
 
 }
 
@@ -155,7 +208,8 @@ void AnalyzerContainer::ChangeAnalyzer(const int id) {
   current_analyzer_->set_engine(engine_);
   // Even if it is not supposed to happen, I don't want to get a dbz error
   current_framerate_ = current_framerate_ == 0 ? kMediumFramerate : current_framerate_;
-  current_analyzer_->ChangeTimeout(1000 / current_framerate_);
+  current_analyzer_->SetVsync(vsync_);
+  current_analyzer_->ChangeTimeout(TimeoutForFramerate(EffectiveFramerate()));
 
   layout()->addWidget(current_analyzer_);
 
@@ -163,17 +217,51 @@ void AnalyzerContainer::ChangeAnalyzer(const int id) {
 
 }
 
+// The user picked a fixed framerate, which also turns vsync off
 void AnalyzerContainer::ChangeFramerate(int new_framerate) {
 
+  // Even if it is not supposed to happen, I don't want to get a dbz error
+  new_framerate = new_framerate <= 0 ? kMediumFramerate : qBound(kMinFramerate, new_framerate, kMaxFramerate);
+
+  SaveVsync(false);
+  SaveFramerate(new_framerate);
+  ApplyFramerate();
+
+}
+
+void AnalyzerContainer::EnableVsync() {
+
+  SaveVsync(true);
+  ApplyFramerate();
+
+}
+
+// The refresh rate of the monitor the window is on, as a whole number of frames per second
+int AnalyzerContainer::RefreshRate() const {
+
+  const QWindow *window_handle = tracked_window_;
+  const QScreen *screen = window_handle && window_handle->screen() ? window_handle->screen() : QGuiApplication::primaryScreen();
+  const qreal refresh_rate = screen ? screen->refreshRate() : 0.0;
+  if (refresh_rate < 1.0) return current_framerate_;
+  return qBound(kMinFramerate, qRound(refresh_rate), kMaxFramerate);
+
+}
+
+int AnalyzerContainer::EffectiveFramerate() const {
+  return vsync_ ? RefreshRate() : current_framerate_;
+}
+
+void AnalyzerContainer::ApplyFramerate() {
+
   if (current_analyzer_) {
-    // Even if it is not supposed to happen, I don't want to get a dbz error
-    new_framerate = new_framerate == 0 ? kMediumFramerate : new_framerate;
-    current_analyzer_->ChangeTimeout(1000 / new_framerate);
+    current_analyzer_->SetVsync(vsync_);
+    current_analyzer_->ChangeTimeout(TimeoutForFramerate(EffectiveFramerate()));
 
     // notify the current analyzer that the framerate has changed
     current_analyzer_->framerateChanged();
   }
-  SaveFramerate(new_framerate);
+
+  UpdateFramerateActions();
 
 }
 
@@ -183,7 +271,10 @@ void AnalyzerContainer::Load() {
   s.beginGroup(kSettingsGroup);
   QString type = s.value(kSettingsType, u"BlockAnalyzer"_s).toString();
   current_framerate_ = s.value(kSettingsFramerate, kMediumFramerate).toInt();
+  vsync_ = s.value(kSettingsVsync, false).toBool();
   s.endGroup();
+
+  current_framerate_ = current_framerate_ <= 0 ? kMediumFramerate : qBound(kMinFramerate, current_framerate_, kMaxFramerate);
 
   // Analyzer
   if (type.isEmpty()) {
@@ -206,16 +297,57 @@ void AnalyzerContainer::Load() {
     }
   }
 
-  // Framerate
+  // Framerate: the saved value can be a custom one that is not in the preset list
+  ApplyFramerate();
+
+}
+
+void AnalyzerContainer::ChooseCustomFramerate() {
+
+  bool ok = false;
+  const int framerate = QInputDialog::getInt(this, tr("Custom framerate"), tr("Framerate (fps):"), current_framerate_, kMinFramerate, kMaxFramerate, 1, &ok);
+  if (ok) {
+    ChangeFramerate(framerate);
+  }
+  else {
+    // Cancelled: put the check mark back on the framerate that is still in use
+    UpdateFramerateActions();
+  }
+
+}
+
+void AnalyzerContainer::UpdateFramerateActions() {
+
+  if (vsync_) {
+    vsync_action_->setText(tr("Monitor refresh rate (%1 Hz)").arg(RefreshRate()));
+    custom_framerate_action_->setText(tr("Custom..."));
+    vsync_action_->setChecked(true);
+    return;
+  }
+
+  vsync_action_->setText(tr("Monitor refresh rate (vsync)"));
+
   const QList<QAction*> actions = group_framerate_->actions();
   for (int i = 0; i < framerate_list_.count(); ++i) {
     if (current_framerate_ == framerate_list_.value(i)) {
-      ChangeFramerate(current_framerate_);
-      QAction *action = actions[i];
-      action->setChecked(true);
-      break;
+      actions.value(i)->setChecked(true);
+      custom_framerate_action_->setText(tr("Custom..."));
+      return;
     }
   }
+
+  custom_framerate_action_->setText(tr("Custom (%1 fps)...").arg(current_framerate_));
+  custom_framerate_action_->setChecked(true);
+
+}
+
+void AnalyzerContainer::SaveVsync(const bool vsync) {
+
+  vsync_ = vsync;
+  Settings s;
+  s.beginGroup(kSettingsGroup);
+  s.setValue(kSettingsVsync, vsync_);
+  s.endGroup();
 
 }
 

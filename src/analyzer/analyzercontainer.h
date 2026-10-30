@@ -29,11 +29,15 @@
 #include <QMenu>
 #include <QAction>
 #include <QActionGroup>
+#include <QPointer>
+#include <QMetaObject>
 
 #include "includes/shared_ptr.h"
 #include "engine/enginebase.h"
 
 class QTimer;
+class QShowEvent;
+class QWindow;
 class QMouseEvent;
 class QWheelEvent;
 
@@ -51,12 +55,16 @@ class AnalyzerContainer : public QWidget {
   void WheelEvent(const int delta);
 
  protected:
+  void showEvent(QShowEvent *e) override;
   void mouseReleaseEvent(QMouseEvent *e) override;
   void wheelEvent(QWheelEvent *e) override;
 
  private Q_SLOTS:
   void ChangeAnalyzer(const int id);
   void ChangeFramerate(int new_framerate);
+  void ChooseCustomFramerate();
+  void EnableVsync();
+  void TrackScreen();
   void DisableAnalyzer();
   void ShowPopupMenu();
 
@@ -67,11 +75,21 @@ class AnalyzerContainer : public QWidget {
   template<typename T>
   void AddAnalyzerType();
   void AddFramerate(const QString &name, const int framerate);
+  void UpdateFramerateActions();
+  void ApplyFramerate();
+  int RefreshRate() const;
+  int EffectiveFramerate() const;
+  void SaveVsync(const bool vsync);
 
  private:
-  int current_framerate_;  // fps
+  int current_framerate_;  // fps, the fixed framerate that is used when vsync is off
+  bool vsync_;             // follow the refresh rate of the monitor
   QMenu *context_menu_;
   QMenu *context_menu_framerate_;
+  QAction *vsync_action_;
+  QAction *custom_framerate_action_;
+  QPointer<QWindow> tracked_window_;
+  QMetaObject::Connection refresh_rate_connection_;
   QActionGroup *group_;
   QActionGroup *group_framerate_;
 

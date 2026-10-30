@@ -28,8 +28,15 @@
 #include <cmath>
 #include <algorithm>
 
+#include <atomic>
+#include <memory>
+
 #include <QWidget>
 #include <QList>
+#include <QPointer>
+#include <QThread>
+#include <QLibrary>
+#include <QElapsedTimer>
 #include <QPainter>
 #include <QPalette>
 #include <QBasicTimer>
@@ -38,6 +45,64 @@
 #include <QTimerEvent>
 
 #include "engine/enginebase.h"
+
+#ifdef Q_OS_WIN
+// Calls AnalyzerBase::Tick() on the GUI thread once per monitor refresh. DwmFlush() blocks until the Desktop Window Manager has finished its next
+// frame, so this follows the real refresh of the monitor instead of a timer that drifts against it. It is looked up at runtime so nothing needs linking.
+class VsyncTicker : public QThread {
+ public:
+  explicit VsyncTicker(AnalyzerBase *analyzer, const int fallback_ms, QObject *parent = nullptr)
+      : QThread(parent), analyzer_(analyzer), stop_(false), fallback_ms_(fallback_ms), pending_(std::make_shared<std::atomic<bool>>(false)) {}
+
+  // The interval used while DwmFlush() is not working
+  void SetFallback(const int ms) { fallback_ms_ = ms; }
+
+  void Stop() {
+    stop_ = true;
+    wait(1000);  // DwmFlush() returns within a frame; if it ever does not, the thread is left to finish on its own
+  }
+
+ protected:
+  void run() override {
+    using DwmFlushFunction = long (__stdcall *)();
+    QLibrary dwmapi(QStringLiteral("dwmapi"));
+    DwmFlushFunction dwm_flush = dwmapi.load() ? reinterpret_cast<DwmFlushFunction>(dwmapi.resolve("DwmFlush")) : nullptr;
+
+    QElapsedTimer since_last_tick;
+    since_last_tick.start();
+
+    while (!stop_) {
+      // A failed call (HRESULT < 0, for example when composition is not available) must not turn into a busy loop:
+      // fall back to a timer-like interval, which also follows the refresh rate that is reported for the monitor
+      if (!dwm_flush || dwm_flush() < 0) {
+        QThread::msleep(static_cast<unsigned long>(qMax(1, fallback_ms_.load())));
+      }
+      else if (since_last_tick.nsecsElapsed() < 2000000) {
+        // Returning much faster than any monitor refreshes means the call is not waiting for a refresh (remote session, no composition...)
+        QThread::usleep(static_cast<unsigned long>((2000000 - since_last_tick.nsecsElapsed()) / 1000));
+      }
+      since_last_tick.restart();
+      if (stop_) break;
+
+      // Skip ticks while the GUI thread has not handled the previous one yet, so a slow paint cannot build up a backlog
+      if (pending_->exchange(true)) continue;
+      const std::shared_ptr<std::atomic<bool>> pending = pending_;
+      QPointer<AnalyzerBase> analyzer = analyzer_;
+      if (!analyzer) break;
+      QMetaObject::invokeMethod(analyzer.data(), [pending, analyzer]() {
+        pending->store(false);
+        if (analyzer) analyzer->Tick();
+      }, Qt::QueuedConnection);
+    }
+  }
+
+ private:
+  QPointer<AnalyzerBase> analyzer_;
+  std::atomic<bool> stop_;
+  std::atomic<int> fallback_ms_;
+  std::shared_ptr<std::atomic<bool>> pending_;
+};
+#endif  // Q_OS_WIN
 
 // INSTRUCTIONS Base2D
 // 1. do anything that depends on height() in init(), Base2D will call it before you are shown
@@ -57,32 +122,116 @@ AnalyzerBase::AnalyzerBase(QWidget *parent, const uint scope_size)
       lastscope_(512),
       new_frame_(false),
       is_playing_(false),
-      timeout_(40) {
+      timeout_(40),
+      vsync_(false),
+      vsync_ticker_(nullptr),
+      last_frame_ms_(-1.0),
+      frame_interval_ms_(0.0),
+      frame_samples_(0) {
 
   setAttribute(Qt::WA_OpaquePaintEvent, true);
 
 }
 
 AnalyzerBase::~AnalyzerBase() {
+  StopTicking();
   delete fht_;
 }
 
 void AnalyzerBase::showEvent(QShowEvent *e) {
   Q_UNUSED(e)
-  timer_.start(timeout(), this);
+  StartTicking();
 }
 
 void AnalyzerBase::hideEvent(QHideEvent *e) {
   Q_UNUSED(e)
+  StopTicking();
+}
+
+void AnalyzerBase::StartTicking() {
+
+  StopTicking();
+
+#ifdef Q_OS_WIN
+  if (vsync_) {
+    vsync_ticker_ = new VsyncTicker(this, timeout_);
+    QObject::connect(vsync_ticker_, &QThread::finished, vsync_ticker_, &QObject::deleteLater);
+    vsync_ticker_->start();
+    return;
+  }
+#endif
+
+  timer_.start(timeout(), Qt::PreciseTimer, this);
+
+}
+
+void AnalyzerBase::StopTicking() {
+
   timer_.stop();
+
+#ifdef Q_OS_WIN
+  if (vsync_ticker_) {
+    // The thread deletes itself when it is done (see StartTicking)
+    vsync_ticker_->Stop();
+    vsync_ticker_ = nullptr;
+  }
+#endif
+
+}
+
+void AnalyzerBase::SetVsync(const bool vsync) {
+
+  if (vsync_ == vsync) return;
+  vsync_ = vsync;
+  last_frame_ms_ = -1.0;
+  frame_samples_ = 0;
+  if (isVisible()) StartTicking();
+
+}
+
+void AnalyzerBase::Tick() {
+
+  if (vsync_) MeasureFrameInterval();
+
+  new_frame_ = true;
+  update();
+
+}
+
+void AnalyzerBase::MeasureFrameInterval() {
+
+  if (!frame_clock_.isValid()) frame_clock_.start();
+  const double now = static_cast<double>(frame_clock_.nsecsElapsed()) / 1e6;
+
+  // Ignore long gaps (window hidden, computer busy, display asleep): they say nothing about the refresh rate
+  if (last_frame_ms_ >= 0.0 && now - last_frame_ms_ < 250.0) {
+    const double interval = now - last_frame_ms_;
+    frame_interval_ms_ = frame_samples_ == 0 ? interval : frame_interval_ms_ + (interval - frame_interval_ms_) / 16.0;
+    ++frame_samples_;
+  }
+  last_frame_ms_ = now;
+
+  // Enough frames measured and it differs from the interval the animation is using: follow the measurement.
+  // The margin keeps it from flipping back and forth between two neighbouring values.
+  if (frame_samples_ >= 30 && qAbs(frame_interval_ms_ - timeout_) > 0.6) {
+    timeout_ = qMax(1, qRound(frame_interval_ms_));
+    framerateChanged();
+  }
+
 }
 
 void AnalyzerBase::ChangeTimeout(const int timeout) {
 
   timeout_ = timeout;
+  last_frame_ms_ = -1.0;
+  frame_samples_ = 0;
+#ifdef Q_OS_WIN
+  if (vsync_ticker_) vsync_ticker_->SetFallback(timeout);
+#endif
+  // In vsync mode the timer is not running (on Windows) and the timeout only sets the speed of the animation until the real interval is measured
   if (timer_.isActive()) {
     timer_.stop();
-    timer_.start(timeout_, this);
+    timer_.start(timeout_, Qt::PreciseTimer, this);
   }
 
 }
@@ -261,7 +410,6 @@ void AnalyzerBase::timerEvent(QTimerEvent *e) {
     return;
   }
 
-  new_frame_ = true;
-  update();
+  Tick();
 
 }

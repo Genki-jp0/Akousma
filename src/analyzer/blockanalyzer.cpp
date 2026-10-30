@@ -41,7 +41,9 @@ constexpr int kHeight = 2;
 constexpr int kWidth = 4;
 constexpr int kMinRows = 3;       // arbitrary
 constexpr int kMinColumns = 32;   // arbitrary
-constexpr int kMaxColumns = 256;  // must be 2**n
+constexpr int kMinBins = 128;     // spectrum bins used when the analyzer is small
+constexpr int kMaxBins = 256;     // the FHT only has this many useful bins; with more columns than this they are interpolated
+constexpr int kMaxColumns = 1024;  // must be 2**n
 constexpr int kFadeSize = 90;
 }  // namespace
 
@@ -55,14 +57,14 @@ BlockAnalyzer::BlockAnalyzer(QWidget *parent)
       barpixmap_(1, 1),
       topbarpixmap_(kWidth, kHeight),
       scope_(kMinColumns),
-      store_(1 << 8, 0),
+      store_(kMaxColumns, 0),
       fade_bars_(kFadeSize),
-      fade_pos_(1 << 8, 50),
-      fade_intensity_(1 << 8, 32),
+      fade_pos_(kMaxColumns, 50),
+      fade_intensity_(kMaxColumns, 32),
       step_(0) {
 
   setMinimumSize(kMinColumns * (kWidth + 1) - 1, kMinRows * (kHeight + 1) - 1);  // -1 is padding, no drawing takes place there
-  setMaximumWidth(kMaxColumns * (kWidth + 1) - 1);
+  // No maximum width: the analyzer fills all the room it gets and adds columns for it (blocks keep their size).
 
   // mxcl says null pixmaps cause crashes, so let's play it safe
   std::fill(fade_bars_.begin(), fade_bars_.end(), QPixmap(1, 1));
@@ -135,7 +137,8 @@ void BlockAnalyzer::transform(Scope &s) {
   fht_->scale(s.data(), 1.0F / 20);
 
   // the second half is pretty dull, so only show it if the user has a large analyzer by setting to scope_.size() if large we prevent interpolation of large analyzers, this is good!
-  s.resize(scope_.size() <= kMaxColumns / 2 ? kMaxColumns / 2 : scope_.size());
+  // Above kMaxBins columns the bins stop there (the rest of the FHT output is a mirror image) and interpolate() spreads them over the extra columns.
+  s.resize(static_cast<size_t>(qBound(kMinBins, static_cast<int>(scope_.size()), kMaxBins)));
 
 }
 
@@ -200,7 +203,7 @@ void BlockAnalyzer::analyze(QPainter &p, const Scope &s, const bool new_frame) {
     canvas_painter.drawPixmap(static_cast<int>(x) * (kWidth + 1), static_cast<int>(y) * (kHeight + 1) + y_, *bar(), 0, static_cast<int>(y) * (kHeight + 1), bar()->width(), bar()->height());
   }
 
-  for (int x = 0; x < store_.size(); ++x) {
+  for (int x = 0; x < columns_; ++x) {
     canvas_painter.drawPixmap(x * (kWidth + 1), static_cast<int>(store_[x]) * (kHeight + 1) + y_, topbarpixmap_);
   }
 

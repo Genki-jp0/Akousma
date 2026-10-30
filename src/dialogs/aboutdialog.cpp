@@ -102,7 +102,8 @@ AboutDialog::AboutDialog(QWidget *parent) : QDialog(parent), ui_{} {
            << Person(u"Tom Kranz"_s)
            << Person(u"William Andrea"_s)
            << Person(u"Yaroslav Chvanov"_s)
-           << Person(u"Alex Bikadorov"_s);
+           << Person(u"Alex Bikadorov"_s)
+           << Person(u"Genki Hourai"_s);
 
   clementine_authors_
            << Person(u"David Sansome"_s)

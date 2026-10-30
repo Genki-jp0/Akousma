@@ -1099,6 +1099,10 @@ void GstEngine::UpdateScope(const int chunk_length) {
 
   int chunk_size = chunk_length * chunk_density;
 
+  // Only whole stereo frames, so a chunk boundary can never swap the left and right channel.
+  constexpr int kFrameSize = static_cast<int>(2 * sizeof(sample_type));
+  chunk_size = qMax(kFrameSize, chunk_size - (chunk_size % kFrameSize));
+
   // In case a buffer doesn't arrive in time
   if (scope_chunk_ >= scope_chunks_) {
     scope_chunk_ = 0;
@@ -1133,6 +1137,17 @@ void GstEngine::UpdateScope(const int chunk_length) {
   bytes = qMin(bytes, static_cast<size_t>(map.size - byte_offset));
 
   scope_chunk_++;
+
+  // At a high framerate a chunk is shorter than the scope buffer. Copying it to the start of the scope would leave the rest of the scope
+  // holding stale samples from earlier chunks, and the analyzers would run their FFT over a signal with a jump in it every frame.
+  // That shows up as bars that spasm. Instead slide the window: drop the oldest samples and append the new chunk at the end,
+  // so the scope always holds one continuous stretch of audio that ends at the current chunk.
+  const size_t scope_bytes = scope_.size() * sizeof(sample_type);
+  if (bytes < scope_bytes) {
+    const size_t keep = scope_bytes - bytes;
+    memmove(dest, dest + (bytes / sizeof(sample_type)), keep);
+    dest += keep / sizeof(sample_type);
+  }
 
   if (buffer_format_.startsWith("S16LE"_L1)) {
     memcpy(dest, source, bytes);
