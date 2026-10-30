@@ -37,7 +37,7 @@ using namespace Qt::StringLiterals;
 namespace {
 constexpr char kDiscordApplicationId[] = "1352351827206733974";
 constexpr char kStrawberryIconResourceName[] = "embedded_cover";
-constexpr char kStrawberryIconDescription[] = "Strawberry Music Player";
+constexpr char kStrawberryIconDescription[] = "Akousma";
 }  // namespace
 
 DiscordRichPresence::DiscordRichPresence(const SharedPtr<Player> player, const SharedPtr<PlaylistManager> playlist_manager, QObject *parent)

@@ -25,6 +25,7 @@
 
 #include <QtGlobal>
 #include <QObject>
+#include <QGuiApplication>
 #include <QByteArray>
 #include <QDateTime>
 #include <QVariant>
@@ -170,7 +171,7 @@ void OSDDBus::ShowMessageNative(const QString &summary, const QString &message, 
     id = notification_id_;
   }
 
-  QDBusPendingReply<uint> reply = interface_->Notify(QCoreApplication::applicationName(), id, icon, summary_stripped, message, QStringList(), hints, timeout_msec());
+  QDBusPendingReply<uint> reply = interface_->Notify(QGuiApplication::applicationDisplayName(), id, icon, summary_stripped, message, QStringList(), hints, timeout_msec());
   QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(reply, this);
   QObject::connect(watcher, &QDBusPendingCallWatcher::finished, this, &OSDDBus::CallFinished);
 

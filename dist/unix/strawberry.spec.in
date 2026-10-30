@@ -8,7 +8,7 @@ Release:        @STRAWBERRY_VERSION_RPM_R@%{?dist}
 Summary:        A music player and music collection organizer
 Group:          Productivity/Multimedia/Sound/Players
 License:        GPL-3.0+
-URL:            https://www.strawberrymusicplayer.org/
+URL:            https://github.com/Genki-jp0/Akousma
 Source0:        %{name}-@STRAWBERRY_VERSION_PACKAGE@.tar.xz
 
 BuildRequires:  gcc-c++

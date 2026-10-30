@@ -8,11 +8,11 @@ BEGIN
     BLOCK "080904E4"
     BEGIN
       VALUE "CompanyName", "Strawberry"
-      VALUE "FileDescription", "Strawberry Music Player"
+      VALUE "FileDescription", "Akousma"
       VALUE "FileVersion", "${STRAWBERRY_VERSION_DISPLAY}"
       VALUE "InternalName", "strawberry"
       VALUE "OriginalFilename", "strawberry.exe"
-      VALUE "ProductName", "Strawberry"
+      VALUE "ProductName", "Akousma"
       VALUE "ProductVersion", "${STRAWBERRY_VERSION_DISPLAY}"
     END
   END

@@ -53,7 +53,7 @@ Depends: ${shlibs:Depends},
          gstreamer1.0-plugins-good,
          gstreamer1.0-alsa,
          gstreamer1.0-pulseaudio
-Homepage: http://www.strawberrymusicplayer.org/
+Homepage: https://github.com/Genki-jp0/Akousma
 Description: music player and music collection organizer
  Strawberry is a music player aimed at music collectors and audiophiles.
  .

@@ -62,12 +62,12 @@
 
 
 !ifdef debug
-  !define PRODUCT_NAME "Strawberry Music Player Debug"
+  !define PRODUCT_NAME "Akousma Debug"
   !define PRODUCT_NAME_SHORT "Strawberry"
   !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME_SHORT}Debug"
   !define PRODUCT_INSTALL_DIR "$PROGRAMFILES64\Strawberry Music Player Debug"
 !else
-  !define PRODUCT_NAME "Strawberry Music Player"
+  !define PRODUCT_NAME "Akousma"
   !define PRODUCT_NAME_SHORT "Strawberry"
   !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME_SHORT}"
   !define PRODUCT_INSTALL_DIR "$PROGRAMFILES64\Strawberry Music Player"
@@ -78,17 +78,17 @@
 !define PRODUCT_VERSION_PATCH @STRAWBERRY_VERSION_PATCH@
 !define PRODUCT_DISPLAY_VERSION "@STRAWBERRY_VERSION_PACKAGE@"
 
-!define PRODUCT_PUBLISHER "Jonas Kvinge"
-!define PRODUCT_WEB_SITE "https://www.strawberrymusicplayer.org/"
+!define PRODUCT_PUBLISHER "Genki (genki_jp0)"
+!define PRODUCT_WEB_SITE "https://github.com/Genki-jp0/Akousma"
 
 !define PRODUCT_UNINST_ROOT_KEY "HKLM"
 
 ; Set Application Capabilities info
 !define CAPABILITIES_NAME "Strawberry Music Player"
-!define CAPABILITIES_LOCAL_NAME "Strawberry"
+!define CAPABILITIES_LOCAL_NAME "Akousma"
 !define CAPABILITIES_PROGID "Strawberry Music Player"
 !define CAPABILITIES_PATH "Software\Clients\Media\Strawberry"
-!define CAPABILITIES_DESCRIPTION "Strawberry Music Player"
+!define CAPABILITIES_DESCRIPTION "Akousma"
 !define CAPABILITIES_ICON "$INSTDIR\strawberry.ico"
 
 Unicode True

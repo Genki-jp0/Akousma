@@ -296,7 +296,7 @@ void OSDBase::Stopped() {
 }
 
 void OSDBase::StopAfterToggle(const bool stop) {
-  ShowMessage(QCoreApplication::applicationName(), tr("Stop playing after track: %1").arg(stop ? tr("On") : tr("Off")));
+  ShowMessage(QGuiApplication::applicationDisplayName(), tr("Stop playing after track: %1").arg(stop ? tr("On") : tr("Off")));
 }
 
 void OSDBase::PlaylistFinished() {
@@ -304,7 +304,7 @@ void OSDBase::PlaylistFinished() {
   // We get a PlaylistFinished followed by a Stopped from the player
   ignore_next_stopped_ = true;
 
-  ShowMessage(QCoreApplication::applicationName(), tr("Playlist finished"));
+  ShowMessage(QGuiApplication::applicationDisplayName(), tr("Playlist finished"));
 
 }
 
@@ -322,7 +322,7 @@ void OSDBase::VolumeChanged(const uint value) {
   }
 #endif
 
-  ShowMessage(QCoreApplication::applicationName(), message);
+  ShowMessage(QGuiApplication::applicationDisplayName(), message);
 
 }
 
@@ -340,7 +340,7 @@ void OSDBase::MuteChanged(const bool mute) {
   }
 #endif
 
-  ShowMessage(QCoreApplication::applicationName(), message);
+  ShowMessage(QGuiApplication::applicationDisplayName(), message);
 
 }
 
@@ -397,7 +397,7 @@ void OSDBase::ShuffleModeChanged(const PlaylistSequence::ShuffleMode mode) {
       case PlaylistSequence::ShuffleMode::Albums:      current_mode = tr("Shuffle albums");  break;
       case PlaylistSequence::ShuffleMode::Grouping:    current_mode = tr("Shuffle grouping"); break;
     }
-    ShowMessage(QCoreApplication::applicationName(), current_mode);
+    ShowMessage(QGuiApplication::applicationDisplayName(), current_mode);
   }
 
 }
@@ -414,7 +414,7 @@ void OSDBase::RepeatModeChanged(const PlaylistSequence::RepeatMode mode) {
       case PlaylistSequence::RepeatMode::OneByOne: current_mode = tr("Stop after every track"); break;
       case PlaylistSequence::RepeatMode::Scan: current_mode = tr("Scan tracks"); break;
     }
-    ShowMessage(QCoreApplication::applicationName(), current_mode);
+    ShowMessage(QGuiApplication::applicationDisplayName(), current_mode);
   }
 
 }

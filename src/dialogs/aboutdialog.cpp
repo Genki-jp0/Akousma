@@ -42,7 +42,10 @@ AboutDialog::AboutDialog(QWidget *parent) : QDialog(parent), ui_{} {
 
   ui_.setupUi(this);
   setWindowFlags(windowFlags()|Qt::WindowStaysOnTopHint);
-  setWindowTitle(tr("About Strawberry"));
+  setWindowTitle(tr("About Akousma"));
+
+  akousma_authors_ \
+           << Person(u"Genki (genki_jp0)"_s);
 
   strawberry_authors_ \
            << Person(u"Jonas Kvinge"_s);
@@ -102,8 +105,7 @@ AboutDialog::AboutDialog(QWidget *parent) : QDialog(parent), ui_{} {
            << Person(u"Tom Kranz"_s)
            << Person(u"William Andrea"_s)
            << Person(u"Yaroslav Chvanov"_s)
-           << Person(u"Alex Bikadorov"_s)
-           << Person(u"Genki Hourai"_s);
+           << Person(u"Alex Bikadorov"_s);
 
   clementine_authors_
            << Person(u"David Sansome"_s)
@@ -163,12 +165,22 @@ QString AboutDialog::MainHtml() const {
   ret += "</p>"_L1;
 
   ret += "<p>"_L1;
+  ret += tr("Akousma is a music player and music collection organizer, developed by %1 as a separate project.").arg(u"Genki (genki_jp0)"_s);
+  ret += "<br />"_L1;
+  ret += tr("Akousma's source code is available on %1").arg(QStringLiteral("<a style=\"color:%1;\" href=\"https://github.com/Genki-jp0/Akousma\">GitHub (github.com/Genki-jp0/Akousma)</a>.").arg(palette().text().color().name()));
+  ret += "<br />"_L1;
+  ret += tr("Based on Strawberry by Jonas Kvinge and contributors: %1").arg(QStringLiteral("<a style=\"color:%1;\" href=\"https://www.strawberrymusicplayer.org/\">www.strawberrymusicplayer.org</a>").arg(palette().text().color().name()));
+  ret += "</p>"_L1;
+
+  ret += "<p>"_L1;
   ret += tr("Strawberry is a music player and music collection organizer.");
   ret += "<br />"_L1;
   ret += tr("It is a fork of Clementine released in 2018 aimed at music collectors and audiophiles.");
   ret += "</p>"_L1;
 
   ret += "<p>"_L1;
+  ret += tr("Akousma is free software released under the GNU GPL, version 3 or later, like Strawberry.");
+  ret += "<br />"_L1;
   ret += tr("Strawberry is free software released under GPL. The source code is available on %1").arg(QStringLiteral("<a style=\"color:%1;\" href=\"https://github.com/strawberrymusicplayer/strawberry\">GitHub</a>.").arg(palette().text().color().name()));
   ret += "<br />"_L1;
   ret += tr("You should have received a copy of the GNU General Public License along with this program.  If not, see %1").arg(QStringLiteral("<a style=\"color:%1;\" href=\"http://www.gnu.org/licenses/\">http://www.gnu.org/licenses/</a>").arg(palette().text().color().name()));
@@ -177,7 +189,7 @@ QString AboutDialog::MainHtml() const {
   ret += "<p>"_L1;
   ret += tr("If you like Strawberry and can make use of it, consider sponsoring or donating.");
   ret += "<br />"_L1;
-  ret += tr("You can sponsor the author on %1 or %2. You can also make a one-time payment through %3.").arg(
+  ret += tr("You can sponsor the author of Strawberry, Jonas Kvinge, on %1 or %2. You can also make a one-time payment through %3.").arg(
     QStringLiteral("<a style=\"color:%1;\" href=\"https://www.patreon.com/jonaskvinge\">Patreon</a>").arg(palette().text().color().name()),
     QStringLiteral("<a style=\"color:%1;\" href=\"https://github.com/sponsors/jonaski\">GitHub</a>").arg(palette().text().color().name()),
     QStringLiteral("<a style=\"color:%1;\" href=\"https://paypal.me/jonaskvinge\">paypal.me/jonaskvinge</a>").arg(palette().text().color().name())
@@ -195,7 +207,16 @@ QString AboutDialog::ContributorsHtml() const {
 
   ret += "<p>"_L1;
   ret += "<b>"_L1;
-  ret += tr("Author and maintainer");
+  ret += tr("Akousma lead developer");
+  ret += "</b>"_L1;
+  for (const Person &person : akousma_authors_) {
+    ret += "<br />"_L1 + PersonToHtml(person);
+  }
+  ret += "</p>"_L1;
+
+  ret += "<p>"_L1;
+  ret += "<b>"_L1;
+  ret += tr("Strawberry author and maintainer");
   ret += "</b>"_L1;
   for (const Person &person : strawberry_authors_) {
     ret += "<br />"_L1 + PersonToHtml(person);
@@ -204,7 +225,7 @@ QString AboutDialog::ContributorsHtml() const {
 
   ret += "<p>"_L1;
   ret += "<b>"_L1;
-  ret += tr("Contributors");
+  ret += tr("Strawberry contributors");
   ret += "</b>"_L1;
   for (const Person &person : strawberry_contributors_) {
     ret += "<br />"_L1 + PersonToHtml(person);

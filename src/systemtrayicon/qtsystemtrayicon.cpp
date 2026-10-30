@@ -23,6 +23,7 @@
 
 #include <QObject>
 #include <QCoreApplication>
+#include <QGuiApplication>
 #include <QSystemTrayIcon>
 #include <QAction>
 #include <QMenu>
@@ -60,7 +61,7 @@ SystemTrayIcon::SystemTrayIcon(QObject *parent)
   if (isSystemTrayAvailable()) {
     available_ = true;
     setIcon(icon_normal_);
-    setToolTip(QCoreApplication::applicationName());
+    setToolTip(QGuiApplication::applicationDisplayName());
   }
 
   QObject::connect(this, &QSystemTrayIcon::activated, this, &SystemTrayIcon::Clicked);
@@ -233,7 +234,7 @@ void SystemTrayIcon::SetNowPlaying(const Song &song, const QUrl &url) {
 }
 
 void SystemTrayIcon::ClearNowPlaying() {
-  if (available_) setToolTip(QCoreApplication::applicationName());
+  if (available_) setToolTip(QGuiApplication::applicationDisplayName());
 }
 
 void SystemTrayIcon::LoveVisibilityChanged(const bool value) {

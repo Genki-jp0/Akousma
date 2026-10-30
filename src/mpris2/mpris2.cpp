@@ -275,7 +275,7 @@ bool Mpris2::CanRaise() const { return true; }
 
 bool Mpris2::HasTrackList() const { return true; }
 
-QString Mpris2::Identity() const { return QCoreApplication::applicationName(); }
+QString Mpris2::Identity() const { return QGuiApplication::applicationDisplayName(); }
 
 QString Mpris2::DesktopEntryAbsolutePath() const {
 

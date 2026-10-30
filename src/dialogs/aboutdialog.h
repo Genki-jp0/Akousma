@@ -54,6 +54,7 @@ class AboutDialog : public QDialog {
  private:
   Ui::AboutDialog ui_;
 
+  QList<Person> akousma_authors_;
   QList<Person> strawberry_authors_;
   QList<Person> strawberry_contributors_;
   QList<Person> strawberry_thanks_;
