@@ -46,6 +46,8 @@ constexpr char kWidth[] = "width";
 constexpr char kHeight[] = "height";
 constexpr char kExportDownloaded[] = "export_downloaded";
 constexpr char kExportEmbedded[] = "export_embedded";
+// Set once the dialog was accepted with the embedded covers exported by default, the old default skipped the covers in the tags of MP3 files.
+constexpr char kExportEmbeddedDefaultOn[] = "export_embedded_default_on";
 }
 
 AlbumCoverExport::AlbumCoverExport(QWidget *parent) : QDialog(parent), ui_(new Ui_AlbumCoverExport) {
@@ -87,7 +89,7 @@ AlbumCoverExport::DialogResult AlbumCoverExport::Exec() {
   ui_->width->setText(s.value(kWidth, ""_L1).toString());
   ui_->height->setText(s.value(kHeight, ""_L1).toString());
   ui_->export_downloaded->setChecked(s.value(kExportDownloaded, true).toBool());
-  ui_->export_embedded->setChecked(s.value(kExportEmbedded, false).toBool());
+  ui_->export_embedded->setChecked(s.value(kExportEmbeddedDefaultOn, false).toBool() ? s.value(kExportEmbedded, true).toBool() : true);
 
   ForceSizeToggled(ui_->forceSize->checkState());
 
@@ -111,6 +113,7 @@ AlbumCoverExport::DialogResult AlbumCoverExport::Exec() {
     s.setValue(kHeight, height);
     s.setValue(kExportDownloaded, ui_->export_downloaded->isChecked());
     s.setValue(kExportEmbedded, ui_->export_embedded->isChecked());
+    s.setValue(kExportEmbeddedDefaultOn, true);
 
     result.filename_ = fileName;
     result.overwrite_ = overwrite_mode;

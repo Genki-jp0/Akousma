@@ -1800,6 +1800,8 @@ void Song::InitArtAutomatic() {
     const QFileInfo fileinfo(d->url_.toLocalFile());
     const QDir dir(fileinfo.path());
     const QStringList cover_files = dir.entryList(QStringList() << u"*.jpg"_s << u"*.png"_s << u"*.gif"_s << u"*.jpeg"_s, QDir::Files|QDir::Readable, QDir::Name);
+    // Unless disabled in the covers settings, don't take any image in the directory, which can be an unrelated picture when the song is in a downloads folder.
+    const bool strict = CoverUtils::AutomaticCoverStrict();
     QString best_cover_file;
     for (const QString &cover_file : cover_files) {
       if (cover_file.contains("back"_L1, Qt::CaseInsensitive)) {
@@ -1808,6 +1810,9 @@ void Song::InitArtAutomatic() {
       if (cover_file.contains("front"_L1, Qt::CaseInsensitive) || cover_file.startsWith("cover"_L1, Qt::CaseInsensitive)) {
         best_cover_file = cover_file;
         break;
+      }
+      if (strict && !CoverUtils::IsAlbumCoverImageFilename(cover_file)) {
+        continue;
       }
       if (best_cover_file.isEmpty()) {
         best_cover_file = cover_file;

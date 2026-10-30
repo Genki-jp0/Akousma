@@ -281,6 +281,8 @@ class CollectionWatcher : public QObject {
   // A list of words use to try to identify the (likely) best album cover art found in an directory to use as cover artwork.
   // e.g. using ["front", "cover"] would identify front.jpg and exclude back.jpg.
   QStringList best_art_filters_;
+  // Only use images named like an album cover as automatic covers, see the "automatic_strict" covers setting.
+  bool art_automatic_strict_ = true;
 
   bool scan_on_startup_;
   bool monitor_;

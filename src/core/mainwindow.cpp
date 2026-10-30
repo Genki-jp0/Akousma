@@ -170,6 +170,7 @@
 #include "constants/appearancesettings.h"
 #include "constants/backendsettings.h"
 #include "constants/collectionsettings.h"
+#include "constants/coverssettings.h"
 #include "constants/playlistsettings.h"
 #ifdef HAVE_SUBSONIC
 #  include "constants/subsonicsettings.h"
@@ -1192,6 +1193,18 @@ MainWindow::MainWindow(Application *app,
 
   CheckFullRescanRevisions();
 
+  // Rescan the collection once, so the embedded covers and the album directory images of songs already in it are read again with the new cover rules.
+  {
+    Settings s;
+    s.beginGroup(CoversSettings::kSettingsGroup);
+    if (!s.value(CoversSettings::kCollectionRescanned, false).toBool()) {
+      s.setValue(CoversSettings::kCollectionRescanned, true);
+      qLog(Info) << "Rescanning the collection once for the album cover changes.";
+      app_->collection()->FullScan();
+    }
+    s.endGroup();
+  }
+
   CommandlineOptionsReceived(options);
 
   if (app_->scrobbler()->enabled() && !app_->scrobbler()->offline()) {
@@ -1717,11 +1730,13 @@ void MainWindow::SongChanged(const Song &song) {
   SendNowPlaying();
 
   const bool enable_change_art = song.is_local_collection_song() && !song.effective_albumartist().isEmpty() && !song.album().isEmpty();
+  // Local files which are not in the collection can have their cover set too, it's embedded in their tags.
+  const bool enable_set_art = AlbumCoverChoiceController::CanChangeCover(song);
   album_cover_choice_controller_->show_cover_action()->setEnabled(song.has_valid_art() && !song.art_unset());
   album_cover_choice_controller_->cover_to_file_action()->setEnabled(song.has_valid_art() && !song.art_unset());
-  album_cover_choice_controller_->cover_from_file_action()->setEnabled(enable_change_art);
-  album_cover_choice_controller_->cover_from_url_action()->setEnabled(enable_change_art);
-  album_cover_choice_controller_->search_for_cover_action()->setEnabled(app_->cover_providers()->HasAnyProviders() && enable_change_art);
+  album_cover_choice_controller_->cover_from_file_action()->setEnabled(enable_set_art);
+  album_cover_choice_controller_->cover_from_url_action()->setEnabled(enable_set_art);
+  album_cover_choice_controller_->search_for_cover_action()->setEnabled(app_->cover_providers()->HasAnyProviders() && enable_set_art);
   album_cover_choice_controller_->unset_cover_action()->setEnabled(enable_change_art && !song.art_unset());
   album_cover_choice_controller_->clear_cover_action()->setEnabled(enable_change_art && !song.art_manual().isEmpty());
   album_cover_choice_controller_->delete_cover_action()->setEnabled(enable_change_art && (song.art_embedded() || !song.art_automatic().isEmpty() || !song.art_manual().isEmpty()));
@@ -3632,11 +3647,13 @@ void MainWindow::AlbumCoverLoaded(const Song &song, const AlbumCoverLoaderResult
   Q_EMIT AlbumCoverReady(song, result.album_cover.image);
 
   const bool enable_change_art = song.is_local_collection_song() && !song.effective_albumartist().isEmpty() && !song.album().isEmpty();
+  // Local files which are not in the collection can have their cover set too, it's embedded in their tags.
+  const bool enable_set_art = AlbumCoverChoiceController::CanChangeCover(song);
   album_cover_choice_controller_->show_cover_action()->setEnabled(result.success && result.type != AlbumCoverLoaderResult::Type::Unset);
   album_cover_choice_controller_->cover_to_file_action()->setEnabled(result.success && result.type != AlbumCoverLoaderResult::Type::Unset);
-  album_cover_choice_controller_->cover_from_file_action()->setEnabled(enable_change_art);
-  album_cover_choice_controller_->cover_from_url_action()->setEnabled(enable_change_art);
-  album_cover_choice_controller_->search_for_cover_action()->setEnabled(app_->cover_providers()->HasAnyProviders() && enable_change_art);
+  album_cover_choice_controller_->cover_from_file_action()->setEnabled(enable_set_art);
+  album_cover_choice_controller_->cover_from_url_action()->setEnabled(enable_set_art);
+  album_cover_choice_controller_->search_for_cover_action()->setEnabled(app_->cover_providers()->HasAnyProviders() && enable_set_art);
   album_cover_choice_controller_->unset_cover_action()->setEnabled(enable_change_art && !song.art_unset());
   album_cover_choice_controller_->clear_cover_action()->setEnabled(enable_change_art && !song.art_manual().isEmpty());
   album_cover_choice_controller_->delete_cover_action()->setEnabled(enable_change_art && result.success && result.type != AlbumCoverLoaderResult::Type::Unset);

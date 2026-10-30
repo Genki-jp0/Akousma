@@ -31,11 +31,21 @@ constexpr char kSavePattern[] = "save_pattern";
 constexpr char kSaveOverwrite[] = "save_overwrite";
 constexpr char kSaveLowercase[] = "save_lowercase";
 constexpr char kSaveReplaceSpaces[] = "save_replace_spaces";
+// Also write covers set from Strawberry into the music file's tags (ID3v2 APIC frame for MP3).
+constexpr char kSaveEmbedAlso[] = "save_embed_also";
+// Only use album directory images named like a cover (cover, front, folder, albumart, ...) as automatic covers.
+constexpr char kAutomaticStrict[] = "automatic_strict";
+// Set when the old default cover type order (with album directory images above embedded covers) was migrated.
+constexpr char kTypesEmbeddedFirst[] = "types_embedded_first";
+// Set when the collection was rescanned once, so the covers of songs already in it are read again with the new cover rules.
+constexpr char kCollectionRescanned[] = "album_art_patch_rescanned";
 
 constexpr char kDefaultSavePattern[] = "%albumartist-%album";
 constexpr bool kDefaultSaveOverwrite = false;
 constexpr bool kDefaultSaveLowercase = false;
 constexpr bool kDefaultSaveReplaceSpaces = false;
+constexpr bool kDefaultSaveEmbedAlso = true;
+constexpr bool kDefaultAutomaticStrict = true;
 
 }  // namespace CoversSettings
 

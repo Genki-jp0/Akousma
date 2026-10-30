@@ -128,10 +128,11 @@ void CoversSettingsPage::Load() {
   Settings s;
   s.beginGroup(kSettingsGroup);
 
+  // Same default order as AlbumCoverLoaderOptions::LoadTypes(), the cover in the file's tags comes before images found in the album directory.
   const QStringList all_types = QStringList() << u"art_unset"_s
+                                              << u"art_embedded"_s
                                               << u"art_manual"_s
-                                              << u"art_automatic"_s
-                                              << u"art_embedded"_s;
+                                              << u"art_automatic"_s;
 
   const QStringList types = s.value(kTypes, all_types).toStringList();
 
@@ -173,6 +174,8 @@ void CoversSettingsPage::Load() {
   ui_->checkbox_cover_overwrite->setChecked(s.value(kSaveOverwrite, kDefaultSaveOverwrite).toBool());
   ui_->checkbox_cover_lowercase->setChecked(s.value(kSaveLowercase, kDefaultSaveLowercase).toBool());
   ui_->checkbox_cover_replace_spaces->setChecked(s.value(kSaveReplaceSpaces, kDefaultSaveReplaceSpaces).toBool());
+  ui_->checkbox_save_embed_also->setChecked(s.value(kSaveEmbedAlso, kDefaultSaveEmbedAlso).toBool());
+  ui_->checkbox_automatic_strict->setChecked(s.value(kAutomaticStrict, kDefaultAutomaticStrict).toBool());
 
   s.endGroup();
 
@@ -203,6 +206,7 @@ void CoversSettingsPage::Save() {
   }
 
   s.setValue(kTypes, types);
+  s.setValue(kTypesEmbeddedFirst, true);
 
   CoverOptions::CoverType save_cover_type = CoverOptions::CoverType::Cache;
   if (ui_->radiobutton_save_albumcover_cache->isChecked()) save_cover_type = CoverOptions::CoverType::Cache;
@@ -219,6 +223,8 @@ void CoversSettingsPage::Save() {
   s.setValue(kSaveOverwrite, ui_->checkbox_cover_overwrite->isChecked());
   s.setValue(kSaveLowercase, ui_->checkbox_cover_lowercase->isChecked());
   s.setValue(kSaveReplaceSpaces, ui_->checkbox_cover_replace_spaces->isChecked());
+  s.setValue(kSaveEmbedAlso, ui_->checkbox_save_embed_also->isChecked());
+  s.setValue(kAutomaticStrict, ui_->checkbox_automatic_strict->isChecked());
 
   s.endGroup();
 

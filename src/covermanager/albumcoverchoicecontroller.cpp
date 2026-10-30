@@ -162,9 +162,22 @@ void AlbumCoverChoiceController::ReloadSettings() {
   cover_options_.cover_overwrite = s.value(CoversSettings::kSaveOverwrite, CoversSettings::kDefaultSaveOverwrite).toBool();
   cover_options_.cover_lowercase = s.value(CoversSettings::kSaveLowercase, CoversSettings::kDefaultSaveLowercase).toBool();
   cover_options_.cover_replace_spaces = s.value(CoversSettings::kSaveReplaceSpaces, CoversSettings::kDefaultSaveReplaceSpaces).toBool();
+  save_embed_also_ = s.value(CoversSettings::kSaveEmbedAlso, CoversSettings::kDefaultSaveEmbedAlso).toBool();
   s.endGroup();
 
   cover_types_ = AlbumCoverLoaderOptions::LoadTypes();
+
+}
+
+bool AlbumCoverChoiceController::CanChangeCover(const Song &song) {
+
+  if (!song.url().isValid() || !song.url().isLocalFile()) return false;
+
+  if (song.is_local_collection_song()) {
+    return !song.effective_albumartist().isEmpty() && !song.album().isEmpty();
+  }
+
+  return song.source() == Song::Source::LocalFile && ((!song.effective_albumartist().isEmpty() && !song.album().isEmpty()) || song.save_embedded_cover_supported());
 
 }
 
@@ -218,7 +231,7 @@ AlbumCoverImageResult AlbumCoverChoiceController::LoadImageFromFile(Song *song) 
 
 QUrl AlbumCoverChoiceController::LoadCoverFromFile(Song *song) {
 
-  if (!song->url().isValid() || !song->url().isLocalFile() || song->effective_albumartist().isEmpty() || song->album().isEmpty()) return QUrl();
+  if (!CanChangeCover(*song)) return QUrl();
 
   QString cover_file = QFileDialog::getOpenFileName(this, tr("Load cover from disk"), GetInitialPathForFileDialog(*song, QString()), tr(kLoadImageFileFilter) + u";;"_s + tr(kAllFilesFilterSpec));
   if (cover_file.isEmpty() || QImage(cover_file).isNull()) return QUrl();
@@ -313,7 +326,7 @@ QString AlbumCoverChoiceController::GetInitialPathForFileDialog(const Song &song
 
 void AlbumCoverChoiceController::LoadCoverFromURL(Song *song) {
 
-  if (!song->url().isValid() || !song->url().isLocalFile() || song->effective_albumartist().isEmpty() || song->album().isEmpty()) return;
+  if (!CanChangeCover(*song)) return;
 
   const AlbumCoverImageResult result = LoadImageFromURL();
   if (!result.image.isNull()) {
@@ -332,7 +345,7 @@ AlbumCoverImageResult AlbumCoverChoiceController::LoadImageFromURL() {
 
 void AlbumCoverChoiceController::SearchForCover(Song *song) {
 
-  if (!song->url().isValid() || !song->url().isLocalFile() || song->effective_albumartist().isEmpty() || song->album().isEmpty()) return;
+  if (!CanChangeCover(*song)) return;
 
   // Get something sensible to stick in the search box
   AlbumCoverImageResult result = SearchForImage(song);
@@ -344,7 +357,7 @@ void AlbumCoverChoiceController::SearchForCover(Song *song) {
 
 AlbumCoverImageResult AlbumCoverChoiceController::SearchForImage(Song *song) {
 
-  if (!song->url().isValid() || !song->url().isLocalFile() || song->effective_albumartist().isEmpty() || song->album().isEmpty()) return AlbumCoverImageResult();
+  if (!song->url().isValid() || !song->url().isLocalFile()) return AlbumCoverImageResult();
 
   QString album = song->effective_album();
   album = Song::AlbumRemoveDiscMisc(album);
@@ -615,6 +628,19 @@ void AlbumCoverChoiceController::SaveArtManualToSong(Song *song, const QUrl &art
     current_albumcover_loader_->LoadAlbumCover(*song);
   }
 
+  // Also write the cover into the tags of the music files, so it's kept with them, the embedded cover is then loaded when the files are added again or copied.
+  if (save_embed_also_ && art_manual.isValid() && art_manual.isLocalFile() && CanChangeCover(*song) && song->save_embedded_cover_supported()) {
+    // Embed the image data, not the filename, so the songs are stored as having an embedded cover.
+    QFile file(art_manual.toLocalFile());
+    if (file.open(QIODevice::ReadOnly)) {
+      const QByteArray image_data = file.readAll();
+      file.close();
+      if (!image_data.isEmpty()) {
+        SaveCoverEmbeddedToCollectionSongs(*song, QString(), image_data, Utilities::MimeTypeFromData(image_data));
+      }
+    }
+  }
+
 }
 
 void AlbumCoverChoiceController::ClearAlbumCoverForSong(Song *song) {
@@ -852,6 +878,17 @@ QUrl AlbumCoverChoiceController::SaveCoverAutomatic(Song *song, const AlbumCover
     }
     case CoverOptions::CoverType::Cache:
     case CoverOptions::CoverType::Album:{
+      // A local file without album artist or album can't have a cover file, but its cover can still be embedded.
+      if (song->source() != Song::Source::Collection && (song->effective_albumartist().isEmpty() || song->album().isEmpty())) {
+        if (save_embed_also_ && song->save_embedded_cover_supported()) {
+          // Empty cover data would remove the embedded cover, so an image without its data, like a dropped image, is encoded first.
+          const QByteArray image_data = result.image_data.isEmpty() && !result.image.isNull() ? ImageUtils::SaveImageToJpegData(result.image) : result.image_data;
+          if (!image_data.isEmpty()) {
+            SaveCoverEmbeddedToSong(*song, QString(), image_data, result.image_data.isEmpty() ? u"image/jpeg"_s : result.mime_type);
+          }
+        }
+        break;
+      }
       cover_url = SaveCoverToFileAutomatic(song, result);
       if (!cover_url.isEmpty()) SaveArtManualToSong(song, cover_url);
       break;

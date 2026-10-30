@@ -39,7 +39,19 @@ AlbumCoverLoaderOptions::Types AlbumCoverLoaderOptions::LoadTypes() {
   Settings s;
   s.beginGroup(CoversSettings::kSettingsGroup);
   const QStringList all_cover_types = QStringList() << u"art_unset"_s << u"art_embedded"_s << u"art_manual"_s << u"art_automatic"_s;
-  const QStringList cover_types_strlist = s.value(CoversSettings::kTypes, all_cover_types).toStringList();
+  QStringList cover_types_strlist = s.value(CoversSettings::kTypes, all_cover_types).toStringList();
+
+  // The covers settings page used to save its own default order, which has the album directory images above the embedded covers,
+  // so an unrelated image next to a file was shown instead of the cover in its tags. Move the embedded covers up once when the order is still that old default.
+  if (!s.value(CoversSettings::kTypesEmbeddedFirst, false).toBool()) {
+    const QStringList old_default_cover_types = QStringList() << u"art_unset"_s << u"art_manual"_s << u"art_automatic"_s << u"art_embedded"_s;
+    if (cover_types_strlist == old_default_cover_types) {
+      cover_types_strlist = all_cover_types;
+      s.setValue(CoversSettings::kTypes, cover_types_strlist);
+    }
+    s.setValue(CoversSettings::kTypesEmbeddedFirst, true);
+  }
+
   for (const QString &cover_type_str : cover_types_strlist) {
     if (cover_type_str == "art_unset"_L1) {
       cover_types << AlbumCoverLoaderOptions::Type::Unset;

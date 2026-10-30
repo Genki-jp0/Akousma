@@ -41,6 +41,7 @@
 #include "core/song.h"
 #include "tagreader/tagreaderclient.h"
 #include "utilities/coveroptions.h"
+#include "utilities/imageutils.h"
 #include "albumcoverloaderoptions.h"
 #include "albumcoverimageresult.h"
 
@@ -82,6 +83,12 @@ class AlbumCoverChoiceController : public QWidget {
 
   CoverOptions::CoverType get_save_album_cover_type() const { return (save_embedded_cover_override_ ? CoverOptions::CoverType::Embedded : cover_options_.cover_type); }
   CoverOptions::CoverType get_collection_save_album_cover_type() const { return cover_options_.cover_type; }
+  // Whether covers set from Strawberry are also written into the music files' tags, the "save_embed_also" covers setting.
+  bool save_embed_also() const { return save_embed_also_; }
+
+  // Whether the cover of the song can be changed: songs in the collection need the album artist and album, since the cover is set for the whole album,
+  // other local files can have their cover set in their own tags.
+  static bool CanChangeCover(const Song &song);
 
   // Getters for all QActions implemented by this controller.
 
@@ -213,6 +220,7 @@ class AlbumCoverChoiceController : public QWidget {
 
   CoverOptions cover_options_;
   bool save_embedded_cover_override_;
+  bool save_embed_also_ = true;
 
   AlbumCoverLoaderOptions::Types cover_types_;
 };

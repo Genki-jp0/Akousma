@@ -246,6 +246,19 @@
     </widget>
    </item>
    <item>
+    <widget class="QCheckBox" name="checkbox_automatic_strict">
+     <property name="toolTip">
+      <string>When unchecked, any image in the folder of a song can be used as its cover, like an unrelated picture in a downloads folder.</string>
+     </property>
+     <property name="text">
+      <string>Only use album directory images named like a cover (cover, front, folder, albumart)</string>
+     </property>
+     <property name="checked">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QGroupBox" name="groupbox_albumcovers">
      <property name="title">
       <string>Saving album covers</string>
@@ -278,6 +291,19 @@
           <widget class="QRadioButton" name="radiobutton_save_albumcover_embedded">
            <property name="text">
             <string>Save album covers as embedded cover</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="checkbox_save_embed_also">
+           <property name="toolTip">
+            <string>Covers set from file, URL, search or drag and drop are also written into the tags of the music files (ID3v2 APIC frame for MP3), so they are kept with the files.</string>
+           </property>
+           <property name="text">
+            <string>Also embed covers in the music files' tags</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
            </property>
           </widget>
          </item>

@@ -27,6 +27,8 @@
 #include <QCryptographicHash>
 
 #include "constants/filenameconstants.h"
+#include "constants/coverssettings.h"
+#include "core/settings.h"
 #include "core/logging.h"
 #include "core/standardpaths.h"
 #include "transliterate.h"
@@ -210,5 +212,32 @@ QString CoverUtils::CoverFilenameFromVariable(const CoverOptions &options, const
     filename.append(extension);
   }
   return filename;
+
+}
+
+bool CoverUtils::IsAlbumCoverImageFilename(const QString &filename, const QStringList &patterns) {
+
+  const QString basename = QFileInfo(filename).completeBaseName();
+  if (basename.contains("back"_L1, Qt::CaseInsensitive)) return false;
+
+  static const QStringList default_patterns = QStringList() << u"cover"_s << u"front"_s << u"folder"_s << u"albumart"_s << u"album"_s;
+  for (const QStringList &list : {default_patterns, patterns}) {
+    for (const QString &pattern : list) {
+      if (!pattern.isEmpty() && basename.contains(pattern, Qt::CaseInsensitive)) return true;
+    }
+  }
+
+  return false;
+
+}
+
+bool CoverUtils::AutomaticCoverStrict() {
+
+  Settings s;
+  s.beginGroup(CoversSettings::kSettingsGroup);
+  const bool strict = s.value(CoversSettings::kAutomaticStrict, CoversSettings::kDefaultAutomaticStrict).toBool();
+  s.endGroup();
+
+  return strict;
 
 }

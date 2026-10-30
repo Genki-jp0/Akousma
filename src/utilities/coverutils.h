@@ -22,6 +22,7 @@
 
 #include <QByteArray>
 #include <QString>
+#include <QStringList>
 #include <QUrl>
 
 #include "core/song.h"
@@ -38,6 +39,10 @@ class CoverUtils {
   static QString CoverFilenameFromVariable(const CoverOptions &options, const QString &artist, QString album, const QString &extension = QString());
   static QString CoverFilePath(const CoverOptions &options, const Song &song, const QString &album_dir, const QUrl &cover_url, const QString &extension = QString());
   static QString CoverFilePath(const CoverOptions &options, const Song::Source source, const QString &artist, const QString &album, const QString &album_id, const QString &album_dir, const QUrl &cover_url, const QString &extension = QString());
+  // Whether an image in the directory of a song is named like an album cover (cover, front, folder, albumart, album or one of the given patterns), and not like a back cover.
+  static bool IsAlbumCoverImageFilename(const QString &filename, const QStringList &patterns = QStringList());
+  // Whether only images named like an album cover are used as automatic covers, the "automatic_strict" covers setting.
+  static bool AutomaticCoverStrict();
 };
 
 #endif  // COVERUTILS_H

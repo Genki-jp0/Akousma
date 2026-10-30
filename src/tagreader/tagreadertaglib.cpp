@@ -1904,7 +1904,28 @@ QByteArray TagReaderTagLib::LoadEmbeddedCover(TagLib::ID3v2::Tag *tag) const {
   if (apic_frames.isEmpty()) {
     return QByteArray();
   }
-  TagLib::ID3v2::AttachedPictureFrame *picture = dynamic_cast<TagLib::ID3v2::AttachedPictureFrame*>(apic_frames.front());
+
+  // Files can have several pictures, like a back cover or an artist picture before the front cover, so use the front cover, then a picture of type "other", then the first picture.
+  TagLib::ID3v2::AttachedPictureFrame *picture = nullptr;
+  for (const TagLib::ID3v2::AttachedPictureFrame::Type type : {TagLib::ID3v2::AttachedPictureFrame::FrontCover, TagLib::ID3v2::AttachedPictureFrame::Other}) {
+    for (TagLib::ID3v2::Frame *frame : apic_frames) {
+      TagLib::ID3v2::AttachedPictureFrame *apic_frame = dynamic_cast<TagLib::ID3v2::AttachedPictureFrame*>(frame);
+      if (apic_frame && apic_frame->type() == type && !apic_frame->picture().isEmpty()) {
+        picture = apic_frame;
+        break;
+      }
+    }
+    if (picture) break;
+  }
+  if (!picture) {
+    for (TagLib::ID3v2::Frame *frame : apic_frames) {
+      TagLib::ID3v2::AttachedPictureFrame *apic_frame = dynamic_cast<TagLib::ID3v2::AttachedPictureFrame*>(frame);
+      if (apic_frame && !apic_frame->picture().isEmpty()) {
+        picture = apic_frame;
+        break;
+      }
+    }
+  }
   if (!picture) {
     return QByteArray();
   }

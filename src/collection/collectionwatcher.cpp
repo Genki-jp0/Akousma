@@ -64,6 +64,7 @@
 #include "collectionwatcher.h"
 #include "playlistparsers/cueparser.h"
 #include "constants/collectionsettings.h"
+#include "utilities/coverutils.h"
 #include "engine/ebur128measures.h"
 
 #if defined(Q_OS_LINUX)
@@ -270,6 +271,8 @@ void CollectionWatcher::ReloadSettings() {
     QString str = filter.trimmed();
     if (!str.isEmpty()) best_art_filters_ << str;
   }
+
+  art_automatic_strict_ = CoverUtils::AutomaticCoverStrict();
 
   if (!monitor_ && was_monitoring_before) {
     fs_watcher_->Clear();
@@ -2007,6 +2010,20 @@ qint64 CollectionWatcher::ArtAutomaticMtime(const QUrl &art_automatic) {
 QUrl CollectionWatcher::ArtForSong(const QString &path, QMap<QString, QStringList> &art_automatic_list) {
 
   QString dir(DirectoryPart(path));
+
+  // Unless disabled in the covers settings, only use images named like an album cover, not any image in the directory, like an unrelated picture in a downloads folder.
+  if (art_automatic_strict_ && art_automatic_list.contains(dir) && art_automatic_list[dir].count() > 0) {
+    QStringList cover_images;
+    for (const QString &image : std::as_const(art_automatic_list[dir])) {
+      if (CoverUtils::IsAlbumCoverImageFilename(image, best_art_filters_)) cover_images << image;
+    }
+    if (cover_images.isEmpty()) {
+      art_automatic_list.remove(dir);
+    }
+    else {
+      art_automatic_list[dir] = cover_images;
+    }
+  }
 
   if (art_automatic_list.contains(dir)) {
     if (art_automatic_list[dir].count() == 1) {
