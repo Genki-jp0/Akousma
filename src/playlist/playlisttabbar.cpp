@@ -238,6 +238,12 @@ void PlaylistTabBar::CloseSlot() {
 
   const int playlist_id = tabData(menu_index_).toInt();
 
+  // Closing a playlist which is not a favorite deletes it, so a locked playlist has to be unlocked first.
+  if (manager_->playlist(playlist_id) && manager_->playlist(playlist_id)->is_locked()) {
+    QMessageBox::information(this, tr("Playlist locked"), tr("This playlist is locked. Unlock it with the lock button above the playlist to close it."));
+    return;
+  }
+
   Settings s;
   s.beginGroup(PlaylistSettings::kSettingsGroup);
 

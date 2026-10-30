@@ -111,6 +111,8 @@ static const QMap<QString, IconProperties> iconmapper_ = {  // clazy:exclude=non
     { u"media-playback-stop"_s,           { {u"media-stop"_s}} },
     { u"moodbar"_s,                       { {u"preferences-desktop-icons"_s}} },
     { u"nvidia"_s,                        { {}} },
+    { u"object-locked"_s,                 { {u"object-locked"_s, u"changes-prevent"_s}} },
+    { u"object-unlocked"_s,               { {u"object-unlocked"_s, u"changes-allow"_s}} },
     { u"pulseaudio"_s,                    { {}} },
     { u"realtek"_s,                       { {}} },
     { u"scrobble-disabled"_s,             { {}} },

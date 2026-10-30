@@ -45,6 +45,7 @@
 #include <QUndoStack>
 #include <QtEvents>
 #include <QSettings>
+#include <QSignalBlocker>
 
 #include "includes/shared_ptr.h"
 #include "core/iconloader.h"
@@ -61,6 +62,7 @@
 #include "widgets/searchfield.h"
 #include "constants/appearancesettings.h"
 #include "constants/playlistsettings.h"
+#include "constants/behavioursettings.h"
 
 using namespace Qt::Literals::StringLiterals;
 
@@ -83,7 +85,8 @@ PlaylistContainer::PlaylistContainer(QWidget *parent)
       tab_bar_visible_(false),
       tab_bar_animation_(new QTimeLine(500, this)),
       no_matches_label_(nullptr),
-      filter_timer_(new QTimer(this)) {
+      filter_timer_(new QTimer(this)),
+      clear_playlist_(nullptr) {
 
   ui_->setupUi(this);
 
@@ -132,6 +135,15 @@ PlaylistContainer::PlaylistContainer(QWidget *parent)
 
   ui_->search_field->setToolTip(FilterParser::ToolTip());
 
+  // Lock button, locks the current playlist so it isn't changed by accident.
+  lock_icon_ = IconLoader::Load(u"object-locked"_s);
+  if (lock_icon_.isNull()) lock_icon_ = QIcon::fromTheme(u"object-locked"_s, QIcon::fromTheme(u"changes-prevent"_s));
+  unlock_icon_ = IconLoader::Load(u"object-unlocked"_s);
+  if (unlock_icon_.isNull()) unlock_icon_ = QIcon::fromTheme(u"object-unlocked"_s, QIcon::fromTheme(u"changes-allow"_s));
+  ui_->lock->setIcon(unlock_icon_);
+  ui_->lock->setEnabled(false);
+  QObject::connect(ui_->lock, &QToolButton::toggled, this, &PlaylistContainer::SetPlaylistLocked);
+
   ReloadSettings();
 
 }
@@ -146,6 +158,7 @@ void PlaylistContainer::SetActions(const Actions &actions) {
   ui_->load->setDefaultAction(actions.load_playlist);
   ui_->save->setDefaultAction(actions.save_playlist);
   ui_->clear->setDefaultAction(actions.clear_playlist);
+  clear_playlist_ = actions.clear_playlist;
 
   ui_->tab_bar->SetActions(actions.new_playlist, actions.load_playlist);
 
@@ -194,6 +207,9 @@ void PlaylistContainer::SetViewModel(Playlist *playlist, const int scroll_positi
     QObject::disconnect(playlist_->filter(), &QSortFilterProxyModel::rowsRemoved, this, &PlaylistContainer::UpdateNoMatchesLabel);
   }
   if (playlist_) {
+    QObject::disconnect(playlist_, &Playlist::LockedChanged, this, &PlaylistContainer::UpdateLockState);
+    QObject::disconnect(playlist_, &Playlist::DynamicModeChanged, this, &PlaylistContainer::UpdateLockState);
+    QObject::disconnect(playlist_->undo_stack(), nullptr, this, nullptr);
     QObject::disconnect(playlist_, &Playlist::modelReset, this, &PlaylistContainer::UpdateNoMatchesLabel);
     QObject::disconnect(playlist_, &Playlist::rowsInserted, this, &PlaylistContainer::UpdateNoMatchesLabel);
     QObject::disconnect(playlist_, &Playlist::rowsRemoved, this, &PlaylistContainer::UpdateNoMatchesLabel);
@@ -242,6 +258,14 @@ void PlaylistContainer::SetViewModel(Playlist *playlist, const int scroll_positi
   ui_->undo->setDefaultAction(undo_);
   ui_->redo->setDefaultAction(redo_);
 
+  // Keep the lock button, and the actions which would change a locked playlist, up to date.
+  // The undo stack enables the undo and redo actions itself, so they are disabled again after it while the playlist is locked.
+  QObject::connect(playlist_, &Playlist::LockedChanged, this, &PlaylistContainer::UpdateLockState);
+  QObject::connect(playlist_, &Playlist::DynamicModeChanged, this, &PlaylistContainer::UpdateLockState);
+  QObject::connect(playlist_->undo_stack(), &QUndoStack::canUndoChanged, this, &PlaylistContainer::UpdateLockState);
+  QObject::connect(playlist_->undo_stack(), &QUndoStack::canRedoChanged, this, &PlaylistContainer::UpdateLockState);
+  UpdateLockState();
+
   Q_EMIT UndoRedoActionsChanged(undo_, redo_);
 
 }
@@ -259,6 +283,7 @@ void PlaylistContainer::ReloadSettings() {
   ui_->clear->setIconSize(QSize(iconsize, iconsize));
   ui_->undo->setIconSize(QSize(iconsize, iconsize));
   ui_->redo->setIconSize(QSize(iconsize, iconsize));
+  ui_->lock->setIconSize(QSize(iconsize, iconsize));
   ui_->search_field->setIconSize(iconsize);
 
   s.beginGroup(PlaylistSettings::kSettingsGroup);
@@ -276,6 +301,14 @@ void PlaylistContainer::ReloadSettings() {
   ui_->toolbar->setVisible(show_toolbar);
 
   if (!show_toolbar) ui_->search_field->clear();
+
+  s.beginGroup(BehaviourSettings::kSettingsGroup);
+  const bool playlist_locking = s.value(BehaviourSettings::kPlaylistLocking, BehaviourSettings::kDefaultPlaylistLocking).toBool();
+  s.endGroup();
+
+  // The playlists know whether locking is enabled from the playlist manager, update the lock button, tab icons and actions from them.
+  ui_->lock->setVisible(playlist_locking);
+  UpdateLockState();
 
 }
 
@@ -299,13 +332,57 @@ void PlaylistContainer::ActiveStopped() { UpdateActiveIcon(QIcon()); }
 
 void PlaylistContainer::UpdateActiveIcon(const QIcon &icon) {
 
-  // Unset all existing icons
+  active_icon_ = icon;
+  UpdateTabIcons();
+
+}
+
+void PlaylistContainer::UpdateTabIcons() {
+
+  if (!manager_) return;
+
+  // The active playlist shows whether it's playing or paused, other locked playlists show a lock.
   for (int i = 0; i < ui_->tab_bar->count(); ++i) {
-    ui_->tab_bar->setTabIcon(i, QIcon());
+    const int id = ui_->tab_bar->id_of(i);
+    if (id == manager_->active_id() && !active_icon_.isNull()) {
+      ui_->tab_bar->setTabIcon(i, active_icon_);
+    }
+    else {
+      Playlist *playlist = manager_->playlist(id);
+      ui_->tab_bar->setTabIcon(i, playlist && playlist->is_locked() ? lock_icon_ : QIcon());
+    }
   }
 
-  // Set our icon
-  if (!icon.isNull()) ui_->tab_bar->set_icon_by_id(manager_->active_id(), icon);
+}
+
+void PlaylistContainer::SetPlaylistLocked(const bool locked) {
+
+  if (playlist_) playlist_->set_locked(locked);
+
+  // The playlist doesn't lock when it's dynamic, so update the button from the playlist.
+  UpdateLockState();
+
+}
+
+void PlaylistContainer::UpdateLockState() {
+
+  const bool locked = playlist_ && playlist_->is_locked();
+
+  {
+    const QSignalBlocker blocker(ui_->lock);
+    ui_->lock->setChecked(locked);
+  }
+  ui_->lock->setIcon(locked ? lock_icon_ : unlock_icon_);
+  // A dynamic playlist changes itself while it's played, so it can't be locked.
+  ui_->lock->setEnabled(playlist_ && (locked || !playlist_->is_dynamic()));
+  ui_->lock->setToolTip(locked ? tr("Unlock playlist") : tr("Lock playlist, so it can't be changed by accident"));
+
+  // Undoing or redoing would change a locked playlist too.
+  if (playlist_ && undo_) undo_->setEnabled(!locked && playlist_->undo_stack()->canUndo());
+  if (playlist_ && redo_) redo_->setEnabled(!locked && playlist_->undo_stack()->canRedo());
+  if (clear_playlist_) clear_playlist_->setEnabled(!locked);
+
+  UpdateTabIcons();
 
 }
 
@@ -313,6 +390,7 @@ void PlaylistContainer::PlaylistAdded(const int id, const QString &name, const b
 
   const int index = ui_->tab_bar->count();
   ui_->tab_bar->InsertTab(id, index, name, favorite);
+  UpdateTabIcons();
 
   // Are we start up, should we select this tab?
   Settings s;

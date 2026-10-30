@@ -275,6 +275,8 @@
         <file>icons/48x48/media-seek-forward.png</file>
         <file>icons/48x48/media-seek-backward.png</file>
         <file>icons/48x48/nvidia.png</file>
+        <file>icons/48x48/object-locked.png</file>
+        <file>icons/48x48/object-unlocked.png</file>
         <file>icons/48x48/pulseaudio.png</file>
         <file>icons/48x48/realtek.png</file>
         <file>icons/48x48/search.png</file>
@@ -382,6 +384,8 @@
         <file>icons/32x32/media-seek-forward.png</file>
         <file>icons/32x32/media-seek-backward.png</file>
         <file>icons/32x32/nvidia.png</file>
+        <file>icons/32x32/object-locked.png</file>
+        <file>icons/32x32/object-unlocked.png</file>
         <file>icons/32x32/pulseaudio.png</file>
         <file>icons/32x32/realtek.png</file>
         <file>icons/32x32/search.png</file>
@@ -489,6 +493,8 @@
         <file>icons/22x22/media-seek-forward.png</file>
         <file>icons/22x22/media-seek-backward.png</file>
         <file>icons/22x22/nvidia.png</file>
+        <file>icons/22x22/object-locked.png</file>
+        <file>icons/22x22/object-unlocked.png</file>
         <file>icons/22x22/pulseaudio.png</file>
         <file>icons/22x22/realtek.png</file>
         <file>icons/22x22/search.png</file>

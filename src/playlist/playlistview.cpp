@@ -781,6 +781,8 @@ void PlaylistView::contextMenuEvent(QContextMenuEvent *e) {
 
 void PlaylistView::RemoveSelected() {
 
+  if (playlist_ && playlist_->is_locked()) return;
+
   int rows_removed = 0;
   QItemSelection selection(selectionModel()->selection());
 
@@ -1208,6 +1210,12 @@ void PlaylistView::paintEvent(QPaintEvent *event) {
 void PlaylistView::dragMoveEvent(QDragMoveEvent *event) {
 
   QTreeView::dragMoveEvent(event);
+
+  // Don't show where the songs would go when they can't be dropped on a locked playlist.
+  if (playlist_ && playlist_->is_locked()) {
+    drop_indicator_row_ = -1;
+    return;
+  }
 
   QModelIndex idx(indexAt(event->position().toPoint()));
 

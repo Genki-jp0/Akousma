@@ -193,6 +193,11 @@ class Playlist : public QAbstractListModel {
   void set_ui_path(const QString &path) { ui_path_ = path; }
   bool is_favorite() const { return favorite_; }
   void set_favorite(const bool favorite) { favorite_ = favorite; }
+  // A locked playlist can't be changed: songs can't be added, removed, moved, sorted or have their tags edited from it.
+  bool is_locked() const { return locked_ && locking_enabled_; }
+  void set_locked(const bool locked);
+  // When playlist locking is disabled in the settings, locked playlists can be changed, but they keep their lock for when it's enabled again.
+  void set_locking_enabled(const bool enabled) { locking_enabled_ = enabled; }
 
   int current_row() const;
   int last_played_row() const;
@@ -289,6 +294,7 @@ class Playlist : public QAbstractListModel {
   QStringList mimeTypes() const override;
   Qt::DropActions supportedDropActions() const override;
   QMimeData *mimeData(const QModelIndexList &indexes) const override;
+  bool canDropMimeData(const QMimeData *data, Qt::DropAction action, const int row, const int column, const QModelIndex &parent_index) const override;
   bool dropMimeData(const QMimeData *data, Qt::DropAction action, const int row, const int column, const QModelIndex &parent_index) override;
   void sort(const int sort_column_number, const Qt::SortOrder sort_order) override;
   bool removeRows(const int row, const int count, const QModelIndex &parent = QModelIndex()) override;
@@ -355,6 +361,7 @@ class Playlist : public QAbstractListModel {
   // Signals that the underlying list of items was changed, meaning that something was added to it, removed from it or the ordering changed.
   void PlaylistChanged();
   void DynamicModeChanged(bool dynamic);
+  void LockedChanged(const bool locked);
 
   // Emitted when undoing or redoing a column sort changes which column (if any) is sorted, so the header's sort indicator can be kept in sync without triggering another sort.
   void SortStateChanged(const bool is_sorted, const Playlist::Column column, const Qt::SortOrder sort_order);
@@ -414,6 +421,9 @@ class Playlist : public QAbstractListModel {
 
   void SaveItem(const QModelIndex &idx, PlaylistItemPtr item, const Song &song, const Song &pre_edit_metadata);
 
+  // Tells the user that the playlist is locked, when songs were added to it.
+  void EmitLockedError();
+
  private Q_SLOTS:
   void TracksAboutToBeDequeued(const QModelIndex &idx, const int begin, const int end);
   void TracksDequeued();
@@ -444,6 +454,8 @@ class Playlist : public QAbstractListModel {
   int id_;
   QString ui_path_;
   bool favorite_;
+  bool locked_ = false;
+  bool locking_enabled_ = true;
 
   PlaylistItemPtrList items_;
 

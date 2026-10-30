@@ -479,6 +479,9 @@ bool Playlist::setData(const QModelIndex &idx, const QVariant &value, const int 
 
   Q_UNUSED(role);
 
+  // Tags can't be edited from a locked playlist.
+  if (is_locked()) return false;
+
   const int row = idx.row();
   const PlaylistItemPtr item = item_at(row);
   const Song pre_edit_metadata = item->OriginalMetadata();
@@ -995,11 +998,39 @@ Qt::ItemFlags Playlist::flags(const QModelIndex &idx) const {
 
   if (idx.isValid()) {
     Qt::ItemFlags flags = Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsDragEnabled;
-    if (item_at(idx.row())->EffectiveMetadata().IsEditable() && column_is_editable(static_cast<Column>(idx.column()))) flags |= Qt::ItemIsEditable;
+    if (!is_locked() && item_at(idx.row())->EffectiveMetadata().IsEditable() && column_is_editable(static_cast<Column>(idx.column()))) flags |= Qt::ItemIsEditable;
     return flags;
   }
 
+  // Nothing can be dropped on a locked playlist, this also stops moving its items.
+  if (is_locked()) return Qt::NoItemFlags;
+
   return Qt::ItemIsDropEnabled;
+
+}
+
+bool Playlist::canDropMimeData(const QMimeData *data, Qt::DropAction action, const int row, const int column, const QModelIndex &parent_index) const {
+
+  if (is_locked()) return false;
+
+  return QAbstractListModel::canDropMimeData(data, action, row, column, parent_index);
+
+}
+
+void Playlist::set_locked(const bool locked) {
+
+  // A dynamic playlist changes itself while it's played, so it can't be locked.
+  if (locked == locked_ || (locked && is_dynamic())) return;
+
+  locked_ = locked;
+
+  Q_EMIT LockedChanged(locked_);
+
+}
+
+void Playlist::EmitLockedError() {
+
+  Q_EMIT Error(tr("This playlist is locked, so songs can't be added to it. Unlock it with the lock button above the playlist first."));
 
 }
 
@@ -1019,6 +1050,11 @@ bool Playlist::dropMimeData(const QMimeData *data, Qt::DropAction action, const 
   Q_UNUSED(parent_index)
 
   if (action == Qt::IgnoreAction) return false;
+
+  if (is_locked()) {
+    EmitLockedError();
+    return false;
+  }
 
   bool play_now = false;
   bool enqueue_now = false;
@@ -1095,7 +1131,8 @@ bool Playlist::dropMimeData(const QMimeData *data, Qt::DropAction action, const 
 
       // Remove the items from the source playlist if it was a move event.
       // Remove from the end, so the rows that are not removed yet don't move.
-      if (action == Qt::MoveAction) {
+      // A locked playlist keeps its items, so they are copied from it instead.
+      if (action == Qt::MoveAction && !source_playlist->is_locked()) {
         for (auto it = source_rows.crbegin(); it != source_rows.crend(); ++it) {
           source_playlist->undo_stack()->push(new PlaylistUndoCommandRemoveItems(source_playlist, *it, 1));
         }
@@ -1118,6 +1155,11 @@ bool Playlist::dropMimeData(const QMimeData *data, Qt::DropAction action, const 
 
 void Playlist::InsertUrls(const QList<QUrl> &urls, const int pos, const bool play_now, const bool enqueue, const bool enqueue_next, const bool signal) {
 
+  if (is_locked()) {
+    EmitLockedError();
+    return;
+  }
+
   SongLoaderInserter *inserter = new SongLoaderInserter(task_manager_, tagreader_client_, url_handlers_, collection_backend_);
   QObject::connect(inserter, &SongLoaderInserter::Error, this, &Playlist::Error);
 
@@ -1128,6 +1170,11 @@ void Playlist::InsertUrls(const QList<QUrl> &urls, const int pos, const bool pla
 void Playlist::InsertSmartPlaylist(PlaylistGeneratorPtr generator, const int pos, const bool play_now, const bool enqueue, const bool enqueue_next, const bool signal) {
 
   Q_UNUSED(signal);
+
+  if (is_locked()) {
+    EmitLockedError();
+    return;
+  }
 
   // Hack: If the generator hasn't got a collection set then use the main one
   if (!generator->collection()) {
@@ -1328,6 +1375,11 @@ void Playlist::MoveItemsWithoutUndo(int start, const QList<int> &dest_rows) {
 }
 
 void Playlist::InsertItems(const PlaylistItemPtrList &itemsIn, const int pos, const bool play_now, const bool enqueue, const bool enqueue_next) {
+
+  if (is_locked()) {
+    if (!itemsIn.isEmpty()) EmitLockedError();
+    return;
+  }
 
   if (itemsIn.isEmpty()) {
     return;
@@ -1832,6 +1884,12 @@ QString Playlist::abbreviated_column_name(const Column column) {
 
 void Playlist::sort(const int sort_column_number, const Qt::SortOrder sort_order) {
 
+  // A locked playlist keeps its order, put the header's sort indicator back.
+  if (is_locked() && !ignore_sorting_) {
+    Q_EMIT SortStateChanged(is_sorted_, sort_column_, sort_order_);
+    return;
+  }
+
   // Remember the state before this operation, so the undo command can restore it (and the header's sort indicator along with it) on undo/redo.
   const bool old_is_sorted = is_sorted_;
   const Column old_column = sort_column_;
@@ -2139,6 +2197,8 @@ static bool DescendingIntLessThan(const int a, const int b) { return a > b; }
 
 void Playlist::RemoveItemsWithoutUndo(const QList<int> &indicesIn) {
 
+  if (is_locked()) return;
+
   // Sort the indices descending because removing elements 'backwards' is easier - indices don't 'move' in the process.
   QList<int> indices = indicesIn;
   std::sort(indices.begin(), indices.end(), DescendingIntLessThan);
@@ -2164,6 +2224,8 @@ void Playlist::RemoveItemsWithoutUndo(const QList<int> &indicesIn) {
 bool Playlist::removeRows(const int row, const int count, const QModelIndex &parent) {
 
   Q_UNUSED(parent);
+
+  if (is_locked()) return false;
 
   if (count <= 0) {
     return true;
@@ -2384,6 +2446,8 @@ int Playlist::IndexByUuId(const QUuid &uuid) const {
 
 void Playlist::Clear() {
 
+  if (is_locked()) return;
+
   // If loading songs from session restore async, don't insert them
   cancel_restore_ = true;
 
@@ -2470,6 +2534,8 @@ void Playlist::ReloadItems(const QList<int> &rows) {
 }
 
 void Playlist::Shuffle() {
+
+  if (is_locked()) return;
 
   PlaylistItemPtrList new_items(items_);
 

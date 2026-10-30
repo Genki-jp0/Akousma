@@ -213,6 +213,8 @@ void BehaviourSettingsPage::Load() {
 
   ui_->spinbox_volumeincrement->setValue(s.value(kVolumeIncrement, kDefaultVolumeIncrement).toInt());
 
+  ui_->checkbox_playlist_locking->setChecked(s.value(kPlaylistLocking, kDefaultPlaylistLocking).toBool());
+
   s.endGroup();
 
   Init(ui_->layout_behavioursettingspage->parentWidget());
@@ -263,6 +265,8 @@ void BehaviourSettingsPage::Save() {
   s.setValue(kSeekStepSec, ui_->spinbox_seekstepsec->value());
 
   s.setValue(kVolumeIncrement, ui_->spinbox_volumeincrement->value());
+
+  s.setValue(kPlaylistLocking, ui_->checkbox_playlist_locking->isChecked());
 
   s.endGroup();
 

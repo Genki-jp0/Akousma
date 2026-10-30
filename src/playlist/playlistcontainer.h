@@ -115,6 +115,9 @@ class PlaylistContainer : public QWidget {
 
   void UpdateNoMatchesLabel();
 
+  void SetPlaylistLocked(const bool locked);
+  void UpdateLockState();
+
  public Q_SLOTS:
   void ActivePlaying();
   void ActivePaused();
@@ -122,6 +125,7 @@ class PlaylistContainer : public QWidget {
 
  private:
   void UpdateActiveIcon(const QIcon &icon);
+  void UpdateTabIcons();
   void RepositionNoMatchesLabel(bool force = false);
 
  private:
@@ -140,6 +144,11 @@ class PlaylistContainer : public QWidget {
   QLabel *no_matches_label_;
 
   QTimer *filter_timer_;
+
+  QAction *clear_playlist_;
+  QIcon lock_icon_;
+  QIcon unlock_icon_;
+  QIcon active_icon_;
 };
 
 #endif  // PLAYLISTCONTAINER_H

@@ -279,6 +279,28 @@
     </widget>
    </item>
    <item>
+    <widget class="QGroupBox" name="groupbox_playlist">
+     <property name="title">
+      <string>Playlist</string>
+     </property>
+     <layout class="QVBoxLayout" name="layout_playlist">
+      <item>
+       <widget class="QCheckBox" name="checkbox_playlist_locking">
+        <property name="toolTip">
+         <string>When disabled, the lock button is hidden and locked playlists can be changed. They are locked again when this is enabled.</string>
+        </property>
+        <property name="text">
+         <string>Enable playlist locking (show lock button)</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
     <widget class="QGroupBox" name="groupbox_seekstep">
      <property name="title">
       <string>Seeking using a keyboard shortcut or mouse wheel</string>

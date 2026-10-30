@@ -1436,6 +1436,7 @@ void MainWindow::ReloadAllSettings() {
   app_->player()->ReloadSettings();
   collection_view_->ReloadSettings();
   ui_->playlist->view()->ReloadSettings();
+  app_->playlist_manager()->ReloadSettings();
   app_->playlist_manager()->playlist_container()->ReloadSettings();
   app_->playlist_manager()->sequence()->ReloadSettings();
   app_->current_albumcover_loader()->ReloadSettingsAsync();
@@ -2259,6 +2260,18 @@ void MainWindow::ShowPlaylistContextMenu(const QPoint global_pos, const QModelIn
   ui_->action_edit_value->setVisible(editable > 0 && !cue_selected);
   ui_->action_remove_from_playlist->setEnabled(selected > 0);
   ui_->action_remove_from_playlist->setVisible(selected > 0);
+
+  // A locked playlist can't be changed, so leave out what would change it.
+  const bool playlist_locked = app_->playlist_manager()->current()->is_locked();
+  if (playlist_locked) {
+    ui_->action_renumber_tracks->setVisible(false);
+    ui_->action_selection_set_value->setVisible(false);
+    ui_->action_edit_value->setVisible(false);
+    ui_->action_remove_from_playlist->setVisible(false);
+  }
+  ui_->action_shuffle->setEnabled(!playlist_locked);
+  ui_->action_remove_duplicates->setEnabled(!playlist_locked);
+  ui_->action_remove_unavailable->setEnabled(!playlist_locked);
 
   playlist_show_in_collection_->setVisible(false);
   playlist_copy_to_collection_->setVisible(false);

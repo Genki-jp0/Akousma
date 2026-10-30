@@ -50,6 +50,7 @@
 #include "collection/collectionbackend.h"
 #include "covermanager/currentalbumcoverloader.h"
 #include "constants/playlistsettings.h"
+#include "constants/behavioursettings.h"
 #include "playlist.h"
 #include "playlistbackend.h"
 #include "playlistcontainer.h"
@@ -63,6 +64,51 @@
 using namespace Qt::Literals::StringLiterals;
 
 class ParserBase;
+
+namespace {
+
+constexpr char kLockedPlaylists[] = "locked_playlists";
+
+bool IsPlaylistLockSaved(const int id) {
+
+  Settings s;
+  s.beginGroup(PlaylistSettings::kSettingsGroup);
+  const QStringList ids = s.value(kLockedPlaylists).toStringList();
+  s.endGroup();
+
+  return ids.contains(QString::number(id));
+
+}
+
+void SavePlaylistLock(const int id, const bool locked) {
+
+  Settings s;
+  s.beginGroup(PlaylistSettings::kSettingsGroup);
+  QStringList ids = s.value(kLockedPlaylists).toStringList();
+  ids.removeAll(QString::number(id));
+  if (locked) ids << QString::number(id);
+  if (ids.isEmpty()) {
+    s.remove(kLockedPlaylists);
+  }
+  else {
+    s.setValue(kLockedPlaylists, ids);
+  }
+  s.endGroup();
+
+}
+
+bool IsPlaylistLockingEnabled() {
+
+  Settings s;
+  s.beginGroup(BehaviourSettings::kSettingsGroup);
+  const bool playlist_locking = s.value(BehaviourSettings::kPlaylistLocking, BehaviourSettings::kDefaultPlaylistLocking).toBool();
+  s.endGroup();
+
+  return playlist_locking;
+
+}
+
+}  // namespace
 
 PlaylistManager::PlaylistManager(const SharedPtr<TaskManager> task_manager,
                                  const SharedPtr<TagReaderClient> tagreader_client,
@@ -109,6 +155,9 @@ void PlaylistManager::Init(PlaylistSequence *sequence, PlaylistContainer *playli
   QObject::connect(&*collection_backend_, &CollectionBackend::SongsLyricsChanged, this, &PlaylistManager::UpdateCollectionSongs);
 
   QObject::connect(parser_, &PlaylistParser::Error, this, &PlaylistManager::Error);
+
+  // Forget the lock of deleted playlists, so a new playlist which gets the same id is not locked.
+  QObject::connect(this, &PlaylistManager::PlaylistDeleted, this, [](const int id) { SavePlaylistLock(id, false); });
 
   const PlaylistBackend::PlaylistList playlists = playlist_backend_->GetAllOpenPlaylists();
   for (const PlaylistBackend::Playlist &p : playlists) {
@@ -189,12 +238,25 @@ QItemSelection PlaylistManager::selection(const int id) const {
   return it->selection;
 }
 
+void PlaylistManager::ReloadSettings() {
+
+  // Disabling playlist locking keeps the locks, they are only not enforced.
+  const bool playlist_locking = IsPlaylistLockingEnabled();
+  for (const Data &data : std::as_const(playlists_)) {
+    data.p->set_locking_enabled(playlist_locking);
+  }
+
+}
+
 Playlist *PlaylistManager::AddPlaylist(const int id, const QString &name, const QString &special_type, const QString &ui_path, const bool favorite) {
 
   Playlist *ret = new Playlist(task_manager_, url_handlers_, playlist_backend_, collection_backend_, tagreader_client_, id, special_type, favorite);
   ret->set_sequence(sequence_);
   ret->set_ui_path(ui_path);
+  ret->set_locked(IsPlaylistLockSaved(id));
+  ret->set_locking_enabled(IsPlaylistLockingEnabled());
 
+  QObject::connect(ret, &Playlist::LockedChanged, this, [id](const bool locked) { SavePlaylistLock(id, locked); });
   QObject::connect(ret, &Playlist::CurrentSongChanged, this, &PlaylistManager::CurrentSongChanged);
   QObject::connect(ret, &Playlist::CurrentSongMetadataChanged, this, &PlaylistManager::CurrentSongMetadataChanged);
   QObject::connect(ret, &Playlist::PlaylistChanged, this, &PlaylistManager::OneOfPlaylistsChanged);
