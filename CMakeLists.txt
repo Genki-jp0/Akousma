@@ -809,6 +809,7 @@ set(SOURCES
   src/dialogs/aboutdialog.cpp
 
   src/import/playerimporter.cpp
+  src/import/clementinesmartplaylist.cpp
   src/import/importdialog.cpp
   src/dialogs/console.cpp
   src/dialogs/errordialog.cpp
