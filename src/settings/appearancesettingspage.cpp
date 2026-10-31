@@ -153,10 +153,9 @@ AppearanceSettingsPage::AppearanceSettingsPage(SettingsDialog *dialog, SharedPtr
 
   // Tabbar background: a dropdown with a preview of each background, like the moodbar styles.
   ui_->tabbar_background->setIconSize(QSize(kTabBarPreviewWidth, kTabBarPreviewHeight));
+  ui_->tabbar_background->addItem(tr("Plain gradient, no graphics"), static_cast<int>(TabBarBackground::Gradient));
   ui_->tabbar_background->addItem(tr("Clementine background"), static_cast<int>(TabBarBackground::Clementine));
   ui_->tabbar_background->addItem(tr("Default background (strawberry graphics)"), static_cast<int>(TabBarBackground::Strawberry));
-  ui_->tabbar_background->addItem(tr("Plain gradient, no graphics"), static_cast<int>(TabBarBackground::Gradient));
-  ui_->tabbar_background->addItem(tr("Album cover"), static_cast<int>(TabBarBackground::AlbumCover));
   ui_->tabbar_background->addItem(tr("Custom image"), static_cast<int>(TabBarBackground::CustomImage));
   QObject::connect(ui_->tabbar_background, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &AppearanceSettingsPage::TabBarBackgroundChanged);
   // The previews follow the colors and options chosen on this page.
@@ -798,13 +797,12 @@ void AppearanceSettingsPage::TabBarBackgroundChanged() {
 
   const TabBarBackground background = static_cast<TabBarBackground>(ui_->tabbar_background->currentData().toInt());
   const bool custom_image = background == TabBarBackground::CustomImage;
-  const bool image = custom_image || background == TabBarBackground::AlbumCover;
   ui_->select_tabbar_gradient_start_color->setEnabled(ui_->tabbar_gradient_custom_colors->isChecked());
   ui_->select_tabbar_gradient_end_color->setEnabled(ui_->tabbar_gradient_custom_colors->isChecked());
   ui_->tabbar_background_image->setEnabled(custom_image);
   ui_->select_tabbar_background_image->setEnabled(custom_image);
   // Same dependencies as the playlist background image options.
-  ui_->widget_tabbar_background_image_options->setEnabled(image);
+  ui_->widget_tabbar_background_image_options->setEnabled(custom_image);
   const bool tile = ui_->tabbar_background_image_tile->isChecked();
   ui_->tabbar_background_image_stretch->setEnabled(!tile);
   ui_->tabbar_background_image_keep_aspect_ratio->setEnabled(!tile && ui_->tabbar_background_image_stretch->isChecked());
@@ -846,7 +844,7 @@ void AppearanceSettingsPage::UpdatePlayerLayoutControls() {
 
   switch (player_layout) {
     case PlayerLayout::Akousma:
-      ui_->label_player_layout_description->setText(tr("Clementine's sizes: %1 px playback buttons with repeat and shuffle beside them in the same size, a small album cover with the song details in the sidebar and Clementine's sidebar background.").arg(kPlayerLayoutAkousma.icon_size_play_control_buttons));
+      ui_->label_player_layout_description->setText(tr("Clementine's sizes: %1 px playback buttons with repeat and shuffle beside them in the same size, a small album cover with the song details in the sidebar and the plain gradient sidebar background.").arg(kPlayerLayoutAkousma.icon_size_play_control_buttons));
       break;
     case PlayerLayout::Strawberry:
       ui_->label_player_layout_description->setText(tr("Strawberry's original layout: %1 px playback buttons, repeat and shuffle in the status bar, a large album cover in the sidebar and the strawberry sidebar background.").arg(kPlayerLayoutStrawberry.icon_size_play_control_buttons));
@@ -873,7 +871,8 @@ bool AppearanceSettingsPage::PlayerLayoutMatches(const PlayerLayoutValues &value
 
 void AppearanceSettingsPage::SetTabBarBackground(const int background) {
 
-  int idx = ui_->tabbar_background->findData(background);
+  // The removed album cover background and unknown values are the plain gradient.
+  int idx = ui_->tabbar_background->findData(static_cast<int>(TabBarBackgroundFromSetting(background)));
   if (idx < 0) idx = ui_->tabbar_background->findData(static_cast<int>(kDefaultTabBarBackground));
   ui_->tabbar_background->setCurrentIndex(idx);
 
@@ -913,10 +912,6 @@ void AppearanceSettingsPage::UpdateTabBarBackgroundPreviews() {
     switch (static_cast<TabBarBackground>(options.mode)) {
       case TabBarBackground::CustomImage:
         if (!ui_->tabbar_background_image->text().isEmpty()) options.image = QPixmap(ui_->tabbar_background_image->text());
-        break;
-      case TabBarBackground::AlbumCover:
-        // A sample cover, the real one is the cover of the playing song.
-        options.image = QPixmap(u":/pictures/cdcase.png"_s);
         break;
       default:
         break;

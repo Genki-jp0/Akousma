@@ -74,15 +74,29 @@ constexpr char kTabBarSystemColor[] = "tab_system_color";
 constexpr char kTabBarGradient[] = "tab_gradient";
 constexpr char kTabBarColor[] = "tab_color";
 
-// Background of the sidebar tabbar: the strawberry graphics over the color, only the color or gradient, a custom image, the album cover of the playing song
-// or Clementine's sidebar (its gradient with its graphics, data/pictures/clementine-sidebar-background.png from Clementine, GPL-3.0-or-later).
+// Background of the sidebar tabbar: the strawberry graphics over the color, only the color or gradient, a custom image or Clementine's sidebar
+// (its gradient with its graphics, data/pictures/clementine-sidebar-background.png from Clementine, GPL-3.0-or-later).
+// 3 was the album cover of the playing song, removed; it and unknown values are read as the plain gradient (TabBarBackgroundFromSetting).
 enum class TabBarBackground {
   Strawberry = 0,
   Gradient = 1,
   CustomImage = 2,
-  AlbumCover = 3,
   Clementine = 4
 };
+
+// The background a stored tab_background value stands for.
+constexpr TabBarBackground TabBarBackgroundFromSetting(const int value) {
+  switch (value) {
+    case static_cast<int>(TabBarBackground::Strawberry):
+      return TabBarBackground::Strawberry;
+    case static_cast<int>(TabBarBackground::CustomImage):
+      return TabBarBackground::CustomImage;
+    case static_cast<int>(TabBarBackground::Clementine):
+      return TabBarBackground::Clementine;
+    default:
+      return TabBarBackground::Gradient;
+  }
+}
 
 enum class TabBarGradientDirection {
   Horizontal = 0,
@@ -149,7 +163,7 @@ constexpr WindowBackdrop kDefaultWindowBackdrop = WindowBackdrop::None;
 constexpr bool kDefaultWindowBackdropTranslucentContent = false;
 constexpr bool kDefaultTabBarSystemColor = false;
 constexpr bool kDefaultTabBarGradient = true;
-constexpr TabBarBackground kDefaultTabBarBackground = TabBarBackground::Clementine;  // Akousma layout
+constexpr TabBarBackground kDefaultTabBarBackground = TabBarBackground::Gradient;  // Akousma layout
 constexpr bool kDefaultTabBarGradientCustomColors = false;
 constexpr TabBarGradientDirection kDefaultTabBarGradientDirection = TabBarGradientDirection::Horizontal;
 // By default the image fills the sidebar, keeping its aspect ratio and cutting the sides.
@@ -197,7 +211,7 @@ constexpr PlayerLayoutValues kPlayerLayoutAkousma {
   true,   // Akousma: repeat and shuffle beside the playback buttons (Clementine: src/playlist/playlistsequence.ui, 22x22 in the status bar)
   true,   // src/widgets/nowplayingwidget.cpp: mode_(SmallSongDetails), s.value("mode", SmallSongDetails)
   36,     // src/ui/mainwindow.ui: analyzer minimumSize 0x36
-  TabBarBackground::Clementine,  // src/widgets/fancytabwidget.cpp: FancyTabWidget::paintEvent, data/sidebar_background.png
+  TabBarBackground::Gradient,  // Genki's choice: the plain gradient (Clementine's background, src/widgets/fancytabwidget.cpp, is an option)
   300     // src/ui/mainwindow.cpp: ui_->splitter->setSizes(QList<int>() << 300 << width() - 300)
 };
 

@@ -173,3 +173,17 @@ TEST_F(SettingsTransferTest, PendingAction) {
   EXPECT_EQ(SettingsTransfer::Action::None, SettingsTransfer::PendingAction());
 
 }
+
+// The album cover sidebar background was removed: an export that still has it is imported as the plain gradient.
+TEST_F(SettingsTransferTest, ImportMapsRemovedAlbumCoverBackground) {
+
+  const QString filename = dir_.filePath(u"albumcover.ini"_s);
+  ASSERT_TRUE(SettingsTransfer::Export(filename).success);
+  {
+    QSettings file(filename, QSettings::IniFormat);
+    file.setValue(u"Appearance/tab_background"_s, 3);
+  }
+  ASSERT_TRUE(SettingsTransfer::Import(filename).success);
+  EXPECT_EQ(1, Settings().value(u"Appearance/tab_background"_s).toInt());
+
+}

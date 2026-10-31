@@ -36,6 +36,7 @@
 #include "core/logging.h"
 #include "core/settings.h"
 #include "import/playerimporter.h"
+#include "constants/appearancesettings.h"
 
 using namespace Qt::Literals::StringLiterals;
 
@@ -201,6 +202,12 @@ SettingsTransfer::Result SettingsTransfer::Import(const QString &filename) {
   const QStringList import_keys = in.allKeys();
   for (const QString &key : import_keys) {
     if (key.startsWith(QLatin1String(kExportGroup) + u'/') || KeepOnReset(key)) continue;
+    // The album cover sidebar background was removed, an older export that has it gets the plain gradient.
+    if (key == QLatin1String(AppearanceSettings::kSettingsGroup) + u'/' + QLatin1String(AppearanceSettings::kTabBarBackground)) {
+      s.setValue(key, static_cast<int>(AppearanceSettings::TabBarBackgroundFromSetting(in.value(key).toInt())));
+      ++result.count;
+      continue;
+    }
     s.setValue(key, in.value(key));
     ++result.count;
   }

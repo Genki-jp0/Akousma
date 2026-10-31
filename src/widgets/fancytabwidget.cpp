@@ -140,7 +140,7 @@ void FancyTabWidget::ReloadSettings() {
   }
   iconsize_smallsidebar_ = s.value(AppearanceSettings::kIconSizeTabbarSmallMode, AppearanceSettings::kDefaultIconSizeTabbarSmallMode).toInt();
   iconsize_largesidebar_ = s.value(AppearanceSettings::kIconSizeTabbarLargeMode, AppearanceSettings::kDefaultIconSizeTabbarLargeMode).toInt();
-  bg_mode_ = s.value(AppearanceSettings::kTabBarBackground, static_cast<int>(AppearanceSettings::kDefaultTabBarBackground)).toInt();
+  bg_mode_ = static_cast<int>(AppearanceSettings::TabBarBackgroundFromSetting(s.value(AppearanceSettings::kTabBarBackground, static_cast<int>(AppearanceSettings::kDefaultTabBarBackground)).toInt()));
   bg_gradient_custom_colors_ = s.value(AppearanceSettings::kTabBarGradientCustomColors, AppearanceSettings::kDefaultTabBarGradientCustomColors).toBool();
   bg_gradient_start_color_ = s.value(AppearanceSettings::kTabBarGradientStartColor, bg_color_.lighter(117)).value<QColor>();
   bg_gradient_end_color_ = s.value(AppearanceSettings::kTabBarGradientEndColor, StyleHelper::shadowColor(false).darker(109)).value<QColor>();
@@ -280,25 +280,12 @@ void FancyTabWidget::AddBottomWidget(QWidget *widget_view) {
   bottom_widget_ = widget_view;
 }
 
-void FancyTabWidget::SetAlbumCoverImage(const QImage &image) {
-
-  bg_album_cover_ = image;
-  if (bg_mode_ == static_cast<int>(AppearanceSettings::TabBarBackground::AlbumCover)) {
-    UpdateBackgroundImage();
-    update();
-  }
-
-}
-
-// Loads the custom image or takes the album cover, and blurs it like the playlist background image, the opacity is applied when drawing.
+// Loads the custom image and blurs it like the playlist background image, the opacity is applied when drawing.
 void FancyTabWidget::UpdateBackgroundImage() {
 
   QImage image;
   if (bg_mode_ == static_cast<int>(AppearanceSettings::TabBarBackground::CustomImage) && !bg_image_filename_.isEmpty()) {
     image = QImage(bg_image_filename_);
-  }
-  else if (bg_mode_ == static_cast<int>(AppearanceSettings::TabBarBackground::AlbumCover)) {
-    image = bg_album_cover_;
   }
 
   if (!image.isNull() && bg_image_blur_radius_ > 0) {
@@ -526,8 +513,8 @@ QPixmap FancyTabWidget::RenderBackground(const QSize &size, const BackgroundOpti
     }
   }
 
-  // Draw the custom image or the album cover over the color or gradient, with the same options as the playlist background image.
-  if ((options.mode == static_cast<int>(AppearanceSettings::TabBarBackground::CustomImage) || options.mode == static_cast<int>(AppearanceSettings::TabBarBackground::AlbumCover)) && !options.image.isNull()) {
+  // Draw the custom image over the color or gradient, with the same options as the playlist background image.
+  if (options.mode == static_cast<int>(AppearanceSettings::TabBarBackground::CustomImage) && !options.image.isNull()) {
     const QRect image_rect(0, 0, backgroundRect.width(), backgroundRect.height());
     QPixmap image = options.image;
     if (!options.image_stretch && options.image_max_size > 0 && (image.width() > options.image_max_size || image.height() > options.image_max_size)) {

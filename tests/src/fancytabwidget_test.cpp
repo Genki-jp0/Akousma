@@ -115,3 +115,18 @@ TEST(FancyTabWidgetTest, ClementineBackgroundHasGraphics) {
   EXPECT_EQ(1, ColorsInColumn(gradient, 35, 0, 399));
 
 }
+
+// Akousma: stored values of removed or unknown sidebar backgrounds (3 was the album cover) are read as the plain gradient.
+TEST(FancyTabWidgetTest, RemovedBackgroundsAreThePlainGradient) {
+
+  using AppearanceSettings::TabBarBackground;
+  EXPECT_EQ(TabBarBackground::Strawberry, AppearanceSettings::TabBarBackgroundFromSetting(0));
+  EXPECT_EQ(TabBarBackground::Gradient, AppearanceSettings::TabBarBackgroundFromSetting(1));
+  EXPECT_EQ(TabBarBackground::CustomImage, AppearanceSettings::TabBarBackgroundFromSetting(2));
+  EXPECT_EQ(TabBarBackground::Gradient, AppearanceSettings::TabBarBackgroundFromSetting(3));
+  EXPECT_EQ(TabBarBackground::Clementine, AppearanceSettings::TabBarBackgroundFromSetting(4));
+  EXPECT_EQ(TabBarBackground::Gradient, AppearanceSettings::TabBarBackgroundFromSetting(99));
+  EXPECT_EQ(TabBarBackground::Gradient, AppearanceSettings::kDefaultTabBarBackground);
+  EXPECT_EQ(TabBarBackground::Gradient, AppearanceSettings::kPlayerLayoutAkousma.tabbar_background);
+
+}

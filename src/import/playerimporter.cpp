@@ -55,6 +55,7 @@
 #include "credentialsmanager/credentialsmanager.h"
 #include "credentialsmanager/credentialsresult.h"
 #include "playerimporter.h"
+#include "constants/appearancesettings.h"
 #include "clementinesmartplaylist.h"
 #include "passwordcopier.h"
 
@@ -997,7 +998,11 @@ bool PlayerImporter::ImportStrawberrySettings(const Installation &installation, 
     }
     ++imported;
     bool changed = false;
-    const QVariant value = RewriteSettingValue(source->value(key), dirs, &changed);
+    QVariant value = RewriteSettingValue(source->value(key), dirs, &changed);
+    // Akousma's sidebar has no album cover background any more, a settings file that still has it gets the plain gradient.
+    if (key == QLatin1String(AppearanceSettings::kSettingsGroup) + u'/' + QLatin1String(AppearanceSettings::kTabBarBackground)) {
+      value = static_cast<int>(AppearanceSettings::TabBarBackgroundFromSetting(value.toInt()));
+    }
     if (changed) {
       ++rewritten;
       qLog(Debug) << "Rewrote the path in setting" << key;
