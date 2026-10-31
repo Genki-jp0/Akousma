@@ -8,6 +8,14 @@
   !define compiler "msvc"
 !endif
 
+; Files only some builds have, set by dist/CMakeLists.txt: QtSparkle (ENABLE_QTSPARKLE, off by default) and Qt SVG.
+!if "@NSIS_QTSPARKLE@" == "1"
+  !define qtsparkle
+!endif
+!if "@NSIS_QTSVG@" == "1"
+  !define qtsvg
+!endif
+
 
 !if "@TARGET_ARCH@" == "x86_64"
   !define arch_x64
@@ -437,7 +445,9 @@ Section "Akousma" Akousma
   File "liborc-0.4-0.dll"
   File "libpng16-16.dll"
   File "libpsl-5.dll"
+!ifdef qtsparkle
   File "libqtsparkle-qt6.dll"
+!endif
   File "libsoup-3.0-0.dll"
   File "libspeex-1.dll"
   File "libsqlite3-0.dll"
@@ -542,7 +552,9 @@ Section "Akousma" Akousma
   File "opus.dll"
   File "orc-0.4-0.dll"
   File "psl-5.dll"
+!ifdef qtsparkle
   File "qtsparkle-qt6.dll"
+!endif
   File "soup-3.0-0.dll"
   File "sqlite3.dll"
   File "tag.dll"
@@ -591,7 +603,9 @@ Section "Akousma" Akousma
   File "Qt6Guid.dll"
   File "Qt6Networkd.dll"
   File "Qt6Sqld.dll"
+!ifdef qtsvg
   File "Qt6Svgd.dll"
+!endif
   File "Qt6Widgetsd.dll"
 !else
   File "icuin78.dll"
@@ -602,7 +616,9 @@ Section "Akousma" Akousma
   File "Qt6Gui.dll"
   File "Qt6Network.dll"
   File "Qt6Sql.dll"
+!ifdef qtsvg
   File "Qt6Svg.dll"
+!endif
   File "Qt6Widgets.dll"
 !endif
 
@@ -724,7 +740,9 @@ Section "Qt imageformats" imageformats
   File "/oname=qtiffd.dll" "imageformats\qtiffd.dll"
   File "/oname=qjp2d.dll" "imageformats\qjp2d.dll"
   File "/oname=qwebpd.dll" "imageformats\qwebpd.dll"
+!ifdef qtsvg
   File "/oname=qsvgd.dll" "imageformats\qsvgd.dll"
+!endif
 !else
   File "/oname=qgif.dll" "imageformats\qgif.dll"
   File "/oname=qico.dll" "imageformats\qico.dll"
@@ -732,10 +750,13 @@ Section "Qt imageformats" imageformats
   File "/oname=qtiff.dll" "imageformats\qtiff.dll"
   File "/oname=qjp2.dll" "imageformats\qjp2.dll"
   File "/oname=qwebp.dll" "imageformats\qwebp.dll"
+!ifdef qtsvg
   File "/oname=qsvg.dll" "imageformats\qsvg.dll"
+!endif
 !endif
 SectionEnd
 
+!ifdef qtsvg
 Section "Qt icon engines" iconengines
   SetOutPath "$INSTDIR\iconengines"
 !ifdef msvc && debug
@@ -744,6 +765,7 @@ Section "Qt icon engines" iconengines
   File "/oname=qsvgicon.dll" "iconengines\qsvgicon.dll"
 !endif
 SectionEnd
+!endif
 
 Section "Icon sets" iconsets
   SetOutPath "$INSTDIR\iconsets"
@@ -1004,6 +1026,7 @@ Section "Uninstall"
   Delete "$INSTDIR\liborc-0.4-0.dll"
   Delete "$INSTDIR\libpng16-16.dll"
   Delete "$INSTDIR\libpsl-5.dll"
+  ; Deleted whether or not this build has QtSparkle, so an update from a build with it leaves nothing behind.
   Delete "$INSTDIR\libqtsparkle-qt6.dll"
   Delete "$INSTDIR\libsoup-3.0-0.dll"
   Delete "$INSTDIR\libspeex-1.dll"
@@ -1109,6 +1132,7 @@ Section "Uninstall"
   Delete "$INSTDIR\opus.dll"
   Delete "$INSTDIR\orc-0.4-0.dll"
   Delete "$INSTDIR\psl-5.dll"
+  ; Deleted whether or not this build has QtSparkle, so an update from a build with it leaves nothing behind.
   Delete "$INSTDIR\qtsparkle-qt6.dll"
   Delete "$INSTDIR\soup-3.0-0.dll"
   Delete "$INSTDIR\sqlite3.dll"
