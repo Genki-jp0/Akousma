@@ -194,7 +194,7 @@
          <item>
           <widget class="QLabel" name="label_window_backdrop_info">
            <property name="text">
-            <string>Mica and Mica Alt need Windows 11 22H2 or later; on Windows 10, Acrylic uses the older acrylic blur. Changing the backdrop, or setting it back to None, applies immediately; turning it on from None needs a restart of Akousma. The window is drawn opaque while Windows transparency effects are off or in a Remote Desktop session.</string>
+            <string>Mica and Mica Alt need Windows 11 22H2 or later; on Windows 10, Acrylic uses the older acrylic blur. Changing the backdrop, including turning it on or off, applies immediately. The window is drawn opaque while Windows transparency effects are off or in a Remote Desktop session.</string>
            </property>
            <property name="wordWrap">
             <bool>true</bool>

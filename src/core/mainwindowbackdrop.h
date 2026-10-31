@@ -37,8 +37,9 @@ class QEvent;
 class FancyTabWidget;
 
 // Windows only: Settings > Appearance > Window backdrop for the main window.
-// The window is made translucent (Qt::WA_TranslucentBackground) before its native window is created, so the backdrop can only be
-// switched on with a restart. Switching between backdrops, or back to None, is applied live.
+// On Windows builds that can show a backdrop, the window is made translucent (Qt::WA_TranslucentBackground) before its native
+// window is created, whatever the setting, so all changes (None to a backdrop, between backdrops, back to None) apply live.
+// Without a backdrop the window paints an opaque background again and looks like a normal window.
 // While a backdrop is shown, the main window's palette gets a translucent Window color (and translucent Base / AlternateBase colors
 // for the lists when "Translucent content areas" is on), the tabbar draws its default background translucent, and the central widget
 // gets a style sheet that tints the headers, toolbars, player controls and search fields (MainWindowBackdropStyleSheet).
@@ -51,7 +52,7 @@ class MainWindowBackdrop : public QObject, public QAbstractNativeEventFilter {
   explicit MainWindowBackdrop(QWidget *window, FancyTabWidget *tabs, QWidget *central_widget);
   ~MainWindowBackdrop() override;
 
-  // Reads the setting and makes the window translucent if a backdrop is set. Call before the native window is created.
+  // Reads the setting and makes the window translucent if this Windows build can show a backdrop. Call before the native window is created.
   void Init();
 
   // Applies the current setting (Apply / OK in the settings dialog).
@@ -61,6 +62,7 @@ class MainWindowBackdrop : public QObject, public QAbstractNativeEventFilter {
   static bool LoadTranslucentContentSetting();
   static WinBackdrop::Type ToWinBackdropType(const AppearanceSettings::WindowBackdrop backdrop);
   static bool IsAvailable(const AppearanceSettings::WindowBackdrop backdrop);
+  static bool IsAnyAvailable();
 
   bool nativeEventFilter(const QByteArray &event_type, void *message, qintptr *result) override;
 

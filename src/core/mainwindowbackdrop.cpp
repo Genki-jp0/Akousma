@@ -198,21 +198,22 @@ void MainWindowBackdrop::Init() {
   translucent_content_ = LoadTranslucentContentSetting();
   window_->installEventFilter(this);
 
-  if (backdrop_ == AppearanceSettings::WindowBackdrop::None) return;
-
-  if (!IsAvailable(backdrop_)) {
+  if (backdrop_ != AppearanceSettings::WindowBackdrop::None && !IsAvailable(backdrop_)) {
     qLog(Warning) << "Window backdrop" << static_cast<int>(backdrop_) << "is not available on Windows build" << WinBackdrop::WindowsBuildNumber();
-    return;
   }
+
+  // Windows without any backdrop keep a plain opaque window.
+  if (!IsAnyAvailable()) return;
 
   // The alpha channel of the backing store is chosen when the native window is created.
   if (window_->testAttribute(Qt::WA_WState_Created)) {
-    qLog(Warning) << "The main window already has a native window, the window backdrop is used after a restart";
+    qLog(Warning) << "The main window already has a native window, the window backdrop can't be used until a restart";
     return;
   }
 
-  // The window stays translucent even if translucency can't be used right now (Remote Desktop...), it is then drawn opaque
-  // until it can, see Update().
+  // The window gets an alpha channel whenever this Windows build can show a backdrop, also when the setting is None,
+  // so the backdrop can be switched on and off at any time. Without a backdrop (None, or translucency can't be used right
+  // now: Remote Desktop...), the window paints its background opaque again and looks like any other window, see UpdatePalette().
   window_->setAttribute(Qt::WA_TranslucentBackground, true);
   translucent_ = true;
 
@@ -223,17 +224,22 @@ void MainWindowBackdrop::Init() {
 
   qLog(Debug) << "Window backdrop" << static_cast<int>(backdrop_) << "on Windows build" << WinBackdrop::WindowsBuildNumber();
 
+  // Drawn opaque until the first Update().
+  UpdatePalette();
+
 }
 
 void MainWindowBackdrop::ReloadSettings() {
 
-  const AppearanceSettings::WindowBackdrop backdrop = LoadSetting();
-  if (!translucent_ && backdrop != AppearanceSettings::WindowBackdrop::None) {
-    qLog(Debug) << "The window backdrop is used after a restart";
-  }
-  backdrop_ = backdrop;
+  backdrop_ = LoadSetting();
   translucent_content_ = LoadTranslucentContentSetting();
   Update();
+
+}
+
+bool MainWindowBackdrop::IsAnyAvailable() {
+
+  return IsAvailable(AppearanceSettings::WindowBackdrop::Mica) || IsAvailable(AppearanceSettings::WindowBackdrop::MicaAlt) || IsAvailable(AppearanceSettings::WindowBackdrop::Acrylic);
 
 }
 
@@ -282,7 +288,7 @@ void MainWindowBackdrop::Update() {
 
   update_scheduled_ = false;
 
-  // A window started without a backdrop stays exactly as it is, the backdrop is used after a restart.
+  // A window without an alpha channel (no backdrop on this Windows build) stays exactly as it is.
   if (!translucent_ || updating_) return;
 
   updating_ = true;
@@ -348,7 +354,8 @@ void MainWindowBackdrop::ApplyNative() {
     }
     method_ = method;
   }
-  else {
+  else if (method_ != WinBackdrop::Method::None) {
+    // Back to the defaults: DWMWA_SYSTEMBACKDROP_TYPE DWMSBT_AUTO, no accent, no frame extended into the client area.
     WinBackdrop::Remove(hwnd);
     method_ = WinBackdrop::Method::None;
   }
@@ -358,12 +365,19 @@ void MainWindowBackdrop::ApplyNative() {
 void MainWindowBackdrop::UpdatePalette() {
 
   if (method_ == WinBackdrop::Method::None) {
-    // The window has an alpha channel: without a backdrop it is filled like a normal window, so it looks as without the backdrop.
+    // The window has an alpha channel, but without a backdrop DWM draws it like a normal window and ignores the alpha:
+    // every pixel must be opaque, a transparent one shows black. Qt::WA_TranslucentBackground turned on
+    // Qt::WA_NoSystemBackground, so the window would not paint its own background, leaving the room that no child
+    // widget paints (around the now playing widget, the analyzer, the margins) transparent. Turning it off again
+    // makes the window fill its background with the opaque Window color like a normal window does.
     if (palette_set_) {
       window_->setPalette(QPalette());
       palette_set_ = false;
     }
-    window_->setAutoFillBackground(true);
+    if (window_->testAttribute(Qt::WA_NoSystemBackground)) {
+      window_->setAttribute(Qt::WA_NoSystemBackground, false);
+      window_->update();
+    }
     if (tabs_) tabs_->SetBackdropAlpha(255);
     return;
   }
@@ -381,7 +395,11 @@ void MainWindowBackdrop::UpdatePalette() {
     SetColorAlpha(&palette, app_palette, group, QPalette::AlternateBase, base_alpha);
   }
 
-  window_->setAutoFillBackground(false);
+  // The backdrop shows through where nothing is painted.
+  if (!window_->testAttribute(Qt::WA_NoSystemBackground)) {
+    window_->setAttribute(Qt::WA_NoSystemBackground, true);
+    window_->update();
+  }
   if (!palette_set_ || window_->palette() != palette) {
     window_->setPalette(palette);
     palette_set_ = true;
