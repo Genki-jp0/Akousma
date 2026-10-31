@@ -22,6 +22,7 @@
 #cmakedefine HAVE_LIBSECRET
 #cmakedefine HAVE_AUDIOCD
 #cmakedefine HAVE_MTP
+#cmakedefine HAVE_WPD
 #cmakedefine HAVE_GPOD
 #cmakedefine HAVE_SPARKLE
 #cmakedefine HAVE_QTSPARKLE

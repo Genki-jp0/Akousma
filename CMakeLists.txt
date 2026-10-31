@@ -373,6 +373,11 @@ optional_component(MTP ON "Devices: MTP support"
   DEPENDS "libmtp" LIBMTP_FOUND
 )
 
+if(WIN32)
+  # Windows' own MTP support (Windows Portable Devices), part of Windows: no other library is needed.
+  optional_component(WPD ON "Devices: MTP support through Windows Portable Devices")
+endif()
+
 optional_component(GPOD ON "Devices: iPod classic support"
   DEPENDS "libgpod" LIBGPOD_FOUND
   DEPENDS "gdk-pixbuf" GDK_PIXBUF_FOUND
@@ -1591,6 +1596,21 @@ if(HAVE_MTP)
   )
 endif()
 
+if(HAVE_WPD)
+  list(APPEND SOURCES
+    src/device/wpdmetadata.cpp
+    src/device/wpdconnection.cpp
+    src/device/wpdlister.cpp
+    src/device/wpddevice.cpp
+    src/device/wpdloader.cpp
+  )
+  list(APPEND HEADERS
+    src/device/wpdlister.h
+    src/device/wpddevice.h
+    src/device/wpdloader.h
+  )
+endif()
+
 if(HAVE_AUDIOCD)
   list(APPEND SOURCES
     src/device/cddadevice.cpp
@@ -1850,6 +1870,10 @@ target_link_libraries(strawberry_lib PUBLIC
   $<$<BOOL:${HAVE_GIO_UNIX}>:PkgConfig::GIO_UNIX>
   $<$<BOOL:${HAVE_AUDIOCD}>:PkgConfig::LIBCDIO>
   $<$<BOOL:${HAVE_MTP}>:PkgConfig::LIBMTP>
+  # The WPD GUIDs and property keys; MinGW builds define them in wpdconnection.cpp instead.
+  $<$<AND:$<BOOL:${HAVE_WPD}>,$<CXX_COMPILER_ID:MSVC>>:PortableDeviceGUIDs>
+  $<$<BOOL:${HAVE_WPD}>:ole32>
+  $<$<BOOL:${HAVE_WPD}>:cfgmgr32>
   $<$<BOOL:${HAVE_GPOD}>:PkgConfig::LIBGPOD PkgConfig::GDK_PIXBUF>
   $<$<BOOL:${HAVE_QTSPARKLE}>:qtsparkle-qt${QT_VERSION_MAJOR}::qtsparkle>
   $<$<BOOL:${WIN32}>:dsound dwmapi advapi32 ${GETOPT_LIBRARIES}>

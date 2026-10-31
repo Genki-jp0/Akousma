@@ -74,6 +74,10 @@
 #ifdef HAVE_MTP
 #  include "mtpdevice.h"
 #endif
+#ifdef HAVE_WPD
+#  include "wpdlister.h"
+#  include "wpddevice.h"
+#endif
 #ifdef Q_OS_MACOS
 #  include "macosdevicelister.h"
 #endif
@@ -131,6 +135,9 @@ DeviceManager::DeviceManager(const SharedPtr<TaskManager> task_manager,
 #ifdef Q_OS_MACOS
   AddLister(new MacOsDeviceLister);
 #endif
+#ifdef HAVE_WPD
+  AddLister(new WpdLister);
+#endif
 
 #ifdef HAVE_AUDIOCD
   AddDeviceClass<CDDADevice>();
@@ -144,6 +151,10 @@ DeviceManager::DeviceManager(const SharedPtr<TaskManager> task_manager,
 
 #ifdef HAVE_MTP
   AddDeviceClass<MtpDevice>();
+#endif
+
+#ifdef HAVE_WPD
+  AddDeviceClass<WpdDevice>();
 #endif
 
 }
