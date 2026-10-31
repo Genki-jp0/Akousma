@@ -42,7 +42,7 @@ using namespace AppearanceSettings;
 namespace {
 
 // Alpha (0-255) of the colors drawn over the backdrop.
-// window: the main window's Window color, what the style and Strawberry's own widgets (analyzer, moodbar...) fill with.
+// window: the main window's Window color, what the style and Akousma's own widgets (analyzer, moodbar...) fill with.
 // base: Base and AlternateBase, the lists (playlist, collection, files, context...) when "Translucent content areas" is on, else 255.
 // tabbar: the default strawberry/gradient sidebar.
 // chrome: the playlist toolbar, list headers and the player controls / status bar (MainWindowBackdropStyleSheet).

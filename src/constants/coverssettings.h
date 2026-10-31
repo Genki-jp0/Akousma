@@ -31,7 +31,7 @@ constexpr char kSavePattern[] = "save_pattern";
 constexpr char kSaveOverwrite[] = "save_overwrite";
 constexpr char kSaveLowercase[] = "save_lowercase";
 constexpr char kSaveReplaceSpaces[] = "save_replace_spaces";
-// Also write covers set from Strawberry into the music file's tags (ID3v2 APIC frame for MP3).
+// Also write covers set from Akousma into the music file's tags (ID3v2 APIC frame for MP3).
 constexpr char kSaveEmbedAlso[] = "save_embed_also";
 // Only use album directory images named like a cover (cover, front, folder, albumart, ...) as automatic covers.
 constexpr char kAutomaticStrict[] = "automatic_strict";

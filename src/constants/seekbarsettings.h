@@ -39,7 +39,7 @@ enum class Mode {
 
 constexpr char kMode[] = "mode";
 
-// The moodbar is shown on the seekbar by default when Strawberry is built with it.
+// The moodbar is shown on the seekbar by default when Akousma is built with it.
 #ifdef HAVE_MOODBAR
 constexpr Mode kDefaultMode = Mode::Moodbar;
 #else

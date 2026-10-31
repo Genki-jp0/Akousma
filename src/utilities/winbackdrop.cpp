@@ -95,7 +95,7 @@ T GetProc(const wchar_t *module_name, const char *proc_name) {
 
 }
 
-// For DLLs that are not loaded by Qt or Strawberry already, only from the system directory. Never unloaded.
+// For DLLs that are not loaded by Qt or Akousma already, only from the system directory. Never unloaded.
 template<typename T>
 T GetSystemProc(const wchar_t *module_name, const char *proc_name) {
 

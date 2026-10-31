@@ -83,7 +83,7 @@ class AlbumCoverChoiceController : public QWidget {
 
   CoverOptions::CoverType get_save_album_cover_type() const { return (save_embedded_cover_override_ ? CoverOptions::CoverType::Embedded : cover_options_.cover_type); }
   CoverOptions::CoverType get_collection_save_album_cover_type() const { return cover_options_.cover_type; }
-  // Whether covers set from Strawberry are also written into the music files' tags, the "save_embed_also" covers setting.
+  // Whether covers set from Akousma are also written into the music files' tags, the "save_embed_also" covers setting.
   bool save_embed_also() const { return save_embed_also_; }
 
   // Whether the cover of the song can be changed: songs in the collection need the album artist and album, since the cover is set for the whole album,
