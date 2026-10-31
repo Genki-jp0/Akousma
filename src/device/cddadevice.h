@@ -85,9 +85,15 @@ class CDDADevice : public ConnectedDevice {
   void SongLoadingFinished();
 
  private:
+  // The drive, as libcdio and GStreamer take it: /dev/sr0, D: on Windows.
+  const QString device_;
   CDDASongLoader cdda_song_loader_;
   CdIo_t *cdio_;
   QTimer *timer_disc_changed_;
+#ifdef Q_OS_WIN32
+  // The drive's media change count when the songs were last loaded, -1 for no disc.
+  qint64 media_change_count_;
+#endif
 };
 
 #endif  // CDDADEVICE_H

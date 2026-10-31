@@ -41,6 +41,7 @@
 #include <QScopeGuard>
 
 #include "cddasongloader.h"
+#include "cddaurl.h"
 #include "includes/shared_ptr.h"
 #include "core/logging.h"
 #include "core/networkaccessmanager.h"
@@ -72,11 +73,8 @@ CDDASongLoader::~CDDASongLoader() {
 
 QUrl CDDASongLoader::GetUrlFromTrack(int track_number) const {
 
-  if (url_.isEmpty()) {
-    return QUrl(QStringLiteral("cdda://%1a").arg(track_number));
-  }
-
-  return QUrl(QStringLiteral("cdda://%1/%2").arg(url_.path(), QString::number(track_number)));
+  // cdda:///dev/sr0/3, cdda:///D:/3 on Windows; cdda://3a for the default drive.
+  return CDDAUrl::TrackUrl(url_, track_number);
 
 }
 
@@ -101,7 +99,8 @@ void CDDASongLoader::LoadSongsFromCDDA() {
   }
 
   if (!url_.isEmpty()) {
-    g_object_set(cdda, "device", url_.path().toLocal8Bit().constData(), nullptr);
+    // /dev/sr0, D: on Windows (the URL's path is /D: there).
+    g_object_set(cdda, "device", CDDAUrl::DeviceFromUrl(url_).toLocal8Bit().constData(), nullptr);
   }
   if (g_object_class_find_property(G_OBJECT_GET_CLASS(cdda), "paranoia-mode")) {
     g_object_set(cdda, "paranoia-mode", 0, nullptr);

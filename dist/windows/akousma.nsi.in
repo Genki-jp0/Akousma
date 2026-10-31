@@ -8,12 +8,16 @@
   !define compiler "msvc"
 !endif
 
-; Files only some builds have, set by dist/CMakeLists.txt: QtSparkle (ENABLE_QTSPARKLE, off by default) and Qt SVG.
+; Files only some builds have, set by dist/CMakeLists.txt: QtSparkle (ENABLE_QTSPARKLE, off by default), Qt SVG and
+; Audio CD (libcdio and GStreamer's cdio plugin).
 !if "@NSIS_QTSPARKLE@" == "1"
   !define qtsparkle
 !endif
 !if "@NSIS_QTSVG@" == "1"
   !define qtsvg
+!endif
+!if "@NSIS_AUDIOCD@" == "1"
+  !define audiocd
 !endif
 
 
@@ -386,6 +390,9 @@ Section "Akousma" Akousma
   File "libbrotlienc.dll"
   File "libbs2b-0.dll"
   File "libbz2.dll"
+!ifdef audiocd
+  File "libcdio-*.dll"
+!endif
   File "libchromaprint.dll"
   File "libcrypto-4-x64.dll"
   File "libdl.dll"
@@ -712,6 +719,9 @@ Section "Gstreamer plugins" gstreamer-plugins
   File "/oname=libgstaudioresample.dll" "gstreamer-plugins\libgstaudioresample.dll"
   File "/oname=libgstautodetect.dll" "gstreamer-plugins\libgstautodetect.dll"
   File "/oname=libgstbs2b.dll" "gstreamer-plugins\libgstbs2b.dll"
+!ifdef audiocd
+  File "/oname=libgstcdio.dll" "gstreamer-plugins\libgstcdio.dll"
+!endif
   File "/oname=libgstcoreelements.dll" "gstreamer-plugins\libgstcoreelements.dll"
   File "/oname=libgstdash.dll" "gstreamer-plugins\libgstdash.dll"
   File "/oname=libgstdirectsound.dll" "gstreamer-plugins\libgstdirectsound.dll"
@@ -772,6 +782,10 @@ Section "Gstreamer plugins" gstreamer-plugins
   File "/oname=gstaudioresample.dll" "gstreamer-plugins\gstaudioresample.dll"
   File "/oname=gstautodetect.dll" "gstreamer-plugins\gstautodetect.dll"
   File "/oname=gstbs2b.dll" "gstreamer-plugins\gstbs2b.dll"
+!ifdef audiocd
+  ; Audio CD playback (cdiocddasrc); its libcdio DLL (cdio.dll) is one of the DLLs staged next to akousma.exe.
+  File "/oname=gstcdio.dll" "gstreamer-plugins\gstcdio.dll"
+!endif
   File "/oname=gstcoreelements.dll" "gstreamer-plugins\gstcoreelements.dll"
   File "/oname=gstdash.dll" "gstreamer-plugins\gstdash.dll"
   File "/oname=gstdirectsound.dll" "gstreamer-plugins\gstdirectsound.dll"
@@ -882,6 +896,8 @@ Section "Uninstall"
   Delete "$INSTDIR\libbrotlienc.dll"
   Delete "$INSTDIR\libbs2b-0.dll"
   Delete "$INSTDIR\libbz2.dll"
+  ; Audio CD files are deleted whether or not this build has them, so an update from a build with them leaves nothing behind.
+  Delete "$INSTDIR\libcdio-*.dll"
   Delete "$INSTDIR\libchromaprint.dll"
   Delete "$INSTDIR\libcrypto-4-x64.dll"
   Delete "$INSTDIR\libdl.dll"
@@ -1175,6 +1191,7 @@ Section "Uninstall"
   Delete "$INSTDIR\gstreamer-plugins\libgstaudioresample.dll"
   Delete "$INSTDIR\gstreamer-plugins\libgstautodetect.dll"
   Delete "$INSTDIR\gstreamer-plugins\libgstbs2b.dll"
+  Delete "$INSTDIR\gstreamer-plugins\libgstcdio.dll"
   Delete "$INSTDIR\gstreamer-plugins\libgstcoreelements.dll"
   Delete "$INSTDIR\gstreamer-plugins\libgstdash.dll"
   Delete "$INSTDIR\gstreamer-plugins\libgstdirectsound.dll"
@@ -1237,6 +1254,8 @@ Section "Uninstall"
   Delete "$INSTDIR\gstreamer-plugins\gstaudioresample.dll"
   Delete "$INSTDIR\gstreamer-plugins\gstautodetect.dll"
   Delete "$INSTDIR\gstreamer-plugins\gstbs2b.dll"
+  ; Deleted whether or not this build has Audio CD support (cdio.dll is in akousma-uninstall-dlls.nsh when it was staged).
+  Delete "$INSTDIR\gstreamer-plugins\gstcdio.dll"
   Delete "$INSTDIR\gstreamer-plugins\gstcoreelements.dll"
   Delete "$INSTDIR\gstreamer-plugins\gstdash.dll"
   Delete "$INSTDIR\gstreamer-plugins\gstdirectsound.dll"

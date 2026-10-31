@@ -38,6 +38,10 @@
 #include "cddasongloader.h"
 #include "connecteddevice.h"
 #include "cddadevice.h"
+#include "cddaurl.h"
+#ifdef Q_OS_WIN32
+#  include "cddawindows.h"
+#endif
 
 class DeviceLister;
 class DeviceManager;
@@ -56,9 +60,14 @@ CDDADevice::CDDADevice(const QUrl &url,
                        const bool first_time,
                        QObject *parent)
     : ConnectedDevice(url, lister, unique_id, device_manager, task_manager, database, tagreader_client, albumcover_loader, database_id, first_time, parent),
+      device_(CDDAUrl::DeviceFromUrl(url)),
       cdda_song_loader_(url),
       cdio_(nullptr),
-      timer_disc_changed_(new QTimer(this)) {
+      timer_disc_changed_(new QTimer(this))
+#ifdef Q_OS_WIN32
+      , media_change_count_(-1)
+#endif
+      {
 
   timer_disc_changed_->setInterval(1s);
 
@@ -82,9 +91,26 @@ CDDADevice::~CDDADevice() {
 bool CDDADevice::Init() {
 
   if (!cdio_) {
-    cdio_ = cdio_open(url_.path().toLocal8Bit().constData(), DRIVER_DEVICE);
-    if (!cdio_) return false;
+    cdio_ = cdio_open(device_.toLocal8Bit().constData(), DRIVER_DEVICE);
+    if (!cdio_) {
+      qLog(Error) << "Could not open CD drive" << device_;
+      return false;
+    }
   }
+
+#ifdef Q_OS_WIN32
+  // Windows: disc changes are seen through the drive's media change count (CheckDiscChanged), so libcdio's handle on the
+  // drive (opened for reading and writing) isn't kept open; it would be in the way of ejecting the disc from Explorer.
+  cdio_destroy(cdio_);
+  cdio_ = nullptr;
+  media_change_count_ = CDDAWindows::MediaChangeCount(device_);
+  if (media_change_count_ < 0) {
+    // Nothing to load until a disc is put in.
+    qLog(Info) << "CD drive" << device_ << "has no disc";
+    WatchForDiscChanges(true);
+    return true;
+  }
+#endif
 
   LoadSongs();
 
@@ -107,6 +133,22 @@ void CDDADevice::WatchForDiscChanges(const bool watch) {
 
 void CDDADevice::CheckDiscChanged() {
 
+#ifdef Q_OS_WIN32
+  if (cdda_song_loader_.IsActive()) return;
+
+  const qint64 media_change_count = CDDAWindows::MediaChangeCount(device_);
+  if (media_change_count != media_change_count_) {
+    media_change_count_ = media_change_count;
+    SongsLoaded();
+    if (media_change_count < 0) {
+      qLog(Info) << "CD taken out of drive" << device_;
+    }
+    else {
+      qLog(Info) << "CD in drive" << device_ << "changed, reloading songs";
+      LoadSongs();
+    }
+  }
+#else
   if (!cdio_ || cdda_song_loader_.IsActive()) return;
 
   if (cdio_get_media_changed(cdio_) == 1) {
@@ -114,6 +156,7 @@ void CDDADevice::CheckDiscChanged() {
     SongsLoaded();
     LoadSongs();
   }
+#endif
 
 }
 
@@ -129,7 +172,9 @@ void CDDADevice::SongsLoaded(const SongList &songs) {
   collection_model_->Reset();
   Q_EMIT SongsDiscovered(songs);
   song_count_ = songs.size();
-  (void)cdio_get_media_changed(cdio_);
+  if (cdio_) {
+    (void)cdio_get_media_changed(cdio_);
+  }
 
 }
 

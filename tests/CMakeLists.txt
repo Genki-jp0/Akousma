@@ -138,6 +138,7 @@ if(NOT HAVE_WPD)
   # The Windows MTP backend's platform independent part, which strawberry_lib only has on Windows.
   target_sources(wpdmetadata_test PRIVATE ${CMAKE_SOURCE_DIR}/src/device/wpdmetadata.cpp)
 endif()
+add_test_file(src/cddaurl_test.cpp false)
 add_test_file(src/iconloader_test.cpp true)
 target_compile_definitions(iconloader_test PRIVATE AKOUSMA_TEST_ICONSETS_DIR="${CMAKE_BINARY_DIR}/iconsets")
 add_dependencies(iconloader_test iconset_oxygen)

@@ -939,6 +939,7 @@ set(SOURCES
   src/device/filesystemdevice.cpp
   src/device/connecteddevice.cpp
   src/device/devicestatefiltermodel.cpp
+  src/device/cddaurl.cpp
   src/device/deviceviewcontainer.cpp
   src/device/deviceview.cpp
 )
@@ -1617,6 +1618,9 @@ if(HAVE_AUDIOCD)
     src/device/cddalister.cpp
     src/device/cddasongloader.cpp
   )
+  if(WIN32)
+    list(APPEND SOURCES src/device/cddawindows.cpp)
+  endif()
   list(APPEND HEADERS
     src/device/cddadevice.h
     src/device/cddalister.h

@@ -28,17 +28,20 @@
 #include <QObject>
 #include <QMetaType>
 #include <QList>
+#include <QMutex>
 #include <QString>
 #include <QStringList>
 #include <QUrl>
 
 #include "devicelister.h"
 
+class QTimer;
+
 class CDDALister : public DeviceLister {
   Q_OBJECT
 
  public:
-  explicit CDDALister(QObject *parent = nullptr) : DeviceLister(parent) {}
+  explicit CDDALister(QObject *parent = nullptr);
 
   QStringList DeviceUniqueIDs() override;
   QVariantList DeviceIcons(const QString &id) override;
@@ -55,8 +58,17 @@ class CDDALister : public DeviceLister {
   bool Init() override;
   bool CopyMusic() override { return false; }
 
+ public Q_SLOTS:
+  void ShutDown() override;
+
+ private Q_SLOTS:
+  // Windows: compares the CD drives with the ones listed (USB drives come and go, so do virtual drives).
+  void UpdateDevices();
+
  private:
+  QMutex mutex_devices_;
   QStringList devices_list_;
+  QTimer *timer_update_devices_;
 };
 
 #endif  // CDDALISTER_H

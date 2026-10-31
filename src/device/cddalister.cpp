@@ -26,21 +26,38 @@
 #include <cdio/cdio.h>
 #include <cdio/device.h>
 
+#include <chrono>
+#include <utility>
+
 #include <QtGlobal>
 #include <QFileInfo>
 #include <QByteArray>
 #include <QList>
+#include <QMutex>
 #include <QString>
 #include <QStringList>
 #include <QRegularExpression>
+#include <QTimer>
 #include <QUrl>
 
 #include "cddalister.h"
+#include "cddaurl.h"
+#ifdef Q_OS_WIN32
+#  include "cddawindows.h"
+#endif
 #include "core/logging.h"
 
+using namespace std::chrono_literals;
 using namespace Qt::Literals::StringLiterals;
 
-QStringList CDDALister::DeviceUniqueIDs() { return devices_list_; }
+CDDALister::CDDALister(QObject *parent) : DeviceLister(parent), timer_update_devices_(nullptr) {}
+
+QStringList CDDALister::DeviceUniqueIDs() {
+
+  QMutexLocker l(&mutex_devices_);
+  return devices_list_;
+
+}
 
 QVariantList CDDALister::DeviceIcons(const QString &id) {
 
@@ -53,6 +70,12 @@ QVariantList CDDALister::DeviceIcons(const QString &id) {
 }
 
 QString CDDALister::DeviceManufacturer(const QString &id) {
+
+#ifdef Q_OS_WIN32
+  // What the drive tells Windows; libcdio asks the drive itself (SCSI INQUIRY), which needs more access to the drive.
+  QString vendor, model;
+  if (CDDAWindows::DriveDescription(id, vendor, model) && !vendor.isEmpty()) return vendor;
+#endif
 
   CdIo_t *cdio = cdio_open(id.toLocal8Bit().constData(), DRIVER_DEVICE);
   if (!cdio) return QString();
@@ -67,6 +90,11 @@ QString CDDALister::DeviceManufacturer(const QString &id) {
 }
 
 QString CDDALister::DeviceModel(const QString &id) {
+
+#ifdef Q_OS_WIN32
+  QString vendor, model;
+  if (CDDAWindows::DriveDescription(id, vendor, model) && !model.isEmpty()) return model;
+#endif
 
   CdIo_t *cdio = cdio_open(id.toLocal8Bit().constData(), DRIVER_DEVICE);
   if (!cdio) return QString();
@@ -103,6 +131,12 @@ QVariantMap CDDALister::DeviceHardwareInfo(const QString &id) {
 
 QString CDDALister::MakeFriendlyName(const QString &id) {
 
+#ifdef Q_OS_WIN32
+  // The drive's model and its letter, the way Windows users know their drives: "HL-DT-ST DVDRAM GP65NB60 (E:)".
+  QString model = DeviceModel(id).trimmed();
+  if (model.isEmpty()) model = u"CD"_s;
+  return model + u" ("_s + id + u')';
+#else
   CdIo_t *cdio = cdio_open(id.toLocal8Bit().constData(), DRIVER_DEVICE);
   if (!cdio) return QString();
   cdio_hwinfo_t cd_info;
@@ -113,11 +147,13 @@ QString CDDALister::MakeFriendlyName(const QString &id) {
   }
   cdio_destroy(cdio);
   return u"CD ("_s + id + QLatin1Char(')');
+#endif
 
 }
 
 QList<QUrl> CDDALister::MakeDeviceUrls(const QString &id) {
-  return QList<QUrl>() << QUrl(u"cdda://"_s + id);
+  // cdda:///dev/sr0, cdda:///D: on Windows.
+  return QList<QUrl>() << CDDAUrl::DeviceUrl(id);
 }
 
 void CDDALister::UnmountDevice(const QString &id) {
@@ -136,6 +172,20 @@ bool CDDALister::Init() {
     qLog(Error) << "libcdio was compiled without support for macOS!";
   }
 #endif
+
+#ifdef Q_OS_WIN32
+  if (!cdio_have_driver(DRIVER_WIN32)) {
+    qLog(Error) << "libcdio was compiled without support for Windows CD drives";
+  }
+  // The drive letters of the CD drives, looked at again every 3 seconds: USB drives are plugged in and out, virtual drives
+  // (a mounted disc image) come and go. Nothing on the discs is read for this.
+  UpdateDevices();
+  timer_update_devices_ = new QTimer(this);
+  timer_update_devices_->setInterval(3s);
+  QObject::connect(timer_update_devices_, &QTimer::timeout, this, &CDDALister::UpdateDevices);
+  timer_update_devices_->start();
+  return true;
+#else
   char **devices = cdio_get_devices(DRIVER_DEVICE);
   if (!devices) {
     qLog(Debug) << "No CD devices found";
@@ -154,8 +204,15 @@ bool CDDALister::Init() {
       continue;
     }
 #endif
-    if (!devices_list_.contains(device)) {
-      devices_list_ << device;
+    bool added = false;
+    {
+      QMutexLocker l(&mutex_devices_);
+      if (!devices_list_.contains(device)) {
+        devices_list_ << device;
+        added = true;
+      }
+    }
+    if (added) {
       Q_EMIT DeviceAdded(device);
     }
   }
@@ -163,6 +220,43 @@ bool CDDALister::Init() {
   cdio_free_device_list(devices);
 
   return true;
+#endif  // Q_OS_WIN32
+
+}
+
+void CDDALister::UpdateDevices() {
+
+#ifdef Q_OS_WIN32
+  const QStringList drives = CDDAWindows::Drives();
+  QStringList added;
+  QStringList removed;
+  {
+    QMutexLocker l(&mutex_devices_);
+    for (const QString &drive : drives) {
+      if (!devices_list_.contains(drive)) added << drive;
+    }
+    for (const QString &drive : std::as_const(devices_list_)) {
+      if (!drives.contains(drive)) removed << drive;
+    }
+    devices_list_ = drives;
+  }
+  for (const QString &drive : std::as_const(removed)) {
+    qLog(Info) << "CD drive" << drive << "is gone";
+    Q_EMIT DeviceRemoved(drive);
+  }
+  for (const QString &drive : std::as_const(added)) {
+    qLog(Info) << "CD drive" << drive << "found";
+    Q_EMIT DeviceAdded(drive);
+  }
+#endif
+
+}
+
+void CDDALister::ShutDown() {
+
+  if (timer_update_devices_) {
+    timer_update_devices_->stop();
+  }
 
 }
 
