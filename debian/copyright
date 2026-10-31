@@ -11,6 +11,13 @@ Copyright: 2010-2015, David Sansome <me@davidsansome.com>
            2012-2014, 2017-2024 Jonas Kvinge <jonas@jkvinge.net>
 License: GPL-3+
 
+Files: data/pictures/clementine-sidebar-background.png
+Copyright: 2010, David Sansome <me@davidsansome.com>
+License: GPL-3+
+Comment: Clementine's sidebar graphics (data/sidebar_background.png in
+ https://github.com/clementine-player/Clementine), used for the Clementine
+ tabbar background.
+
 Files: src/utilities/timeconstants.h
        src/core/logging.cpp
        src/core/logging.h

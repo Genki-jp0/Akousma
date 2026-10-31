@@ -29,6 +29,7 @@
 #include <QPixmap>
 #include <QImage>
 #include <QColor>
+#include <QSize>
 
 class QMenu;
 class QActionGroup;
@@ -83,6 +84,32 @@ class FancyTabWidget : public QTabWidget {
 
   static QColor DefaultTabbarBgColor();
 
+  // Everything the sidebar background is drawn from (Settings > Appearance > Tabbar background).
+  struct BackgroundOptions {
+    int mode = 0;
+    bool system_color = true;
+    QColor color;
+    bool gradient = true;
+    bool gradient_custom_colors = false;
+    QColor gradient_start_color;
+    QColor gradient_end_color;
+    int gradient_direction = 0;
+    QPixmap graphics;
+    QPixmap image;
+    int image_position = 3;
+    int image_max_size = 0;
+    bool image_stretch = true;
+    bool image_keep_aspect_ratio = true;
+    bool image_do_not_cut = false;
+    bool image_tile = false;
+    int image_opacity = 100;
+    bool image_tint = false;
+    int backdrop_alpha = 255;
+  };
+  static QPixmap RenderBackground(const QSize &size, const BackgroundOptions &options);
+  // The graphics of the Strawberry and Clementine backgrounds, null for the other backgrounds.
+  static QPixmap BackgroundGraphics(const int mode);
+
  public Q_SLOTS:
   void SetMode(const FancyTabWidget::Mode mode);
   void SetCurrentIndex(int idx);
@@ -136,6 +163,9 @@ class FancyTabWidget : public QTabWidget {
   int backdrop_alpha_ = 255;
 
   void UpdateBackgroundImage();
+  void UpdateBackgroundGraphics();
+  BackgroundOptions CurrentBackgroundOptions() const;
+  QPixmap clementine_pixmap_;
   int iconsize_smallsidebar_;
   int iconsize_largesidebar_;
 };

@@ -74,12 +74,14 @@ constexpr char kTabBarSystemColor[] = "tab_system_color";
 constexpr char kTabBarGradient[] = "tab_gradient";
 constexpr char kTabBarColor[] = "tab_color";
 
-// Background of the sidebar tabbar: the strawberry graphics over the color, only the color or gradient, a custom image or the album cover of the playing song.
+// Background of the sidebar tabbar: the strawberry graphics over the color, only the color or gradient, a custom image, the album cover of the playing song
+// or Clementine's sidebar (its gradient with its graphics, data/pictures/clementine-sidebar-background.png from Clementine, GPL-3.0-or-later).
 enum class TabBarBackground {
   Strawberry = 0,
   Gradient = 1,
   CustomImage = 2,
-  AlbumCover = 3
+  AlbumCover = 3,
+  Clementine = 4
 };
 
 enum class TabBarGradientDirection {

@@ -68,6 +68,7 @@ class AppearanceSettingsPage : public SettingsPage {
   void TabBarBackgroundChanged();
   void TabBarSelectGradientColor(const bool start);
   void TabBarSelectBackgroundImage();
+  void UpdateTabBarBackgroundPreviews();
   void PlaylistPlayingSongColorSystem(const bool checked);
   void PlaylistPlayingSongSelectColor();
 
@@ -88,6 +89,7 @@ class AppearanceSettingsPage : public SettingsPage {
   void SelectColor(const QPalette::ColorRole role);
   // Apply current_colors_ to the application palette (live preview).
   void ApplyCustomColors();
+  void SetTabBarBackground(const int background);
   // Human-readable label for a palette color role.
   static QString ColorRoleLabel(const QPalette::ColorRole role);
 

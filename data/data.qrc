@@ -55,6 +55,7 @@
         <file>mood/sample.mood</file>
         <file>text/ghosts.txt</file>
         <file>pictures/sidebar-background.png</file>
+        <file>pictures/clementine-sidebar-background.png</file>
         <file>style/dynamicplaylistcontrols.css</file>
     </qresource>
 </RCC>

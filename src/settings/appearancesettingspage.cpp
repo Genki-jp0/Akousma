@@ -47,6 +47,13 @@
 #include <QComboBox>
 #include <QSpinBox>
 #include <QSettings>
+#include <QSize>
+#include <QPair>
+#include <QList>
+#include <QFont>
+#include <QIcon>
+#include <QPixmap>
+#include <QPainter>
 
 #include "appearancesettingspage.h"
 #include "constants/appearancesettings.h"
@@ -68,6 +75,12 @@
 
 using namespace Qt::Literals::StringLiterals;
 using namespace AppearanceSettings;
+
+namespace {
+// Size of the sidebar background previews in the Tabbar background dropdown.
+constexpr int kTabBarPreviewWidth = 150;
+constexpr int kTabBarPreviewHeight = 48;
+}  // namespace
 
 AppearanceSettingsPage::AppearanceSettingsPage(SettingsDialog *dialog, SharedPtr<Appearance> appearance, QWidget *parent)
     : SettingsPage(dialog, parent),
@@ -129,10 +142,21 @@ AppearanceSettingsPage::AppearanceSettingsPage(SettingsDialog *dialog, SharedPtr
 
   QObject::connect(ui_->select_tabbar_color, &QPushButton::pressed, this, &AppearanceSettingsPage::TabBarSelectBGColor);
   QObject::connect(ui_->tabbar_system_color, &QRadioButton::toggled, this, &AppearanceSettingsPage::TabBarSystemColor);
-  QObject::connect(ui_->tabbar_background_strawberry, &QRadioButton::toggled, this, &AppearanceSettingsPage::TabBarBackgroundChanged);
-  QObject::connect(ui_->tabbar_background_gradient, &QRadioButton::toggled, this, &AppearanceSettingsPage::TabBarBackgroundChanged);
-  QObject::connect(ui_->tabbar_background_album, &QRadioButton::toggled, this, &AppearanceSettingsPage::TabBarBackgroundChanged);
-  QObject::connect(ui_->tabbar_background_custom, &QRadioButton::toggled, this, &AppearanceSettingsPage::TabBarBackgroundChanged);
+  // Tabbar background: a dropdown with a preview of each background, like the moodbar styles.
+  ui_->tabbar_background->setIconSize(QSize(kTabBarPreviewWidth, kTabBarPreviewHeight));
+  ui_->tabbar_background->addItem(tr("Clementine background"), static_cast<int>(TabBarBackground::Clementine));
+  ui_->tabbar_background->addItem(tr("Default background (strawberry graphics)"), static_cast<int>(TabBarBackground::Strawberry));
+  ui_->tabbar_background->addItem(tr("Plain gradient, no graphics"), static_cast<int>(TabBarBackground::Gradient));
+  ui_->tabbar_background->addItem(tr("Album cover"), static_cast<int>(TabBarBackground::AlbumCover));
+  ui_->tabbar_background->addItem(tr("Custom image"), static_cast<int>(TabBarBackground::CustomImage));
+  QObject::connect(ui_->tabbar_background, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &AppearanceSettingsPage::TabBarBackgroundChanged);
+  // The previews follow the colors and options chosen on this page.
+  QObject::connect(ui_->tabbar_system_color, &QRadioButton::toggled, this, &AppearanceSettingsPage::UpdateTabBarBackgroundPreviews);
+  QObject::connect(ui_->tabbar_gradient, &QCheckBox::toggled, this, &AppearanceSettingsPage::UpdateTabBarBackgroundPreviews);
+  QObject::connect(ui_->tabbar_gradient_direction, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &AppearanceSettingsPage::UpdateTabBarBackgroundPreviews);
+  QObject::connect(ui_->tabbar_background_image, &QLineEdit::editingFinished, this, &AppearanceSettingsPage::UpdateTabBarBackgroundPreviews);
+  QObject::connect(ui_->tabbar_background_image_opacity, &QSlider::sliderReleased, this, &AppearanceSettingsPage::UpdateTabBarBackgroundPreviews);
+  QObject::connect(ui_->tabbar_background_image_tint, &QCheckBox::toggled, this, &AppearanceSettingsPage::UpdateTabBarBackgroundPreviews);
   QObject::connect(ui_->tabbar_gradient_custom_colors, &QCheckBox::toggled, this, &AppearanceSettingsPage::TabBarBackgroundChanged);
   QObject::connect(ui_->tabbar_background_image_stretch, &QCheckBox::toggled, this, &AppearanceSettingsPage::TabBarBackgroundChanged);
   QObject::connect(ui_->tabbar_background_image_keep_aspect_ratio, &QCheckBox::toggled, this, &AppearanceSettingsPage::TabBarBackgroundChanged);
@@ -239,21 +263,7 @@ void AppearanceSettingsPage::Load() {
   TabBarSystemColor(ui_->tabbar_system_color->isChecked());
 
   // Tabbar background
-  switch (static_cast<TabBarBackground>(s.value(kTabBarBackground, static_cast<int>(kDefaultTabBarBackground)).toInt())) {
-    case TabBarBackground::Gradient:
-      ui_->tabbar_background_gradient->setChecked(true);
-      break;
-    case TabBarBackground::CustomImage:
-      ui_->tabbar_background_custom->setChecked(true);
-      break;
-    case TabBarBackground::AlbumCover:
-      ui_->tabbar_background_album->setChecked(true);
-      break;
-    case TabBarBackground::Strawberry:
-    default:
-      ui_->tabbar_background_strawberry->setChecked(true);
-      break;
-  }
+  SetTabBarBackground(s.value(kTabBarBackground, static_cast<int>(kDefaultTabBarBackground)).toInt());
   ui_->tabbar_gradient_custom_colors->setChecked(s.value(kTabBarGradientCustomColors, kDefaultTabBarGradientCustomColors).toBool());
   current_tabbar_gradient_start_color_ = s.value(kTabBarGradientStartColor, current_tabbar_bg_color_.lighter(117)).value<QColor>();
   current_tabbar_gradient_end_color_ = s.value(kTabBarGradientEndColor, StyleHelper::shadowColor(false).darker(109)).value<QColor>();
@@ -274,6 +284,7 @@ void AppearanceSettingsPage::Load() {
   ui_->tabbar_background_image_opacity_level->setText(QStringLiteral("%1%").arg(ui_->tabbar_background_image_opacity->value()));
   ui_->tabbar_background_image_tint->setChecked(s.value(kTabBarImageTint, kDefaultTabBarImageTint).toBool());
   TabBarBackgroundChanged();
+  UpdateTabBarBackgroundPreviews();
 
   // Currently playing song color
   current_playlist_playing_song_color_ = s.value(kPlaylistPlayingSongColor).value<QColor>();
@@ -404,11 +415,7 @@ void AppearanceSettingsPage::Save() {
   s.setValue(kTabBarColor, current_tabbar_bg_color_);
 
   // Tabbar background
-  TabBarBackground tabbar_background = TabBarBackground::Strawberry;
-  if (ui_->tabbar_background_gradient->isChecked()) tabbar_background = TabBarBackground::Gradient;
-  else if (ui_->tabbar_background_custom->isChecked()) tabbar_background = TabBarBackground::CustomImage;
-  else if (ui_->tabbar_background_album->isChecked()) tabbar_background = TabBarBackground::AlbumCover;
-  s.setValue(kTabBarBackground, static_cast<int>(tabbar_background));
+  s.setValue(kTabBarBackground, ui_->tabbar_background->currentData().toInt());
   s.setValue(kTabBarGradientCustomColors, ui_->tabbar_gradient_custom_colors->isChecked());
   s.setValue(kTabBarGradientStartColor, current_tabbar_gradient_start_color_);
   s.setValue(kTabBarGradientEndColor, current_tabbar_gradient_end_color_);
@@ -743,8 +750,9 @@ void AppearanceSettingsPage::TabBarSystemColor(const bool checked) {
 
 void AppearanceSettingsPage::TabBarBackgroundChanged() {
 
-  const bool custom_image = ui_->tabbar_background_custom->isChecked();
-  const bool image = custom_image || ui_->tabbar_background_album->isChecked();
+  const TabBarBackground background = static_cast<TabBarBackground>(ui_->tabbar_background->currentData().toInt());
+  const bool custom_image = background == TabBarBackground::CustomImage;
+  const bool image = custom_image || background == TabBarBackground::AlbumCover;
   ui_->select_tabbar_gradient_start_color->setEnabled(ui_->tabbar_gradient_custom_colors->isChecked());
   ui_->select_tabbar_gradient_end_color->setEnabled(ui_->tabbar_gradient_custom_colors->isChecked());
   ui_->tabbar_background_image->setEnabled(custom_image);
@@ -760,6 +768,75 @@ void AppearanceSettingsPage::TabBarBackgroundChanged() {
 
 }
 
+void AppearanceSettingsPage::SetTabBarBackground(const int background) {
+
+  int idx = ui_->tabbar_background->findData(background);
+  if (idx < 0) idx = ui_->tabbar_background->findData(static_cast<int>(kDefaultTabBarBackground));
+  ui_->tabbar_background->setCurrentIndex(idx);
+
+}
+
+// Renders a preview of each background into the dropdown: the background as the sidebar draws it, with two tabs.
+void AppearanceSettingsPage::UpdateTabBarBackgroundPreviews() {
+
+  const QSize preview_size(kTabBarPreviewWidth, kTabBarPreviewHeight);
+
+  FancyTabWidget::BackgroundOptions options;
+  options.system_color = ui_->tabbar_system_color->isChecked();
+  options.color = options.system_color ? FancyTabWidget::DefaultTabbarBgColor() : current_tabbar_bg_color_;
+  options.gradient = ui_->tabbar_gradient->isChecked();
+  options.gradient_custom_colors = ui_->tabbar_gradient_custom_colors->isChecked();
+  options.gradient_start_color = current_tabbar_gradient_start_color_;
+  options.gradient_end_color = current_tabbar_gradient_end_color_;
+  options.gradient_direction = ui_->tabbar_gradient_direction->currentIndex();
+  options.image_position = static_cast<int>(BackgroundImagePosition::Middle);
+  options.image_stretch = true;
+  options.image_keep_aspect_ratio = true;
+  options.image_opacity = ui_->tabbar_background_image_opacity->value();
+  options.image_tint = ui_->tabbar_background_image_tint->isChecked();
+
+  const QList<QPair<QIcon, QString>> tabs = { qMakePair(IconLoader::Load(u"library-music"_s), tr("Collection")), qMakePair(IconLoader::Load(u"view-media-playlist"_s), tr("Playlists")) };
+  const int tab_width = kTabBarPreviewWidth / static_cast<int>(tabs.count());
+  constexpr int kIconSize = 24;
+
+  QFont font(this->font());
+  font.setBold(true);
+  font.setPointSizeF(font.pointSizeF() * 0.85);
+
+  for (int i = 0; i < ui_->tabbar_background->count(); ++i) {
+    options.mode = ui_->tabbar_background->itemData(i).toInt();
+    options.graphics = FancyTabWidget::BackgroundGraphics(options.mode);
+    options.image = QPixmap();
+    switch (static_cast<TabBarBackground>(options.mode)) {
+      case TabBarBackground::CustomImage:
+        if (!ui_->tabbar_background_image->text().isEmpty()) options.image = QPixmap(ui_->tabbar_background_image->text());
+        break;
+      case TabBarBackground::AlbumCover:
+        // A sample cover, the real one is the cover of the playing song.
+        options.image = QPixmap(u":/pictures/cdcase.png"_s);
+        break;
+      default:
+        break;
+    }
+    QPixmap pixmap = FancyTabWidget::RenderBackground(preview_size, options);
+    QPainter p(&pixmap);
+    p.setFont(font);
+    for (int t = 0; t < tabs.count(); ++t) {
+      const QRect tab_rect(t * tab_width, 0, tab_width, kTabBarPreviewHeight);
+      tabs[t].first.paint(&p, QRect(tab_rect.left() + (tab_width - kIconSize) / 2, 3, kIconSize, kIconSize));
+      const QRect text_rect = tab_rect.adjusted(0, 0, 0, -3);
+      // Drop shadow and text, as the sidebar draws them.
+      p.setPen(QColor(0, 0, 0, 110));
+      p.drawText(text_rect.translated(0, 1), Qt::AlignHCenter | Qt::AlignBottom, tabs[t].second);
+      p.setPen(StyleHelper::panelTextColor());
+      p.drawText(text_rect, Qt::AlignHCenter | Qt::AlignBottom, tabs[t].second);
+    }
+    p.end();
+    ui_->tabbar_background->setItemData(i, pixmap, Qt::DecorationRole);
+  }
+
+}
+
 void AppearanceSettingsPage::TabBarSelectGradientColor(const bool start) {
 
   QColor &color = start ? current_tabbar_gradient_start_color_ : current_tabbar_gradient_end_color_;
@@ -767,6 +844,7 @@ void AppearanceSettingsPage::TabBarSelectGradientColor(const bool start) {
   if (!color_selected.isValid()) return;
   color = color_selected;
   UpdateColorSelectorColor(start ? ui_->select_tabbar_gradient_start_color : ui_->select_tabbar_gradient_end_color, color);
+  UpdateTabBarBackgroundPreviews();
 
   set_changed();
 
@@ -777,6 +855,7 @@ void AppearanceSettingsPage::TabBarSelectBackgroundImage() {
   const QString selected_filename = QFileDialog::getOpenFileName(this, tr("Select tabbar background image"), ui_->tabbar_background_image->text(), tr(kLoadImageFileFilter) + u";;"_s + tr(kAllFilesFilterSpec));
   if (selected_filename.isEmpty()) return;
   ui_->tabbar_background_image->setText(selected_filename);
+  UpdateTabBarBackgroundPreviews();
 
   set_changed();
 
@@ -790,6 +869,7 @@ void AppearanceSettingsPage::TabBarSelectBGColor() {
   if (!color_selected.isValid()) return;
   current_tabbar_bg_color_ = color_selected;
   UpdateColorSelectorColor(ui_->select_tabbar_color, current_tabbar_bg_color_);
+  UpdateTabBarBackgroundPreviews();
 
   set_changed();
 

@@ -162,7 +162,7 @@ void FancyTabWidget::ReloadSettings() {
   bg_image_tint_ = s.value(AppearanceSettings::kTabBarImageTint, AppearanceSettings::kDefaultTabBarImageTint).toBool();
   s.endGroup();
 
-  background_pixmap_ = bg_mode_ == static_cast<int>(AppearanceSettings::TabBarBackground::Strawberry) ? sprite_pixmap_ : QPixmap();
+  UpdateBackgroundGraphics();
   UpdateBackgroundImage();
 
 #ifndef Q_OS_MACOS
@@ -323,8 +323,26 @@ void FancyTabWidget::UpdateBackgroundImage() {
 void FancyTabWidget::SetBackgroundPixmap(const QPixmap &pixmap) {
 
   sprite_pixmap_ = pixmap;
-  background_pixmap_ = bg_mode_ == static_cast<int>(AppearanceSettings::TabBarBackground::Strawberry) ? sprite_pixmap_ : QPixmap();
+  UpdateBackgroundGraphics();
   update();
+
+}
+
+// The graphics drawn over the color: the strawberry graphics (set with SetBackgroundPixmap) or Clementine's.
+void FancyTabWidget::UpdateBackgroundGraphics() {
+
+  switch (static_cast<AppearanceSettings::TabBarBackground>(bg_mode_)) {
+    case AppearanceSettings::TabBarBackground::Strawberry:
+      background_pixmap_ = sprite_pixmap_;
+      break;
+    case AppearanceSettings::TabBarBackground::Clementine:
+      if (clementine_pixmap_.isNull()) clementine_pixmap_ = BackgroundGraphics(bg_mode_);
+      background_pixmap_ = clementine_pixmap_;
+      break;
+    default:
+      background_pixmap_ = QPixmap();
+      break;
+  }
 
 }
 
@@ -379,159 +397,212 @@ void FancyTabWidget::paintEvent(QPaintEvent *pe) {
   QRect backgroundRect = rect();
   backgroundRect.setWidth(tabBar()->width());
 
-  QString key = QString::asprintf("mh_vertical %d %d %d %d %d", backgroundRect.width(), backgroundRect.height(), bg_color_.rgb(), (bg_gradient_ ? 1 : 0), (background_pixmap_.isNull() ? 0 : 1));
-  key += QString::asprintf(" %d %d %u %u %d %lld %d %d %d %d %d %d %d %d", bg_mode_, (bg_gradient_custom_colors_ ? 1 : 0), bg_gradient_start_color_.rgba(), bg_gradient_end_color_.rgba(), bg_gradient_direction_, static_cast<long long>(bg_image_.cacheKey()), bg_image_position_, bg_image_max_size_, (bg_image_stretch_ ? 1 : 0), (bg_image_keep_aspect_ratio_ ? 1 : 0), (bg_image_do_not_cut_ ? 1 : 0), (bg_image_tile_ ? 1 : 0), bg_image_opacity_, (bg_image_tint_ ? 1 : 0));
-  if (backdrop_alpha_ < 255) key += QString::asprintf(" backdrop %d", backdrop_alpha_);
-  // The plain gradient background is always a gradient.
-  const bool draw_gradient = bg_gradient_ || bg_mode_ == static_cast<int>(AppearanceSettings::TabBarBackground::Gradient);
+  const BackgroundOptions options = CurrentBackgroundOptions();
+
+  QString key = QString::asprintf("mh_vertical %d %d %d %d %d", backgroundRect.width(), backgroundRect.height(), options.color.rgb(), (options.gradient ? 1 : 0), (options.graphics.isNull() ? 0 : static_cast<int>(options.graphics.cacheKey() & 0xffffff)));
+  key += QString::asprintf(" %d %d %u %u %d %lld %d %d %d %d %d %d %d %d %d", options.mode, (options.gradient_custom_colors ? 1 : 0), options.gradient_start_color.rgba(), options.gradient_end_color.rgba(), options.gradient_direction, static_cast<long long>(options.image.cacheKey()), options.image_position, options.image_max_size, (options.image_stretch ? 1 : 0), (options.image_keep_aspect_ratio ? 1 : 0), (options.image_do_not_cut ? 1 : 0), (options.image_tile ? 1 : 0), options.image_opacity, (options.image_tint ? 1 : 0), (options.system_color ? 1 : 0));
+  if (options.backdrop_alpha < 255) key += QString::asprintf(" backdrop %d", options.backdrop_alpha);
 
   QPixmap pixmap;
   if (!QPixmapCache::find(key, &pixmap)) {
-
-    pixmap = QPixmap(backgroundRect.size());
-    // With a window backdrop the default color and gradient are translucent, a custom gradient and images are drawn as they are.
-    const bool translucent = backdrop_alpha_ < 255;
-    if (translucent) pixmap.fill(Qt::transparent);
-    QPainter p(&pixmap);
-    if (!translucent) {
-      p.fillRect(backgroundRect, bg_color_);
-    }
-    else if (!draw_gradient) {
-      QColor color(bg_color_);
-      color.setAlpha(color.alpha() * backdrop_alpha_ / 255);
-      p.fillRect(backgroundRect, color);
-    }
-
-    // Draw the gradient fill.
-    if (draw_gradient) {
-
-      QRect rect(0, 0, backgroundRect.width(), backgroundRect.height());
-
-      QColor shadow = StyleHelper::shadowColor(false);
-      QLinearGradient grad(backgroundRect.topRight(), backgroundRect.topLeft());
-      switch (static_cast<AppearanceSettings::TabBarGradientDirection>(bg_gradient_direction_)) {
-        case AppearanceSettings::TabBarGradientDirection::Horizontal:
-          break;
-        case AppearanceSettings::TabBarGradientDirection::Vertical:
-          grad = QLinearGradient(backgroundRect.topLeft(), backgroundRect.bottomLeft());
-          break;
-        case AppearanceSettings::TabBarGradientDirection::Diagonal:
-          grad = QLinearGradient(backgroundRect.topRight(), backgroundRect.bottomLeft());
-          break;
-      }
-      QColor gradient_start = bg_gradient_custom_colors_ ? bg_gradient_start_color_ : bg_color_.lighter(117);
-      QColor gradient_end = bg_gradient_custom_colors_ ? bg_gradient_end_color_ : shadow.darker(109);
-      if (translucent && !bg_gradient_custom_colors_) {
-        gradient_start.setAlpha(gradient_start.alpha() * backdrop_alpha_ / 255);
-        gradient_end.setAlpha(gradient_end.alpha() * backdrop_alpha_ / 255);
-      }
-      grad.setColorAt(0, gradient_start);
-      grad.setColorAt(1, gradient_end);
-      p.fillRect(rect, grad);
-
-      QColor light(255, 255, 255, 80);
-      p.setPen(light);
-      p.drawLine(rect.topRight() - QPoint(1, 0), rect.bottomRight() - QPoint(1, 0));
-      QColor dark(0, 0, 0, 90);
-      p.setPen(dark);
-      p.drawLine(rect.topLeft(), rect.bottomLeft());
-
-    }
-
-    // Draw the translucent png graphics over the gradient fill
-    // Repeat it horizontally too, the sidebar with labels is wider than the graphics.
-    if (!background_pixmap_.isNull()) {
-      QRect pixmap_rect(background_pixmap_.rect());
-      pixmap_rect.moveTo(backgroundRect.topLeft());
-
-      while (pixmap_rect.top() < backgroundRect.bottom()) {
-        pixmap_rect.moveLeft(backgroundRect.left());
-        while (pixmap_rect.left() < backgroundRect.right()) {
-          QRect source_rect(pixmap_rect.intersected(backgroundRect));
-          source_rect.moveTo(0, 0);
-          p.drawPixmap(pixmap_rect.topLeft(), background_pixmap_, source_rect);
-          pixmap_rect.moveLeft(pixmap_rect.right() + 1);
-        }
-        pixmap_rect.moveTop(pixmap_rect.bottom() - 10);
-      }
-    }
-
-    // Draw the custom image or the album cover over the color or gradient, with the same options as the playlist background image.
-    if ((bg_mode_ == static_cast<int>(AppearanceSettings::TabBarBackground::CustomImage) || bg_mode_ == static_cast<int>(AppearanceSettings::TabBarBackground::AlbumCover)) && !bg_image_.isNull()) {
-      const QRect image_rect(0, 0, backgroundRect.width(), backgroundRect.height());
-      QPixmap image = bg_image_;
-      if (!bg_image_stretch_ && bg_image_max_size_ > 0 && (image.width() > bg_image_max_size_ || image.height() > bg_image_max_size_)) {
-        image = image.scaled(bg_image_max_size_, bg_image_max_size_, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-      }
-      p.save();
-      p.setClipRect(image_rect);
-      p.setOpacity(static_cast<qreal>(bg_image_opacity_) / 100.0);
-      if (bg_image_tile_) {
-        p.drawTiledPixmap(image_rect, image);
-      }
-      else {
-        if (bg_image_stretch_) {
-          if (!bg_image_keep_aspect_ratio_) {
-            image = image.scaled(image_rect.size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-          }
-          else {
-            image = image.scaled(image_rect.size(), bg_image_do_not_cut_ ? Qt::KeepAspectRatio : Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
-          }
-        }
-        else if (image.width() > image_rect.width() || image.height() > image_rect.height()) {
-          image = image.scaled(image_rect.size(), Qt::KeepAspectRatio, Qt::SmoothTransformation);
-        }
-        int x = 0;
-        int y = 0;
-        switch (static_cast<AppearanceSettings::BackgroundImagePosition>(bg_image_position_)) {
-          case AppearanceSettings::BackgroundImagePosition::UpperLeft:
-            break;
-          case AppearanceSettings::BackgroundImagePosition::UpperRight:
-            x = image_rect.width() - image.width();
-            break;
-          case AppearanceSettings::BackgroundImagePosition::BottomLeft:
-            y = image_rect.height() - image.height();
-            break;
-          case AppearanceSettings::BackgroundImagePosition::BottomRight:
-            x = image_rect.width() - image.width();
-            y = image_rect.height() - image.height();
-            break;
-          case AppearanceSettings::BackgroundImagePosition::Middle:
-          default:
-            x = (image_rect.width() - image.width()) / 2;
-            y = (image_rect.height() - image.height()) / 2;
-            break;
-        }
-        p.drawPixmap(x, y, image);
-      }
-      if (bg_image_tint_) {
-        // Tint the image with the tabbar color.
-        p.setOpacity(1.0);
-        QColor tint(bg_color_);
-        tint.setAlpha(110);
-        p.fillRect(image_rect, tint);
-      }
-      p.restore();
-    }
-
-    // Shadow effect of the background
-    QColor light(255, 255, 255, 80);
-    p.setPen(light);
-    p.drawLine(backgroundRect.topRight() - QPoint(1, 0), backgroundRect.bottomRight() - QPoint(1, 0));
-    QColor dark(0, 0, 0, 90);
-    p.setPen(dark);
-    p.drawLine(backgroundRect.topLeft(), backgroundRect.bottomLeft());
-
-    p.setPen(StyleHelper::borderColor());
-    p.drawLine(backgroundRect.topRight(), backgroundRect.bottomRight());
-
-    p.end();
-
+    pixmap = RenderBackground(backgroundRect.size(), options);
     QPixmapCache::insert(key, pixmap);
-
   }
 
   painter.drawPixmap(backgroundRect.topLeft(), pixmap);
+
+}
+
+FancyTabWidget::BackgroundOptions FancyTabWidget::CurrentBackgroundOptions() const {
+
+  BackgroundOptions options;
+  options.mode = bg_mode_;
+  options.system_color = bg_color_system_;
+  options.color = bg_color_;
+  options.gradient = bg_gradient_;
+  options.gradient_custom_colors = bg_gradient_custom_colors_;
+  options.gradient_start_color = bg_gradient_start_color_;
+  options.gradient_end_color = bg_gradient_end_color_;
+  options.gradient_direction = bg_gradient_direction_;
+  options.graphics = background_pixmap_;
+  options.image = bg_image_;
+  options.image_position = bg_image_position_;
+  options.image_max_size = bg_image_max_size_;
+  options.image_stretch = bg_image_stretch_;
+  options.image_keep_aspect_ratio = bg_image_keep_aspect_ratio_;
+  options.image_do_not_cut = bg_image_do_not_cut_;
+  options.image_tile = bg_image_tile_;
+  options.image_opacity = bg_image_opacity_;
+  options.image_tint = bg_image_tint_;
+  options.backdrop_alpha = backdrop_alpha_;
+  return options;
+
+}
+
+QPixmap FancyTabWidget::BackgroundGraphics(const int mode) {
+
+  switch (static_cast<AppearanceSettings::TabBarBackground>(mode)) {
+    case AppearanceSettings::TabBarBackground::Strawberry:
+      return QPixmap(u":/pictures/sidebar-background.png"_s);
+    case AppearanceSettings::TabBarBackground::Clementine:
+      return QPixmap(u":/pictures/clementine-sidebar-background.png"_s);
+    default:
+      return QPixmap();
+  }
+
+}
+
+// Draws the sidebar background, also used for the previews in Settings > Appearance.
+QPixmap FancyTabWidget::RenderBackground(const QSize &size, const BackgroundOptions &options) {
+
+  const QRect backgroundRect(QPoint(0, 0), size);
+  QPixmap pixmap(size);
+
+  const bool clementine = options.mode == static_cast<int>(AppearanceSettings::TabBarBackground::Clementine);
+  // The plain gradient background and Clementine's background are always a gradient.
+  const bool draw_gradient = options.gradient || clementine || options.mode == static_cast<int>(AppearanceSettings::TabBarBackground::Gradient);
+  // With a window backdrop the default color and gradient are translucent, a custom gradient and images are drawn as they are.
+  const bool translucent = options.backdrop_alpha < 255;
+
+  if (translucent) pixmap.fill(Qt::transparent);
+  QPainter p(&pixmap);
+  if (!translucent) {
+    p.fillRect(backgroundRect, options.color);
+  }
+  else if (!draw_gradient) {
+    QColor color(options.color);
+    color.setAlpha(color.alpha() * options.backdrop_alpha / 255);
+    p.fillRect(backgroundRect, color);
+  }
+
+  // Draw the gradient fill.
+  if (draw_gradient) {
+
+    QRect rect(0, 0, backgroundRect.width(), backgroundRect.height());
+
+    QColor shadow = StyleHelper::shadowColor(false);
+    QLinearGradient grad(backgroundRect.topRight(), backgroundRect.topLeft());
+    switch (static_cast<AppearanceSettings::TabBarGradientDirection>(clementine ? 0 : options.gradient_direction)) {
+      case AppearanceSettings::TabBarGradientDirection::Horizontal:
+        break;
+      case AppearanceSettings::TabBarGradientDirection::Vertical:
+        grad = QLinearGradient(backgroundRect.topLeft(), backgroundRect.bottomLeft());
+        break;
+      case AppearanceSettings::TabBarGradientDirection::Diagonal:
+        grad = QLinearGradient(backgroundRect.topRight(), backgroundRect.bottomLeft());
+        break;
+    }
+    // Clementine (src/widgets/stylehelper.cpp, verticalGradientHelper) uses the highlight color as it is, also when it is dark.
+    const QColor gradient_base = clementine && options.system_color ? StyleHelper::highlightColor() : options.color;
+    QColor gradient_start = options.gradient_custom_colors ? options.gradient_start_color : gradient_base.lighter(117);
+    QColor gradient_end = options.gradient_custom_colors ? options.gradient_end_color : shadow.darker(109);
+    if (translucent && !options.gradient_custom_colors) {
+      gradient_start.setAlpha(gradient_start.alpha() * options.backdrop_alpha / 255);
+      gradient_end.setAlpha(gradient_end.alpha() * options.backdrop_alpha / 255);
+    }
+    grad.setColorAt(0, gradient_start);
+    grad.setColorAt(1, gradient_end);
+    p.fillRect(rect, grad);
+
+    QColor light(255, 255, 255, 80);
+    p.setPen(light);
+    p.drawLine(rect.topRight() - QPoint(1, 0), rect.bottomRight() - QPoint(1, 0));
+    QColor dark(0, 0, 0, 90);
+    p.setPen(dark);
+    p.drawLine(rect.topLeft(), rect.bottomLeft());
+
+  }
+
+  // Draw the translucent png graphics over the gradient fill
+  // Repeat it horizontally too, the sidebar with labels is wider than the graphics.
+  if (!options.graphics.isNull()) {
+    QRect pixmap_rect(options.graphics.rect());
+    pixmap_rect.moveTo(backgroundRect.topLeft());
+
+    while (pixmap_rect.top() < backgroundRect.bottom()) {
+      pixmap_rect.moveLeft(backgroundRect.left());
+      while (pixmap_rect.left() < backgroundRect.right()) {
+        QRect source_rect(pixmap_rect.intersected(backgroundRect));
+        source_rect.moveTo(0, 0);
+        p.drawPixmap(pixmap_rect.topLeft(), options.graphics, source_rect);
+        pixmap_rect.moveLeft(pixmap_rect.right() + 1);
+      }
+      pixmap_rect.moveTop(pixmap_rect.bottom() - 10);
+    }
+  }
+
+  // Draw the custom image or the album cover over the color or gradient, with the same options as the playlist background image.
+  if ((options.mode == static_cast<int>(AppearanceSettings::TabBarBackground::CustomImage) || options.mode == static_cast<int>(AppearanceSettings::TabBarBackground::AlbumCover)) && !options.image.isNull()) {
+    const QRect image_rect(0, 0, backgroundRect.width(), backgroundRect.height());
+    QPixmap image = options.image;
+    if (!options.image_stretch && options.image_max_size > 0 && (image.width() > options.image_max_size || image.height() > options.image_max_size)) {
+      image = image.scaled(options.image_max_size, options.image_max_size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    }
+    p.save();
+    p.setClipRect(image_rect);
+    p.setOpacity(static_cast<qreal>(options.image_opacity) / 100.0);
+    if (options.image_tile) {
+      p.drawTiledPixmap(image_rect, image);
+    }
+    else {
+      if (options.image_stretch) {
+        if (!options.image_keep_aspect_ratio) {
+          image = image.scaled(image_rect.size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+        }
+        else {
+          image = image.scaled(image_rect.size(), options.image_do_not_cut ? Qt::KeepAspectRatio : Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
+        }
+      }
+      else if (image.width() > image_rect.width() || image.height() > image_rect.height()) {
+        image = image.scaled(image_rect.size(), Qt::KeepAspectRatio, Qt::SmoothTransformation);
+      }
+      int x = 0;
+      int y = 0;
+      switch (static_cast<AppearanceSettings::BackgroundImagePosition>(options.image_position)) {
+        case AppearanceSettings::BackgroundImagePosition::UpperLeft:
+          break;
+        case AppearanceSettings::BackgroundImagePosition::UpperRight:
+          x = image_rect.width() - image.width();
+          break;
+        case AppearanceSettings::BackgroundImagePosition::BottomLeft:
+          y = image_rect.height() - image.height();
+          break;
+        case AppearanceSettings::BackgroundImagePosition::BottomRight:
+          x = image_rect.width() - image.width();
+          y = image_rect.height() - image.height();
+          break;
+        case AppearanceSettings::BackgroundImagePosition::Middle:
+        default:
+          x = (image_rect.width() - image.width()) / 2;
+          y = (image_rect.height() - image.height()) / 2;
+          break;
+      }
+      p.drawPixmap(x, y, image);
+    }
+    if (options.image_tint) {
+      // Tint the image with the tabbar color.
+      p.setOpacity(1.0);
+      QColor tint(options.color);
+      tint.setAlpha(110);
+      p.fillRect(image_rect, tint);
+    }
+    p.restore();
+  }
+
+  // Shadow effect of the background
+  QColor light(255, 255, 255, 80);
+  p.setPen(light);
+  p.drawLine(backgroundRect.topRight() - QPoint(1, 0), backgroundRect.bottomRight() - QPoint(1, 0));
+  QColor dark(0, 0, 0, 90);
+  p.setPen(dark);
+  p.drawLine(backgroundRect.topLeft(), backgroundRect.bottomLeft());
+
+  p.setPen(StyleHelper::borderColor());
+  p.drawLine(backgroundRect.topRight(), backgroundRect.bottomRight());
+
+  p.end();
+
+  return pixmap;
 
 }
 
