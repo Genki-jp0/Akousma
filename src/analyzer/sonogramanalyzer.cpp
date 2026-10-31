@@ -23,6 +23,7 @@
 
 #include <QPainter>
 #include <QResizeEvent>
+#include <QEvent>
 
 #include "engine/enginebase.h"
 
@@ -42,6 +43,18 @@ void SonogramAnalyzer::resizeEvent(QResizeEvent *e) {
 
 }
 
+void SonogramAnalyzer::changeEvent(QEvent *e) {
+
+  AnalyzerBase::changeEvent(e);
+
+  // The history is drawn with the old Window color, which changes with the theme and the window backdrop.
+  if (e->type() == QEvent::PaletteChange && !canvas_.isNull()) {
+    canvas_.fill(palette().color(QPalette::Window));
+    update();
+  }
+
+}
+
 void SonogramAnalyzer::analyze(QPainter &p, const Scope &s, const bool new_frame) {
 
   if (!new_frame || engine_->state() == EngineBase::State::Paused) {
@@ -50,6 +63,8 @@ void SonogramAnalyzer::analyze(QPainter &p, const Scope &s, const bool new_frame
   }
 
   QPainter canvas_painter(&canvas_);
+  // Copy the pixels as they are: with a translucent Window color (window backdrop) blending would add up the alpha.
+  canvas_painter.setCompositionMode(QPainter::CompositionMode_Source);
   canvas_painter.drawPixmap(0, 0, canvas_, 1, 0, width() - 1, -1);
 
   Scope::const_iterator it = s.begin(), end = s.end();

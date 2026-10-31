@@ -32,6 +32,7 @@
 #include <QPainter>
 #include <QPalette>
 #include <QColor>
+#include <QEvent>
 
 #include "analyzerbase.h"
 #include "fht.h"
@@ -113,6 +114,20 @@ void BlockAnalyzer::resizeEvent(QResizeEvent *e) {
 
 }
 
+void BlockAnalyzer::changeEvent(QEvent *e) {
+
+  AnalyzerBase::changeEvent(e);
+
+  // The bars, fade bars and background are cached with the palette's colors, which change with the theme and with the
+  // window backdrop (a translucent Window color while a backdrop is shown, an opaque one without).
+  if (e->type() == QEvent::PaletteChange && rows_ > 0) {
+    paletteChange(palette());
+    if (!background_.isNull()) canvas_ = background_.copy();
+    update();
+  }
+
+}
+
 void BlockAnalyzer::determineStep() {
 
   // falltime is dependent on rowcount due to our digital resolution (ie we have boxes/blocks of pixels)
@@ -166,8 +181,11 @@ void BlockAnalyzer::analyze(QPainter &p, const Scope &s, const bool new_frame) {
 
   interpolate(s, scope_);
 
-  // Paint the background
+  // Paint the background. Replace the previous frame: with a translucent Window color (window backdrop) drawing over it
+  // would leave the old bars showing through.
+  canvas_painter.setCompositionMode(QPainter::CompositionMode_Source);
   canvas_painter.drawPixmap(0, 0, background_);
+  canvas_painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
 
   for (qint64 x = 0, y = 0; x < static_cast<qint64>(scope_.size()); ++x) {
     // determine y

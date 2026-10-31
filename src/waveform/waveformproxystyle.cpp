@@ -159,6 +159,12 @@ bool WaveformProxyStyle::eventFilter(QObject *object, QEvent *event) {
         waveform_pixmap_dirty_ = true;
         break;
 
+      case QEvent::PaletteChange:
+        // The background and the bars come from the palette, which changes with the theme and the window backdrop.
+        waveform_pixmap_dirty_ = true;
+        slider_->update();
+        break;
+
       default:
         break;
     }

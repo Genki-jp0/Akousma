@@ -29,6 +29,8 @@
 
 #include "analyzerbase.h"
 
+class QEvent;
+
 class SonogramAnalyzer : public AnalyzerBase {
   Q_OBJECT
 
@@ -39,6 +41,7 @@ class SonogramAnalyzer : public AnalyzerBase {
 
  protected:
   void resizeEvent(QResizeEvent *e) override;
+  void changeEvent(QEvent *e) override;
   void analyze(QPainter &p, const Scope &s, const bool new_frame) override;
   void transform(Scope &scope) override;
   void demo(QPainter &p) override;

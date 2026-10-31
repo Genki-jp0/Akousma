@@ -162,6 +162,13 @@ bool MoodbarProxyStyle::eventFilter(QObject *object, QEvent *event) {
         moodbar_pixmap_dirty_ = true;
         break;
 
+      case QEvent::PaletteChange:
+        // The colors and the border come from the palette, which changes with the theme and the window backdrop.
+        moodbar_colors_dirty_ = true;
+        moodbar_pixmap_dirty_ = true;
+        slider_->update();
+        break;
+
       default:
         break;
     }

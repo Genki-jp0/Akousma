@@ -36,6 +36,7 @@
 
 class QWidget;
 class QResizeEvent;
+class QEvent;
 
 class BlockAnalyzer : public AnalyzerBase {
   Q_OBJECT
@@ -49,6 +50,7 @@ class BlockAnalyzer : public AnalyzerBase {
   void transform(Scope &s) override;
   void analyze(QPainter &p, const Scope &s, const bool new_frame) override;
   void resizeEvent(QResizeEvent *e) override;
+  void changeEvent(QEvent *e) override;
   virtual void paletteChange(const QPalette &_palette);
   void framerateChanged() override;
 

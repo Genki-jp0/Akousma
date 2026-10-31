@@ -32,6 +32,8 @@
 #include <QImage>
 #include <QPainter>
 #include <QColor>
+#include <QPalette>
+#include <QPoint>
 #include <QCoreApplication>
 #include <QEventLoop>
 #include <QElapsedTimer>
@@ -334,5 +336,59 @@ TEST(WaveformProxyStyleTest, CustomColorChangesRenderedPixmap) {
     s.remove(WaveformSettings::kColor);
     s.endGroup();
   }
+
+}
+
+// Regression test: the rendered waveform kept the colors of the palette it was first drawn with, so after the Windows window
+// backdrop was turned off (translucent Window color -> opaque one) its background stayed translucent, which shows black.
+TEST(WaveformProxyStyleTest, PaletteChangeRendersNewPixmap) {
+
+  QSlider slider;
+  slider.resize(200, 40);
+
+  auto set_window_alpha = [&slider](const int alpha) {
+    QPalette palette = slider.palette();
+    for (const QPalette::ColorGroup group : { QPalette::Active, QPalette::Inactive, QPalette::Disabled }) {
+      palette.setColor(group, QPalette::Window, QColor(40, 40, 40, alpha));
+    }
+    slider.setPalette(palette);
+  };
+  set_window_alpha(48);
+
+  WaveformProxyStyle *style = new WaveformProxyStyle(&slider);
+  style->SetWaveformData(MakeTestBlob(200, -10, 10, 127.0F));
+  style->SetShowWaveform(true);
+
+  QElapsedTimer timer;
+  timer.start();
+  while (timer.elapsed() < 1500) {
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
+  }
+
+  auto paint_image = [&]() {
+    const QSize size(200, 40);
+    QStyleOptionSlider opt;
+    opt.initFrom(&slider);
+    opt.rect = QRect(0, 0, size.width(), size.height());
+    opt.minimum = 0;
+    opt.maximum = 200;
+    opt.sliderValue = 0;
+
+    QImage image(size, QImage::Format_ARGB32);
+    image.fill(Qt::transparent);
+    QPainter painter(&image);
+    style->drawComplexControl(QStyle::CC_Slider, &opt, &painter, &slider);
+    painter.end();
+    return image;
+  };
+
+  // A pixel of the background, above the (low) bars.
+  const QPoint background(100, 1);
+  EXPECT_EQ(paint_image().pixelColor(background).alpha(), 48);
+
+  set_window_alpha(255);
+  EXPECT_EQ(paint_image().pixelColor(background).alpha(), 255);
+
+  delete style;
 
 }
