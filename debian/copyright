@@ -18,6 +18,64 @@ Comment: Clementine's sidebar graphics (data/sidebar_background.png in
  https://github.com/clementine-player/Clementine), used for the Clementine
  tabbar background.
 
+Files: data/icons/*/document-edit.png
+Copyright: 2007, David Vignoni, Nuno Pinheiro, David Miller, Johann Ollivier Lapeyre,
+           Kenneth Wimer, Riccardo Iaconelli (the Oxygen Team)
+License: LGPL-3+
+Comment: Oxygen's document-edit icon (oxygen-icons 5.115.0), unchanged: the built-in edit
+ icon, used for the badge of the custom sidebar image preview.
+
+Files: data/iconsets/adwaita/*
+Copyright: 2002-2024, The GNOME Project (Jakub Steiner, Lapo Calamandrei, Hylke Bons and others)
+License: LGPL-3 or CC-BY-SA-3.0, and CC-BY-SA-4.0
+Comment: Icons of the Adwaita icon theme 46.0 (https://gitlab.gnome.org/GNOME/adwaita-icon-theme),
+ unchanged, renamed to Akousma's icon names. Akousma uses them under LGPL-3 and CC-BY-SA-4.0,
+ which can be used with GPL-3 (CC-BY-SA-4.0 is one-way compatible with GPL-3).
+
+Files: data/iconsets/breeze/*
+       data/iconsets/breeze-dark/*
+Copyright: 2014, Uri Herrera <uri_herrera@nitrux.in> and the KDE Visual Design Group
+License: LGPL-3+
+Comment: Icons of the Breeze and Breeze Dark icon themes 5.115.0
+ (https://invent.kde.org/frameworks/breeze-icons), unchanged, renamed to Akousma's icon names.
+
+Files: data/iconsets/papirus/*
+       data/iconsets/papirus-dark/*
+Copyright: 2016-2024, Alexey Varfolomeev <varlesh@gmail.com>, Sergei Eremenko <finalitik@gmail.com>,
+           Papirus Development Team
+License: GPL-3
+Comment: Icons of the Papirus and Papirus-Dark icon themes 20240201
+ (https://github.com/PapirusDevelopmentTeam/papirus-icon-theme), unchanged, renamed to Akousma's
+ icon names.
+
+Files: data/iconsets/tango/*
+Copyright: 2005-2009, Ulisse Perusin, Steven Garrity, Lapo Calamandrei, Ryan Collier, Rodney Dawes,
+           Andreas Nilsson, Tuomas Kuosmanen, Garrett LeSage and the Tango Desktop Project
+License: public-domain
+Comment: Icons of the Tango icon theme 0.8.90 (http://tango.freedesktop.org/Tango_Icon_Library),
+ unchanged, renamed to Akousma's icon names.
+
+Files: data/iconsets/oxygen/*
+Copyright: 2007, David Vignoni, Nuno Pinheiro, David Miller, Johann Ollivier Lapeyre,
+           Kenneth Wimer, Riccardo Iaconelli (the Oxygen Team)
+License: LGPL-3+
+Comment: Icons of the Oxygen icon theme 5.115.0 (https://invent.kde.org/frameworks/oxygen-icons),
+ unchanged, renamed to Akousma's icon names.
+
+Files: data/iconsets/elementary/*
+Copyright: 2008-2024, Daniel Foré, elementary, Inc. and contributors
+License: GPL-3+
+Comment: Icons of the elementary icon theme 7.3.1 (https://github.com/elementary/icons), unchanged,
+ renamed to Akousma's icon names.
+
+Files: data/iconsets/clementine/*
+Copyright: 2010-2024, The Clementine authors
+License: GPL-3+
+Comment: Icons of Clementine (data/icons in https://github.com/clementine-player/Clementine at
+ 3bc72a3), unchanged, renamed to Akousma's icon names. Clementine's cast, cast-connected,
+ computer, speaker, speaker-group and tv icons are Google's Material Symbols under Apache-2.0;
+ of these the set has speaker.
+
 Files: src/utilities/timeconstants.h
        src/core/logging.cpp
        src/core/logging.h
@@ -455,3 +513,27 @@ License: Expat
   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
   SOFTWARE.
+
+License: LGPL-3+
+ This library is free software; you can redistribute it and/or
+ modify it under the terms of the GNU Lesser General Public
+ License as published by the Free Software Foundation; either
+ version 3 of the License, or (at your option) any later version.
+ .
+ On Debian systems, the complete text of the GNU Lesser General Public
+ License version 3 can be found in "/usr/share/common-licenses/LGPL-3".
+
+License: LGPL-3 or CC-BY-SA-3.0, and CC-BY-SA-4.0
+ This work is licenced under the terms of either the GNU LGPL v3 or
+ Creative Commons Attribution-Share Alike 3.0 United States License, and
+ (for newer icons) the Creative Commons Attribution-ShareAlike 4.0
+ International License.
+ .
+ https://creativecommons.org/licenses/by-sa/3.0/
+ https://creativecommons.org/licenses/by-sa/4.0/
+ .
+ On Debian systems, the complete text of the GNU Lesser General Public
+ License version 3 can be found in "/usr/share/common-licenses/LGPL-3".
+
+License: public-domain
+ The Tango Desktop Project has released these icons into the public domain.

@@ -1,0 +1,119 @@
+# Akousma icon names and the freedesktop icon names that stand in for them.
+#
+# Used by dist/scripts/extract-iconsets.py to pick the icons of the bundled icon sets,
+# and at runtime to look icons up in the system icon theme and in icon themes put
+# into <data dir>/icons.
+#
+# Format:  akousma-name: freedesktop-name freedesktop-name ...  (best match first)
+#          akousma-name: =   (logos, ratings and other Akousma artwork: always the built-in icon)
+
+akousma: =
+akousma-grey: =
+albums: media-optical-audio media-optical x-clementine-album
+alsa: =
+application-exit: application-exit system-log-out
+applications-internet: applications-internet network-workgroup web-browser internet-web-browser
+bluetooth: bluetooth preferences-system-bluetooth bluetooth-active
+cdcase: media-optical-audio media-optical cdcover
+configure: configure preferences-system preferences-other emblem-system
+device-ipod-nano: multimedia-player-apple-ipod-nano multimedia-player-ipod-nano-black multimedia-player-apple-ipod multimedia-player
+device-ipod: multimedia-player-apple-ipod multimedia-player-ipod-standard-color multimedia-player
+device-phone: phone smartphone pda multimedia-player
+device-usb-drive: drive-removable-media-usb drive-removable-media drive-harddisk-usb
+device-usb-flash: drive-removable-media-usb-pendrive drive-removable-media-usb drive-removable-media
+device: drive-removable-media-usb-pendrive drive-removable-media multimedia-player
+dialog-error: dialog-error
+dialog-information: dialog-information
+dialog-ok-apply: dialog-ok-apply dialog-ok emblem-default
+dialog-password: dialog-password
+dialog-warning: dialog-warning
+document-edit: document-edit edit-rename accessories-text-editor
+document-download: document-download folder-download emblem-downloads download
+document-new: document-new
+document-open-folder: document-open-folder folder-open
+document-open-remote: document-open-remote folder-remote network-server
+document-open: document-open
+document-save-all: document-save-all document-save
+document-save: document-save
+document-search: document-search edit-find system-search
+download: folder-download emblem-downloads download document-download
+edit-clear-list: edit-clear-list edit-clear-all edit-clear
+edit-clear-locationbar-ltr: edit-clear-locationbar-ltr edit-clear
+edit-copy: edit-copy
+edit-delete: edit-delete
+edit-find: edit-find system-search
+edit-redo: edit-redo
+edit-rename: edit-rename
+edit-undo: edit-undo
+electrocompaniet: =
+equalizer: view-media-equalizer media-equalizer audio-equalizer
+folder-new: folder-new
+folder-sound: folder-sound folder-music
+folder: folder
+footsteps: go-jump
+go-down: go-down
+go-home: go-home user-home
+go-jump: go-jump
+go-next: go-next
+go-previous: go-previous
+go-up: go-up
+gstreamer: =
+headset: audio-headset audio-headphones
+help-hint: help-hint help-about help-contents
+intel: =
+jack: audio-input-line
+jellyfin: =
+keyboard: input-keyboard preferences-desktop-keyboard
+library-music: library-music folder-music audio-x-generic
+list-add: list-add
+list-remove: list-remove
+love: emblem-favorite love heart
+mcintosh-player: =
+mcintosh-text: =
+mcintosh: =
+media-eject: media-eject
+media-optical: media-optical drive-optical
+media-playback-pause: media-playback-pause
+media-playback-start: media-playback-start
+media-playback-stop: media-playback-stop
+media-playlist-repeat: media-playlist-repeat
+media-playlist-shuffle: media-playlist-shuffle
+media-seek-backward: media-seek-backward
+media-seek-forward: media-seek-forward
+media-skip-backward: media-skip-backward
+media-skip-forward: media-skip-forward
+moodbar: =
+multimedia-player-ipod-standard-black: multimedia-player-apple-ipod multimedia-player-ipod-standard-monochrome multimedia-player
+musicbrainz: =
+nvidia: =
+object-locked: object-locked changes-prevent
+object-unlocked: object-unlocked changes-allow
+plex: =
+pulseaudio: =
+qobuz: =
+radio: radio applications-radio
+radiobrowser: =
+radioparadise: =
+realtek: =
+scrobble-disabled: =
+scrobble: =
+search: system-search edit-find
+somafm: =
+soundcard: audio-card
+speaker: audio-speakers speaker
+spotify: =
+star-grey: =
+star: =
+subsonic: =
+tidal: =
+tools-wizard: tools-wizard
+view-choose: view-choose view-list-icons
+view-fullscreen: view-fullscreen
+view-media-lyrics: view-media-lyrics
+view-media-playlist: view-media-playlist audio-x-mpegurl
+view-media-visualization: view-media-visualization
+view-refresh: view-refresh
+vlc: =
+waveform-config: =
+zoom-in: zoom-in
+zoom-out: zoom-out
