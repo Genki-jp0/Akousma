@@ -170,7 +170,8 @@ Function ImportFromOtherPlayer
   ${EndIf}
 FunctionEnd
 
-; Tick the import when the account running the installer has Strawberry or Clementine settings.
+; Tick the import when the account running the installer has Strawberry or Clementine settings and no Akousma settings yet.
+; When Akousma already has settings (an update), the import can still be ticked, but it is not proposed, the import replaces them.
 Function FinishPageShow
   StrCpy $0 "0"
   ClearErrors
@@ -182,6 +183,11 @@ Function FinishPageShow
   EnumRegKey $1 HKCU "Software\Clementine\Clementine" 0
   ${IfNot} ${Errors}
     StrCpy $0 "1"
+  ${EndIf}
+  ClearErrors
+  EnumRegKey $1 HKCU "Software\Akousma\Akousma" 0
+  ${IfNot} ${Errors}
+    StrCpy $0 "0"
   ${EndIf}
   ${If} $0 == "1"
     SendMessage $mui.FinishPage.Run ${BM_SETCHECK} ${BST_CHECKED} 0
