@@ -143,12 +143,12 @@ jobs:
         run: mkdir -p ~/rpmbuild/SOURCES /usr/src/packages/SOURCES
       - name: Copy source tarball
         working-directory: build
-        run: cp strawberry-*.tar.xz /usr/src/packages/SOURCES/
+        run: cp akousma-*.tar.xz /usr/src/packages/SOURCES/
       - name: Build RPM
         env:
           RPM_BUILD_NCPUS: 4
         working-directory: build
-        run: rpmbuild -ba strawberry.spec
+        run: rpmbuild -ba akousma.spec
       - name: Show ccache statistics
         if: github.event_name != 'release'
         run: ccache --show-stats
@@ -298,12 +298,12 @@ jobs:
         run: mkdir -p ~/rpmbuild/SOURCES /usr/src/packages/SOURCES
       - name: Copy source tarball
         working-directory: build
-        run: cp strawberry-*.tar.xz ~/rpmbuild/SOURCES/
+        run: cp akousma-*.tar.xz ~/rpmbuild/SOURCES/
       - name: Build RPM
         env:
           RPM_BUILD_NCPUS: 4
         working-directory: build
-        run: rpmbuild -ba strawberry.spec
+        run: rpmbuild -ba akousma.spec
       - name: Show ccache statistics
         if: github.event_name != 'release'
         run: ccache --show-stats
@@ -445,13 +445,13 @@ jobs:
         run: mkdir -p ~/rpmbuild/SOURCES /usr/src/packages/SOURCES
       - name: Copy source tarball
         working-directory: build
-        run: cp strawberry-*.tar.xz ~/rpmbuild/SOURCES/
+        run: cp akousma-*.tar.xz ~/rpmbuild/SOURCES/
       - name: Build RPM
         env:
           RPM_BUILD_NCPUS: 4
           CXXFLAGS: "-Wno-error=c2y-extensions"
         working-directory: build
-        run: rpmbuild -ba strawberry.spec
+        run: rpmbuild -ba akousma.spec
       - name: Show ccache statistics
         if: github.event_name != 'release'
         run: ccache --show-stats
@@ -598,12 +598,12 @@ jobs:
         run: mkdir -p ~/rpmbuild/SOURCES /usr/src/packages/SOURCES
       - name: Copy source tarball
         working-directory: build
-        run: cp strawberry-*.tar.xz ~/rpmbuild/SOURCES/
+        run: cp akousma-*.tar.xz ~/rpmbuild/SOURCES/
       - name: Build RPM
         env:
           RPM_BUILD_NCPUS: 4
         working-directory: build
-        run: rpmbuild -ba strawberry.spec
+        run: rpmbuild -ba akousma.spec
       - name: Show ccache statistics
         if: github.event_name != 'release'
         run: ccache --show-stats
@@ -1215,7 +1215,7 @@ jobs:
           APPIMAGE_EXTRACT_AND_RUN: '1'
         run: >
             ./appimagedeploy.AppImage
-            AppDir/usr/share/applications/org.strawberrymusicplayer.strawberry.desktop
+            AppDir/usr/share/applications/io.github.genki_jp0.Akousma.desktop
             --qt-sql-plugins=sqlite
             --gstreamer-plugins=list
             --gstreamer-plugin-list=adaptivedemux2,aiff,alsa,apetag,app,asf,asfmux,audioconvert,audiofx,audioparsers,audioresample,autodetect,bs2b,cdio,coreelements,dash,dsd,equalizer,faac,faad,fdkaac,flac,gme,hls,icydemux,id3demux,isomp4,lame,libav,matroska,mpegtsdemux,mpg123,musepack,ogg,openmpt,opus,pbtypes,playback,pulseaudio,replaygain,rtp,rtpmanager,rtsp,soup,spectrum,speex,spotify,taglib,typefindfunctions,udp,volume,vorbis,wavenc,wavpack,wavparse,xingmux
@@ -1247,7 +1247,7 @@ jobs:
 
       - name: rsync
         if: steps.set-upload-path.outputs.upload_path != ''
-        run: rsync -e "ssh -p ${{secrets.SSH_PORT}} -o StrictHostKeyChecking=no" -var Strawberry-*.AppImage ${{secrets.SSH_USER}}@${{secrets.SSH_HOST}}:${{steps.set-upload-path.outputs.upload_path}}/
+        run: rsync -e "ssh -p ${{secrets.SSH_PORT}} -o StrictHostKeyChecking=no" -var Akousma-*.AppImage ${{secrets.SSH_USER}}@${{secrets.SSH_HOST}}:${{steps.set-upload-path.outputs.upload_path}}/
 
 
   build-freebsd:
@@ -1421,7 +1421,7 @@ jobs:
           -DENABLE_SPOTIFY=$(test -f "${{env.prefix_path}}/lib/gstreamer-1.0/libgstspotify.dylib" && echo "ON" || echo "OFF")
           -DENABLE_SPARKLE=ON
           -DENABLE_QTSPARKLE=OFF
-          -DDMG_NAME=$(test '${{matrix.runner}}' = 'macos-intel' && echo "strawberry-compat" || echo "strawberry")
+          -DDMG_NAME=$(test '${{matrix.runner}}' = 'macos-intel' && echo "akousma-compat" || echo "akousma")
           -DCREATE_SOURCE_API_CREDENTIALS=OFF
           -DAPI_CREDENTIALS_ENCRYPTION_KEY="$(openssl rand -hex 32)"
           -DACOUSTID_API_KEY="${{secrets.ACOUSTID_API_KEY}}"
@@ -1455,7 +1455,7 @@ jobs:
       - name: Verify code-signing
         if: env.is_private == 'true' || (github.repository == 'strawberrymusicplayer/strawberry' && github.event.pull_request.head.repo.fork == false)
         working-directory: build
-        run: codesign --deep -v strawberry.app
+        run: codesign --deep -v akousma.app
 
       - name: Create DMG
         working-directory: build
@@ -1693,11 +1693,11 @@ jobs:
         run: |
           files_missing=
           for i in $(ls -1 *.dll *.exe); do
-            nsi_file_entry=$(grep -i "^\s\+File\s\+\(/nonfatal\s\+\)\?\"$i\"$" strawberry.nsi || true)
+            nsi_file_entry=$(grep -i "^\s\+File\s\+\(/nonfatal\s\+\)\?\"$i\"$" akousma.nsi || true)
             if [ "${nsi_file_entry}" = "" ]; then
               echo "File ${i} is missing File entry."
             fi
-            nsi_file_delete_entry=$(grep -i "^\s\+Delete\s\+\"\$INSTDIR\\\\$i\"$" strawberry.nsi || true)
+            nsi_file_delete_entry=$(grep -i "^\s\+Delete\s\+\"\$INSTDIR\\\\$i\"$" akousma.nsi || true)
             if [ "${nsi_file_delete_entry}" = "" ] ; then
               echo "File ${i} is missing Delete entry."
             fi
@@ -1716,7 +1716,7 @@ jobs:
 
       - name: Build Windows installer
         working-directory: build
-        run: makensis strawberry.nsi
+        run: makensis akousma.nsi
 
       - name: Set Upload path
         id: set-upload-path
@@ -1741,7 +1741,7 @@ jobs:
 
       - name: rsync
         if: steps.set-upload-path.outputs.upload_path != ''
-        run: rsync -e "ssh -p ${{secrets.SSH_PORT}} -o StrictHostKeyChecking=no" -var build/StrawberrySetup*.exe ${{secrets.SSH_USER}}@${{secrets.SSH_HOST}}:${{steps.set-upload-path.outputs.upload_path}}/
+        run: rsync -e "ssh -p ${{secrets.SSH_PORT}} -o StrictHostKeyChecking=no" -var build/AkousmaSetup*.exe ${{secrets.SSH_USER}}@${{secrets.SSH_HOST}}:${{steps.set-upload-path.outputs.upload_path}}/
 
 
   build-windows-msvc:
@@ -2057,11 +2057,11 @@ jobs:
         run: |
           files_missing=
           for i in $(ls -1 *.dll *.exe); do
-            nsi_file_entry=$(grep -i "^\s\+File\s\+\(/nonfatal\s\+\)\?\"$i\"$" strawberry.nsi || true)
+            nsi_file_entry=$(grep -i "^\s\+File\s\+\(/nonfatal\s\+\)\?\"$i\"$" akousma.nsi || true)
             if [ "${nsi_file_entry}" = "" ]; then
               echo "File ${i} is missing File entry."
             fi
-            nsi_file_delete_entry=$(grep -i "^\s\+Delete\s\+\"\$INSTDIR\\\\$i\"$" strawberry.nsi || true)
+            nsi_file_delete_entry=$(grep -i "^\s\+Delete\s\+\"\$INSTDIR\\\\$i\"$" akousma.nsi || true)
             if [ "${nsi_file_delete_entry}" = "" ] ; then
               echo "File ${i} is missing Delete entry."
             fi
@@ -2086,7 +2086,7 @@ jobs:
       - name: Create nsis installer
         shell: cmd
         working-directory: build
-        run: makensis strawberry.nsi
+        run: makensis akousma.nsi
 
       - name: Set Upload path
         id: set-upload-path
@@ -2115,7 +2115,7 @@ jobs:
       - name: rsync
         if: steps.set-upload-path.outputs.upload_path != ''
         shell: bash
-        run: rsync -e "/c/ProgramData/chocolatey/lib/rsync/tools/bin/ssh.exe -p ${{secrets.SSH_PORT}} -o StrictHostKeyChecking=no" -var build/StrawberrySetup*.exe ${{secrets.SSH_USER}}@${{secrets.SSH_HOST}}:${{steps.set-upload-path.outputs.upload_path}}/
+        run: rsync -e "/c/ProgramData/chocolatey/lib/rsync/tools/bin/ssh.exe -p ${{secrets.SSH_PORT}} -o StrictHostKeyChecking=no" -var build/AkousmaSetup*.exe ${{secrets.SSH_USER}}@${{secrets.SSH_HOST}}:${{steps.set-upload-path.outputs.upload_path}}/
 
 
   upload:

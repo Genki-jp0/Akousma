@@ -228,7 +228,7 @@ int main(int argc, char *argv[]) {
   QThread::currentThread()->setObjectName(u"Main"_s);
 
   if (QGuiApplication::platformName() != "wayland"_L1) {
-    QGuiApplication::setWindowIcon(IconLoader::Load(u"strawberry"_s));
+    QGuiApplication::setWindowIcon(IconLoader::Load(u"akousma"_s));
   }
 
 #if defined(USE_BUNDLE)
@@ -345,7 +345,7 @@ int main(int argc, char *argv[]) {
   for (const QString &language : as_const(languages)) {
     bool language_loaded = false;
     for (const QString &translation_path : as_const(translation_paths)) {
-      if (translations->LoadTranslation(u"strawberry"_s, translation_path, language)) {
+      if (translations->LoadTranslation(u"akousma"_s, translation_path, language)) {
         language_loaded = true;
         break;
       }

@@ -17,11 +17,11 @@ if(MACDEPLOYTOOL_EXECUTABLE)
     COMMAND ${CMAKE_COMMAND} --install ${CMAKE_BINARY_DIR} --component macos_bundle_resources
   )
   if(APPLE_DEVELOPER_ID)
-    list(APPEND DEPLOY_COMMANDS COMMAND ${MACDEPLOYTOOL_EXECUTABLE} strawberry.app --verbose=3 --sign-for-notarization=${APPLE_DEVELOPER_ID} --gstreamer-plugins=all)
+    list(APPEND DEPLOY_COMMANDS COMMAND ${MACDEPLOYTOOL_EXECUTABLE} akousma.app --verbose=3 --sign-for-notarization=${APPLE_DEVELOPER_ID} --gstreamer-plugins=all)
   else()
-    list(APPEND DEPLOY_COMMANDS COMMAND ${MACDEPLOYTOOL_EXECUTABLE} strawberry.app --verbose=3 --no-codesign --gstreamer-plugins=all)
+    list(APPEND DEPLOY_COMMANDS COMMAND ${MACDEPLOYTOOL_EXECUTABLE} akousma.app --verbose=3 --no-codesign --gstreamer-plugins=all)
   endif()
-  add_custom_target(deploy ${DEPLOY_COMMANDS} WORKING_DIRECTORY ${CMAKE_BINARY_DIR} DEPENDS strawberry)
+  add_custom_target(deploy ${DEPLOY_COMMANDS} WORKING_DIRECTORY ${CMAKE_BINARY_DIR} DEPENDS akousma)
   if(CREATEDMG_EXECUTABLE)
     if(APPLE_DEVELOPER_ID)
       set(CREATEDMG_CODESIGN --codesign ${APPLE_DEVELOPER_ID})
@@ -30,10 +30,10 @@ if(MACDEPLOYTOOL_EXECUTABLE)
       set(CREATEDMG_SKIP_JENKINS_ARG "--skip-jenkins")
     endif()
     if(NOT DMG_NAME)
-      set(DMG_NAME strawberry)
+      set(DMG_NAME akousma)
     endif()
     add_custom_target(dmg
-      COMMAND ${CREATEDMG_EXECUTABLE} --volname strawberry --background "${CMAKE_SOURCE_DIR}/dist/macos/dmg_background.png" --app-drop-link 450 218 --icon strawberry.app 150 218 --window-size 600 450 ${CREATEDMG_CODESIGN} ${CREATEDMG_SKIP_JENKINS_ARG} ${DMG_NAME}-${STRAWBERRY_VERSION_PACKAGE}-${CMAKE_HOST_SYSTEM_PROCESSOR}.dmg strawberry.app
+      COMMAND ${CREATEDMG_EXECUTABLE} --volname Akousma --background "${CMAKE_SOURCE_DIR}/dist/macos/dmg_background.png" --app-drop-link 450 218 --icon akousma.app 150 218 --window-size 600 450 ${CREATEDMG_CODESIGN} ${CREATEDMG_SKIP_JENKINS_ARG} ${DMG_NAME}-${STRAWBERRY_VERSION_PACKAGE}-${CMAKE_HOST_SYSTEM_PROCESSOR}.dmg akousma.app
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     )
   endif()

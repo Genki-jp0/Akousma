@@ -7,19 +7,19 @@
   <key>CFBundleDevelopmentRegion</key>
   <string>English</string>
   <key>CFBundleExecutable</key>
-  <string>strawberry</string>
+  <string>akousma</string>
   <key>CFBundleGetInfoString</key>
-  <string>Strawberry ${STRAWBERRY_VERSION_DISPLAY}</string>
+  <string>Akousma ${STRAWBERRY_VERSION_DISPLAY}</string>
   <key>CFBundleIconFile</key>
-  <string>strawberry.icns</string>
+  <string>akousma.icns</string>
   <key>CFBundleIdentifier</key>
-  <string>org.strawberrymusicplayer.strawberry</string>
+  <string>io.github.genki_jp0.Akousma</string>
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
   <key>CFBundleLongVersionString</key>
   <string>${STRAWBERRY_VERSION_DISPLAY}</string>
   <key>CFBundleName</key>
-  <string>Strawberry</string>
+  <string>Akousma</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
@@ -44,7 +44,7 @@
       <key>CFBundleTypeRole</key>
       <string>Viewer</string>
       <key>CFBundleURLName</key>
-      <string>org.strawberrymusicplayer.strawberry</string>
+      <string>io.github.genki_jp0.Akousma</string>
       <key>CFBundleURLSchemes</key>
       <array>
         <string>tidal</string>

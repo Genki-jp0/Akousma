@@ -15,7 +15,7 @@
   </property>
   <property name="windowIcon">
    <iconset>
-    <normaloff>:/icons/64x64/strawberry.png</normaloff>:/icons/64x64/strawberry.png</iconset>
+    <normaloff>:/icons/64x64/akousma.png</normaloff>:/icons/64x64/akousma.png</iconset>
   </property>
   <layout class="QVBoxLayout" name="layout_queueview">
    <property name="spacing">

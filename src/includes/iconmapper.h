@@ -122,7 +122,7 @@ static const QMap<QString, IconProperties> iconmapper_ = {  // clazy:exclude=non
     { u"speaker"_s,                       { {}} },
     { u"star-grey"_s,                     { {}} },
     { u"star"_s,                          { {}} },
-    { u"strawberry"_s,                    { {}} },
+    { u"akousma"_s,                       { {}} },
     { u"subsonic"_s,                      { {}} },
     { u"tidal"_s,                         { {}} },
     { u"tools-wizard"_s,                  { {}} },

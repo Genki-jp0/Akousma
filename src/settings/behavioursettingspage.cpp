@@ -63,7 +63,7 @@ BehaviourSettingsPage::BehaviourSettingsPage(SettingsDialog *dialog, QWidget *pa
       ui_(new Ui_BehaviourSettingsPage) {
 
   ui_->setupUi(this);
-  setWindowIcon(IconLoader::Load(u"strawberry"_s, true, 0, 32));
+  setWindowIcon(IconLoader::Load(u"akousma"_s, true, 0, 32));
 
   QObject::connect(ui_->checkbox_showtrayicon, &QCheckBox::toggled, this, &BehaviourSettingsPage::ShowTrayIconToggled);
 
@@ -85,12 +85,12 @@ BehaviourSettingsPage::BehaviourSettingsPage(SettingsDialog *dialog, QWidget *pa
   if (dir2.exists()) {
     codes << dir2.entryList(QStringList() << u"*.qm"_s);
   }
-  static const QRegularExpression lang_re(u"^strawberry_(.*).qm$"_s);
+  static const QRegularExpression lang_re(u"^akousma_(.*).qm$"_s);
   for (const QString &filename : std::as_const(codes)) {
 
     QRegularExpressionMatch re_match = lang_re.match(filename);
 
-    // The regex captures the "ru" from "strawberry_ru.qm"
+    // The regex captures the "ru" from "akousma_ru.qm"
     if (!re_match.hasMatch()) continue;
 
     QString code = re_match.captured(1);

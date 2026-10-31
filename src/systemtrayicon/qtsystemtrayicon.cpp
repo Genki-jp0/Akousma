@@ -44,8 +44,8 @@ constexpr int kSystemTrayIconSize = 48;
 SystemTrayIcon::SystemTrayIcon(QObject *parent)
     : QSystemTrayIcon(parent),
       menu_(new QMenu),
-      icon_normal_(IconLoader::Load(u"strawberry"_s)),
-      icon_grey_(IconLoader::Load(u"strawberry-grey"_s)),
+      icon_normal_(IconLoader::Load(u"akousma"_s)),
+      icon_grey_(IconLoader::Load(u"akousma-grey"_s)),
       icon_playing_(QIcon(u":/pictures/tiny-play.png"_s)),
       icon_paused_(QIcon(u":/pictures/tiny-pause.png"_s)),
       action_play_pause_(nullptr),

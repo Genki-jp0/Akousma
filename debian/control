@@ -1,7 +1,7 @@
-Source: strawberry
+Source: akousma
 Section: sound
 Priority: optional
-Maintainer: Jonas Kvinge <jonas@jkvinge.net>
+Maintainer: Genki (genki_jp0) <genki_jp0@users.noreply.github.com>
 Build-Depends: debhelper-compat (= 12),
                git,
                make,
@@ -43,7 +43,7 @@ Build-Depends: debhelper-compat (= 12),
                gstreamer1.0-plugins-good <!nocheck>
 Standards-Version: 4.7.0
 
-Package: strawberry
+Package: akousma
 Architecture: any
 Depends: ${shlibs:Depends},
          ${misc:Depends},
@@ -55,7 +55,8 @@ Depends: ${shlibs:Depends},
          gstreamer1.0-pulseaudio
 Homepage: https://github.com/Genki-jp0/Akousma
 Description: music player and music collection organizer
- Strawberry is a music player aimed at music collectors and audiophiles.
+ Akousma is a music player aimed at music collectors and audiophiles,
+ based on Strawberry Music Player.
  .
  Features:
   - Play and organize music

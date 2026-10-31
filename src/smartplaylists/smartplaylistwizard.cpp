@@ -54,7 +54,7 @@ SmartPlaylistWizard::SmartPlaylistWizard(const SharedPtr<Player> player,
       finish_page_(new SmartPlaylistWizardFinishPage(this)),
       type_index_(-1) {
 
-  setWindowIcon(IconLoader::Load(u"strawberry"_s));
+  setWindowIcon(IconLoader::Load(u"akousma"_s));
   setWindowTitle(tr("Smart playlist"));
 
   resize(788, 628);

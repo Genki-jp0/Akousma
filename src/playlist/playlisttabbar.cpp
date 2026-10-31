@@ -251,7 +251,7 @@ void PlaylistTabBar::CloseSlot() {
 
   if (ask_for_delete && !manager_->IsPlaylistFavorite(playlist_id) && !manager_->playlist(playlist_id)->GetAllSongs().empty()) {
     QMessageBox confirmation_box;
-    confirmation_box.setWindowIcon(QIcon(u":/icons/64x64/strawberry.png"_s));
+    confirmation_box.setWindowIcon(QIcon(u":/icons/64x64/akousma.png"_s));
     confirmation_box.setWindowTitle(tr("Remove playlist"));
     confirmation_box.setIcon(QMessageBox::Question);
     confirmation_box.setText(tr("You are about to remove a playlist which is not part of your "

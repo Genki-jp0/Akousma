@@ -468,7 +468,7 @@ MainWindow::MainWindow(Application *app,
 #endif
 
   if (QGuiApplication::platformName() != "wayland"_L1) {
-    setWindowIcon(IconLoader::Load(u"strawberry"_s));
+    setWindowIcon(IconLoader::Load(u"akousma"_s));
   }
 
   systemtrayicon_->SetDevicePixelRatioF(devicePixelRatioF());
@@ -485,7 +485,7 @@ MainWindow::MainWindow(Application *app,
   StyleHelper::setBaseColor(palette().color(QPalette::Highlight).darker());
 
   // Add tabs to the fancy tab widget
-  ui_->tabs->AddTab(context_view_, u"context"_s, IconLoader::Load(u"strawberry"_s, true, 0, 32), tr("Context"));
+  ui_->tabs->AddTab(context_view_, u"context"_s, IconLoader::Load(u"akousma"_s, true, 0, 32), tr("Context"));
   ui_->tabs->AddTab(collection_view_, u"collection"_s, IconLoader::Load(u"library-music"_s, true, 0, 32), tr("Collection"));
   ui_->tabs->AddTab(queue_view_, u"queue"_s, IconLoader::Load(u"footsteps"_s, true, 0, 32), tr("Queue"));
   ui_->tabs->AddTab(playlist_list_, u"playlists"_s, IconLoader::Load(u"view-media-playlist"_s, true, 0, 32), tr("Playlists"));
@@ -569,7 +569,7 @@ MainWindow::MainWindow(Application *app,
 
   // Help menu
 
-  ui_->action_about_strawberry->setIcon(IconLoader::Load(u"strawberry"_s));
+  ui_->action_about_strawberry->setIcon(IconLoader::Load(u"akousma"_s));
   ui_->action_about_qt->setIcon(QIcon(u":/qt-project.org/qmessagebox/images/qtlogo-64.png"_s));
 
   // Music menu

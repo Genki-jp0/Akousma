@@ -1,6 +1,6 @@
 #!/bin/bash
 
-name=strawberry
+name=akousma
 version="@STRAWBERRY_VERSION_PACKAGE@"
 gitrev="@INCLUDE_GIT_REVISION@"
 root=$(cd "${0%/*}/../.." && echo $PWD/${0##*/})

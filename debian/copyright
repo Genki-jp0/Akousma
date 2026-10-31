@@ -1,7 +1,10 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: strawberry
-Upstream-Contact: Jonas Kvinge <jonas@jkvinge.net>
-Source: https://github.com/strawberrymusicplayer/strawberry
+Upstream-Name: akousma
+Upstream-Contact: Genki (genki_jp0) <genki_jp0@users.noreply.github.com>
+Source: https://github.com/Genki-jp0/Akousma
+Comment: Akousma is based on Strawberry Music Player by Jonas Kvinge and
+ contributors (https://github.com/strawberrymusicplayer/strawberry), which is
+ based on Clementine.
 
 Files: *
 Copyright: 2010-2015, David Sansome <me@davidsansome.com>

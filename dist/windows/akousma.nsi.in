@@ -63,14 +63,18 @@
 
 !ifdef debug
   !define PRODUCT_NAME "Akousma Debug"
-  !define PRODUCT_NAME_SHORT "Strawberry"
+  !define PRODUCT_NAME_SHORT "Akousma"
   !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME_SHORT}Debug"
-  !define PRODUCT_INSTALL_DIR "$PROGRAMFILES64\Strawberry Music Player Debug"
+  !define PRODUCT_INSTALL_DIR "$PROGRAMFILES64\Akousma Debug"
+  ; Akousma installers made before the rename used the Strawberry uninstall key.
+  !define PRODUCT_LEGACY_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\StrawberryDebug"
 !else
   !define PRODUCT_NAME "Akousma"
-  !define PRODUCT_NAME_SHORT "Strawberry"
+  !define PRODUCT_NAME_SHORT "Akousma"
   !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME_SHORT}"
-  !define PRODUCT_INSTALL_DIR "$PROGRAMFILES64\Strawberry Music Player"
+  !define PRODUCT_INSTALL_DIR "$PROGRAMFILES64\Akousma"
+  ; Akousma installers made before the rename used the Strawberry uninstall key.
+  !define PRODUCT_LEGACY_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\Strawberry"
 !endif
 
 !define PRODUCT_VERSION_MAJOR @STRAWBERRY_VERSION_MAJOR@
@@ -84,12 +88,12 @@
 !define PRODUCT_UNINST_ROOT_KEY "HKLM"
 
 ; Set Application Capabilities info
-!define CAPABILITIES_NAME "Strawberry Music Player"
+!define CAPABILITIES_NAME "Akousma"
 !define CAPABILITIES_LOCAL_NAME "Akousma"
-!define CAPABILITIES_PROGID "Strawberry Music Player"
-!define CAPABILITIES_PATH "Software\Clients\Media\Strawberry"
+!define CAPABILITIES_PROGID "Akousma"
+!define CAPABILITIES_PATH "Software\Clients\Media\Akousma"
 !define CAPABILITIES_DESCRIPTION "Akousma"
-!define CAPABILITIES_ICON "$INSTDIR\strawberry.ico"
+!define CAPABILITIES_ICON "$INSTDIR\akousma.ico"
 
 Unicode True
 
@@ -105,7 +109,7 @@ SetCompressor /SOLID lzma
 !include x64.nsh
 !include FileFunc.nsh
 
-!define MUI_ICON "strawberry.ico"
+!define MUI_ICON "akousma.ico"
 
 !ifdef mingw
   ReserveFile "${NSISDIR}/Plugins/x86-unicode/LockedList.dll"
@@ -137,7 +141,7 @@ Name "${PRODUCT_NAME}"
 
 OutFile "${PRODUCT_NAME_SHORT}Setup-${PRODUCT_DISPLAY_VERSION}${build_type}-${compiler}-${arch}.exe"
 
-; CheckPreviousInstall changes this to the directory Strawberry was installed to previously.
+; CheckPreviousInstall changes this to the directory Akousma was installed to previously.
 InstallDir "${PRODUCT_INSTALL_DIR}"
 
 ShowInstDetails show
@@ -145,19 +149,19 @@ ShowUnInstDetails show
 RequestExecutionLevel admin
 
 Function LockedListPageShow
-  LockedList::AddModule /NOUNLOAD \strawberry.exe
+  LockedList::AddModule /NOUNLOAD \akousma.exe
   LockedList::Dialog /heading "Checking for running programs:" /noprograms "No programs need to close." /searching "Searching for running programs..."
 FunctionEnd
 
 Function un.LockedListPageShow
-  LockedList::AddModule /NOUNLOAD \strawberry.exe
+  LockedList::AddModule /NOUNLOAD \akousma.exe
   LockedList::Dialog /heading "Checking for running programs:" /noprograms "No programs need to close." /searching "Searching for running programs..."
 FunctionEnd
 
-; Abort a silent (un)installation when Strawberry is running, the LockedList page that asks the user to close it is not shown in silent mode.
-!macro AbortIfStrawberryRunning
+; Abort a silent (un)installation when Akousma is running, the LockedList page that asks the user to close it is not shown in silent mode.
+!macro AbortIfAkousmaRunning
   ${If} ${Silent}
-    LockedList::FindProcess /yesno strawberry.exe
+    LockedList::FindProcess /yesno akousma.exe
     Pop $R0
     ${If} $R0 == "yes"
       SetErrorLevel 1
@@ -169,8 +173,20 @@ FunctionEnd
 ; Check for previous installation, and call the uninstaller if any
 Function CheckPreviousInstall
 
-  ; Strawberry 1.2.30 and older wrote the uninstall key to the 32-bit registry view.
   ReadRegStr $R0 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "UninstallString"
+
+  ; Akousma installers made before the rename registered under the Strawberry uninstall key.
+  ; Only take that key when it belongs to Akousma, a real Strawberry installation is left alone.
+  StrCpy $R4 "0"
+  ${If} $R0 == ""
+    ReadRegStr $R3 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_LEGACY_UNINST_KEY}" "DisplayName"
+    ${If} $R3 == "${PRODUCT_NAME}"
+      ReadRegStr $R0 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_LEGACY_UNINST_KEY}" "UninstallString"
+      StrCpy $R4 "1"
+    ${EndIf}
+  ${EndIf}
+
+  ; Installers based on Strawberry 1.2.30 and older wrote the uninstall key to the 32-bit registry view.
   ${If} $R0 == ""
     SetRegView 32
     ReadRegStr $R0 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "UninstallString"
@@ -185,7 +201,9 @@ Function CheckPreviousInstall
   ${GetParent} "$R0" $R1
 
   ; Install to the same directory, unless another directory was given with /D.
+  ; An installation made before the rename is in the old "Strawberry Music Player" directory, the new one goes to the new default directory.
   ${If} $INSTDIR == "${PRODUCT_INSTALL_DIR}"
+  ${AndIf} $R4 == "0"
     StrCpy $INSTDIR $R1
   ${EndIf}
 
@@ -217,10 +235,10 @@ FunctionEnd
 
 Function .onInit
 
-  ; Strawberry is 64-bit, use the 64-bit registry view like it does.
+  ; Akousma is 64-bit, use the 64-bit registry view like it does.
   SetRegView 64
 
-  !insertmacro AbortIfStrawberryRunning
+  !insertmacro AbortIfAkousmaRunning
 
   Call CheckPreviousInstall
 
@@ -230,7 +248,7 @@ Function un.onInit
 
   SetRegView 64
 
-  !insertmacro AbortIfStrawberryRunning
+  !insertmacro AbortIfAkousmaRunning
 
 FunctionEnd
 
@@ -265,13 +283,13 @@ Section "-Visual C++ Runtime"
 SectionEnd
 !endif
 
-Section "Strawberry" Strawberry
+Section "Akousma" Akousma
   SetOutPath "$INSTDIR"
 
   ; Common executables
 
-  File "strawberry.exe"
-  File "strawberry.ico"
+  File "akousma.exe"
+  File "akousma.ico"
   File "sqlite3.exe"
   File "gst-launch-1.0.exe"
   File "gst-play-1.0.exe"
@@ -520,15 +538,15 @@ Section "Strawberry" Strawberry
   File "swresample-7.dll"
   File "swscale-10.dll"
 
-  ; Register Strawberry with Default Programs
+  ; Register Akousma with Default Programs
   Var /GLOBAL AppIcon
   Var /GLOBAL AppExe
-  StrCpy $AppExe "$INSTDIR\strawberry.exe"
-  StrCpy $AppIcon "$INSTDIR\strawberry.ico"
+  StrCpy $AppExe "$INSTDIR\akousma.exe"
+  StrCpy $AppIcon "$INSTDIR\akousma.ico"
 
   ${RegisterCapabilities}
 
-  ; Video containers (.mp4, .webm, .asf) are not registered, Strawberry would be offered as the default program for videos.
+  ; Video containers (.mp4, .webm, .asf) are not registered, Akousma would be offered as the default program for videos.
   ${RegisterMediaType} ".mp3" $AppExe $AppIcon "MP3 Audio File"
   ${RegisterMediaType} ".mp2" $AppExe $AppIcon "MP2 Audio File"
   ${RegisterMediaType} ".flac" $AppExe $AppIcon "FLAC Audio File"
@@ -774,7 +792,7 @@ Section "Start menu items" startmenu
   SetShellVarContext all
 
   CreateDirectory "$SMPROGRAMS\${PRODUCT_NAME}"
-  CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\${PRODUCT_NAME}.lnk" "$INSTDIR\strawberry.exe"
+  CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\${PRODUCT_NAME}.lnk" "$INSTDIR\akousma.exe"
   CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
 
 SectionEnd
@@ -782,7 +800,7 @@ SectionEnd
 Section "Tidal URL Scheme"
   WriteRegStr HKCR "tidal" "URL Protocol" ""
   WriteRegStr HKCR "tidal" "" "URL:tidal"
-  WriteRegStr HKCR 'tidal\shell\open\command' '' '"$INSTDIR\strawberry.exe" "%1"'
+  WriteRegStr HKCR 'tidal\shell\open\command' '' '"$INSTDIR\akousma.exe" "%1"'
 SectionEnd
 
 Section "Uninstaller"
@@ -791,7 +809,7 @@ Section "Uninstaller"
 
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayName" "${PRODUCT_NAME}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "UninstallString" "$INSTDIR\Uninstall.exe"
-  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayIcon" "$INSTDIR\strawberry.ico"
+  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayIcon" "$INSTDIR\akousma.ico"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayVersion" "${PRODUCT_DISPLAY_VERSION}"
   WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "VersionMajor" "${PRODUCT_VERSION_MAJOR}"
   WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "VersionMinor" "${PRODUCT_VERSION_MINOR}"
@@ -810,8 +828,8 @@ Section "Uninstall"
 
   ; Delete all the files
 
-  Delete "$INSTDIR\strawberry.exe"
-  Delete "$INSTDIR\strawberry.ico"
+  Delete "$INSTDIR\akousma.exe"
+  Delete "$INSTDIR\akousma.ico"
   Delete "$INSTDIR\sqlite3.exe"
   Delete "$INSTDIR\gst-launch-1.0.exe"
   Delete "$INSTDIR\gst-play-1.0.exe"

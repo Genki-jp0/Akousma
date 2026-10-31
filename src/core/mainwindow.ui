@@ -645,7 +645,7 @@
   <action name="action_about_strawberry">
    <property name="icon">
     <iconset resource="../../data/icons.qrc">
-     <normaloff>:/icons/64x64/strawberry.png</normaloff>:/icons/64x64/strawberry.png</iconset>
+     <normaloff>:/icons/64x64/akousma.png</normaloff>:/icons/64x64/akousma.png</iconset>
    </property>
    <property name="text">
     <string>&amp;About Akousma</string>

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(strawberry C CXX)
+project(akousma C CXX)
 
 if(APPLE)
   enable_language(OBJC OBJCXX)
@@ -485,15 +485,15 @@ if(NOT CMAKE_CROSSCOMPILING)
   unset(CMAKE_REQUIRED_LIBRARIES)
 endif()
 
-add_executable(strawberry)
+add_executable(akousma)
 
 if(APPLE)
-  set_target_properties(strawberry PROPERTIES MACOSX_BUNDLE TRUE)
-  set_target_properties(strawberry PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_BINARY_DIR}/dist/macos/Info.plist")
+  set_target_properties(akousma PROPERTIES MACOSX_BUNDLE TRUE)
+  set_target_properties(akousma PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_BINARY_DIR}/dist/macos/Info.plist")
 endif()
 
 if(WIN32 AND NOT ENABLE_WIN32_CONSOLE)
-  set_target_properties(strawberry PROPERTIES WIN32_EXECUTABLE TRUE)
+  set_target_properties(akousma PROPERTIES WIN32_EXECUTABLE TRUE)
 endif()
 
 set(SOURCES
@@ -1759,10 +1759,10 @@ qt_add_resources(SOURCES data/data.qrc data/icons.qrc)
 
 add_library(strawberry_lib STATIC ${SOURCES})
 
-target_sources(strawberry PRIVATE src/main.cpp)
+target_sources(akousma PRIVATE src/main.cpp)
 
 if(WIN32)
-  target_sources(strawberry PRIVATE windres.rc)
+  target_sources(akousma PRIVATE windres.rc)
 endif()
 
 add_subdirectory(src)
@@ -1778,12 +1778,12 @@ if(LINUX AND LSB_RELEASE_EXEC AND DPKG_BUILDPACKAGE)
 endif()
 
 if(HAVE_TRANSLATIONS)
-  qt_add_lupdate(strawberry_lib TS_FILES "${CMAKE_SOURCE_DIR}/src/translations/strawberry_en_US.ts" OPTIONS -locations none -no-ui-lines -no-obsolete)
+  qt_add_lupdate(strawberry_lib TS_FILES "${CMAKE_SOURCE_DIR}/src/translations/akousma_en_US.ts" OPTIONS -locations none -no-ui-lines -no-obsolete)
   file(GLOB_RECURSE ts_files ${CMAKE_SOURCE_DIR}/src/translations/*.ts)
   set_source_files_properties(${ts_files} PROPERTIES OUTPUT_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/data")
-  qt_add_lrelease(strawberry TS_FILES ${ts_files} QM_FILES_OUTPUT_VARIABLE INSTALL_TRANSLATIONS_FILES)
+  qt_add_lrelease(akousma TS_FILES ${ts_files} QM_FILES_OUTPUT_VARIABLE INSTALL_TRANSLATIONS_FILES)
   if(NOT INSTALL_TRANSLATIONS)
-    qt_add_resources(strawberry "translations" PREFIX "/i18n" BASE "${CMAKE_CURRENT_BINARY_DIR}/data" FILES "${INSTALL_TRANSLATIONS_FILES}")
+    qt_add_resources(akousma "translations" PREFIX "/i18n" BASE "${CMAKE_CURRENT_BINARY_DIR}/data" FILES "${INSTALL_TRANSLATIONS_FILES}")
   endif()
 endif()
 
@@ -1863,14 +1863,14 @@ if(APPLE)
   endif()
 endif()
 
-target_link_libraries(strawberry PUBLIC strawberry_lib)
+target_link_libraries(akousma PUBLIC strawberry_lib)
 
 if(NOT APPLE)
-  install(TARGETS strawberry RUNTIME DESTINATION bin)
+  install(TARGETS akousma RUNTIME DESTINATION bin)
 endif()
 
 if(HAVE_TRANSLATIONS AND INSTALL_TRANSLATIONS AND INSTALL_TRANSLATIONS_FILES)
-  install(FILES ${INSTALL_TRANSLATIONS_FILES} DESTINATION share/strawberry/translations)
+  install(FILES ${INSTALL_TRANSLATIONS_FILES} DESTINATION share/akousma/translations)
 endif()
 
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/cmake_uninstall.cmake.in" "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake" IMMEDIATE @ONLY)

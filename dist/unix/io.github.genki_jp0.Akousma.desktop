@@ -2,43 +2,43 @@
 Version=1.0
 Type=Application
 Name=Akousma
-GenericName=Strawberry Music Player
-GenericName[fr]=Lecteur de musique Strawberry
-GenericName[ru]=Музыкальный проигрыватель Strawberry
+GenericName=Music Player
+GenericName[fr]=Lecteur de musique
+GenericName[ru]=Музыкальный проигрыватель
 Comment=Plays music
 Comment[fr]=Joue de la musique
 Comment[ru]=Прослушивание музыки
-Exec=strawberry %U
-TryExec=strawberry
-Icon=strawberry
+Exec=akousma %U
+TryExec=akousma
+Icon=akousma
 Terminal=false
 Categories=AudioVideo;Player;Qt;Audio;
-Keywords=Audio;Player;Clementine;
+Keywords=Audio;Player;Strawberry;Clementine;
 MimeType=x-content/audio-player;application/ogg;application/x-ogg;application/x-ogm-audio;audio/flac;audio/ogg;audio/vorbis;audio/aac;audio/mp4;audio/mpeg;audio/mpegurl;audio/vnd.rn-realaudio;audio/x-flac;audio/x-oggflac;audio/x-vorbis;audio/x-vorbis+ogg;audio/x-speex;audio/x-wav;audio/x-wavpack;audio/x-ape;audio/x-mp3;audio/x-mpeg;audio/x-mpegurl;audio/x-ms-wma;audio/x-musepack;audio/x-pn-realaudio;audio/x-scpls;video/x-ms-asf;x-scheme-handler/tidal;
-StartupWMClass=strawberry
+StartupWMClass=akousma
 Actions=Play-Pause;Stop;StopAfterCurrent;Previous;Next;
 
 [Desktop Action Play-Pause]
 Name=Play/Pause
-Exec=strawberry --play-pause
+Exec=akousma --play-pause
 Name[ru]=Играть/пауза
 
 [Desktop Action Stop]
 Name=Stop
-Exec=strawberry --stop
+Exec=akousma --stop
 Name[ru]=Стоп
 
 [Desktop Action StopAfterCurrent]
 Name=Stop after this track
-Exec=strawberry --stop-after-current
+Exec=akousma --stop-after-current
 Name[ru]=Стоп после этого трека
 
 [Desktop Action Previous]
 Name=Previous
-Exec=strawberry --previous
+Exec=akousma --previous
 Name[ru]=Предыдущий
 
 [Desktop Action Next]
 Name=Next
-Exec=strawberry --next
+Exec=akousma --next
 Name[ru]=Следующий

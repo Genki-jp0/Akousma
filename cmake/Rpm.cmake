@@ -63,8 +63,8 @@ if (LSB_RELEASE_EXEC AND RPMBUILD_EXEC)
 
     add_custom_target(rpm
       COMMAND ${CMAKE_SOURCE_DIR}/dist/scripts/maketarball.sh
-      COMMAND ${CMAKE_COMMAND} -E copy strawberry-${STRAWBERRY_VERSION_PACKAGE}.tar.xz ${RPMBUILD_DIR}/SOURCES/
-      COMMAND ${RPMBUILD_EXEC} -ba ${CMAKE_BINARY_DIR}/strawberry.spec
+      COMMAND ${CMAKE_COMMAND} -E copy akousma-${STRAWBERRY_VERSION_PACKAGE}.tar.xz ${RPMBUILD_DIR}/SOURCES/
+      COMMAND ${RPMBUILD_EXEC} -ba ${CMAKE_BINARY_DIR}/akousma.spec
     )
 
   endif()
