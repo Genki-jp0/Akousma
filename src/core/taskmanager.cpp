@@ -99,6 +99,18 @@ void TaskManager::SetTaskProgress(const int id, const quint64 progress, const qu
   Q_EMIT TasksChanged();
 }
 
+void TaskManager::SetTaskName(const int id, const QString &name) {
+
+  {
+    QMutexLocker l(&mutex_);
+    if (!tasks_.contains(id) || tasks_[id].name == name) return;
+    tasks_[id].name = name;
+  }
+
+  Q_EMIT TasksChanged();
+
+}
+
 void TaskManager::IncreaseTaskProgress(const int id, const quint64 progress, const quint64 max) {
 
   {

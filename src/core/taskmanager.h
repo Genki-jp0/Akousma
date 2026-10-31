@@ -65,6 +65,8 @@ class TaskManager : public QObject {
   int StartTask(const QString &name);
   void SetTaskBlocksCollectionScans(const int id);
   void SetTaskProgress(const int id, const quint64 progress, const quint64 max = 0);
+  // Changes what the task shows, e.g. to show how much of something without a known end was done.
+  void SetTaskName(const int id, const QString &name);
   void IncreaseTaskProgress(const int id, const quint64 progress, const quint64 max = 0);
   void SetTaskFinished(const int id);
   quint64 GetTaskProgress(const int id);

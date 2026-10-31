@@ -423,6 +423,9 @@ class Playlist : public QAbstractListModel {
 
   // Tells the user that the playlist is locked, when songs were added to it.
   void EmitLockedError();
+  // Whether dropped or added data has anything to add to a playlist. A locked playlist only complains when it has:
+  // activating a device that isn't loaded yet, or an empty folder, adds nothing.
+  static bool MimeDataHasItems(const QMimeData *data);
 
  private Q_SLOTS:
   void TracksAboutToBeDequeued(const QModelIndex &idx, const int begin, const int end);

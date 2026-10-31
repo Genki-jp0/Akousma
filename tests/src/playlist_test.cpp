@@ -31,6 +31,7 @@
 #include "includes/shared_ptr.h"
 #include "core/database.h"
 #include "core/taskmanager.h"
+#include "core/songmimedata.h"
 #include "collection/collectionplaylistitem.h"
 #include "playlist/playlist.h"
 #include "playlist/playlistbackend.h"
@@ -2439,6 +2440,39 @@ TEST_F(PlaylistTest, UpdateItemMetadataAfterRowsChanged) {
   EXPECT_FALSE(playlist_.UpdateItemMetadata(item_e, changed_metadata(item_e, u"E2"_s), false));
   // Neither is a null item.
   EXPECT_FALSE(playlist_.UpdateItemMetadata(PlaylistItemPtr(), changed_metadata(item_e, u"E3"_s), false));
+
+}
+
+TEST_F(PlaylistTest, LockedPlaylistOnlyComplainsAboutSongs) {
+
+  playlist_.InsertItems(PlaylistItemPtrList() << MakeMockItemP(u"Title"_s));
+  playlist_.set_locked(true);
+  ASSERT_TRUE(playlist_.is_locked());
+
+  QSignalSpy spy(&playlist_, &Playlist::Error);
+
+  // Nothing to add, like activating a device that isn't loaded yet: refused without a message.
+  SongMimeData empty_songs;
+  EXPECT_FALSE(playlist_.dropMimeData(&empty_songs, Qt::CopyAction, -1, 0, QModelIndex()));
+  QMimeData nothing;
+  EXPECT_FALSE(playlist_.dropMimeData(&nothing, Qt::CopyAction, -1, 0, QModelIndex()));
+  playlist_.InsertUrls(QList<QUrl>(), -1, false, false, false);
+  EXPECT_EQ(spy.count(), 0);
+
+  // Songs: refused with the message.
+  SongMimeData songs;
+  Song song;
+  song.Init(u"Other"_s, u"Artist"_s, u"Album"_s, 123);
+  songs.songs << song;
+  EXPECT_FALSE(playlist_.dropMimeData(&songs, Qt::CopyAction, -1, 0, QModelIndex()));
+  EXPECT_EQ(spy.count(), 1);
+
+  QMimeData urls;
+  urls.setUrls(QList<QUrl>() << QUrl(u"file:///music/a.mp3"_s));
+  EXPECT_FALSE(playlist_.dropMimeData(&urls, Qt::CopyAction, -1, 0, QModelIndex()));
+  EXPECT_EQ(spy.count(), 2);
+
+  EXPECT_EQ(playlist_.rowCount(), 1);
 
 }
 

@@ -1034,6 +1034,19 @@ void Playlist::EmitLockedError() {
 
 }
 
+bool Playlist::MimeDataHasItems(const QMimeData *data) {
+
+  if (!data) return false;
+  if (const SongMimeData *song_data = qobject_cast<const SongMimeData*>(data)) return !song_data->songs.isEmpty();
+  if (const PlaylistItemMimeData *item_mimedata = qobject_cast<const PlaylistItemMimeData*>(data)) return !item_mimedata->items_.isEmpty();
+  if (const PlaylistGeneratorMimeData *generator_mimedata = qobject_cast<const PlaylistGeneratorMimeData*>(data)) return generator_mimedata->generator_ != nullptr;
+  if (const StreamSongMimeData *stream_song_mimedata = qobject_cast<const StreamSongMimeData*>(data)) return !stream_song_mimedata->songs.isEmpty();
+  if (const RadioMimeData *radio_mimedata = qobject_cast<const RadioMimeData*>(data)) return !radio_mimedata->songs.isEmpty();
+  if (data->hasFormat(QLatin1String(kRowsMimetype)) || data->hasFormat(QLatin1String(kCddaMimeType))) return true;
+  return !data->urls().isEmpty();
+
+}
+
 QStringList Playlist::mimeTypes() const {
 
   return QStringList() << u"text/uri-list"_s << QLatin1String(kRowsMimetype);
@@ -1052,7 +1065,7 @@ bool Playlist::dropMimeData(const QMimeData *data, Qt::DropAction action, const 
   if (action == Qt::IgnoreAction) return false;
 
   if (is_locked()) {
-    EmitLockedError();
+    if (MimeDataHasItems(data)) EmitLockedError();
     return false;
   }
 
@@ -1156,7 +1169,7 @@ bool Playlist::dropMimeData(const QMimeData *data, Qt::DropAction action, const 
 void Playlist::InsertUrls(const QList<QUrl> &urls, const int pos, const bool play_now, const bool enqueue, const bool enqueue_next, const bool signal) {
 
   if (is_locked()) {
-    EmitLockedError();
+    if (!urls.isEmpty()) EmitLockedError();
     return;
   }
 

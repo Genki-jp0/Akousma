@@ -81,6 +81,7 @@ class CommandlineOptions {
   const QList<QUrl> &urls() const { return urls_; }
   QString language() const { return language_; }
   QString log_levels() const { return log_levels_; }
+  QString log_file() const { return log_file_; }
   QString playlist_name() const { return playlist_name_; }
   QString window_size() const { return window_size_; }
 
@@ -122,6 +123,7 @@ class CommandlineOptions {
     ImportSettings,
     ResetSettings,
     Restarted,
+    LogFile,
   };
 
   void RemoveArg(const QString &starts_with, int count);
@@ -156,6 +158,8 @@ class CommandlineOptions {
   QString language_;
   QString log_levels_;
   QString playlist_name_;
+  // Not passed on to a running instance: it's where this process logs to.
+  QString log_file_;
   QString window_size_;
 
   QList<QUrl> urls_;

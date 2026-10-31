@@ -45,6 +45,8 @@
 #include <QTableWidgetItem>
 #include <QStackedWidget>
 #include <QTableWidget>
+#include <QTimer>
+#include <QLabel>
 
 #include "includes/shared_ptr.h"
 #include "core/iconloader.h"
@@ -59,13 +61,32 @@
 
 using namespace Qt::Literals::StringLiterals;
 
+namespace {
+
+// How long the dialog waits for a device to say which formats it supports.
+constexpr int kFormatsTimeoutMsec = 30000;
+
+struct FormatsResult {
+  bool success = false;
+  QList<Song::FileType> filetypes;
+};
+
+}  // namespace
+
 DeviceProperties::DeviceProperties(QWidget *parent)
     : QDialog(parent),
       ui_(new Ui_DeviceProperties),
       device_manager_(nullptr),
-      updating_formats_(false) {
+      updating_formats_(false),
+      formats_generation_(0),
+      formats_timer_(new QTimer(this)) {
 
   ui_->setupUi(this);
+
+  formats_text_ = ui_->label_5->text();
+  formats_timer_->setSingleShot(true);
+  formats_timer_->setInterval(kFormatsTimeoutMsec);
+  QObject::connect(formats_timer_, &QTimer::timeout, this, &DeviceProperties::UpdateFormatsTimeout);
 
   QObject::connect(ui_->open_device, &QPushButton::clicked, this, &DeviceProperties::OpenDevice);
 
@@ -79,7 +100,7 @@ DeviceProperties::~DeviceProperties() { delete ui_; }
 void DeviceProperties::Init(const SharedPtr<DeviceManager> device_manager) {
 
   device_manager_ = device_manager;
-  QObject::connect(&*device_manager_, &DeviceManager::dataChanged, this, &DeviceProperties::ModelChanged);
+  QObject::connect(&*device_manager_, &DeviceManager::dataChanged, this, &DeviceProperties::DeviceDataChanged);
   QObject::connect(&*device_manager_, &DeviceManager::rowsInserted, this, &DeviceProperties::ModelChanged);
   QObject::connect(&*device_manager_, &DeviceManager::rowsRemoved, this, &DeviceProperties::ModelChanged);
 
@@ -125,8 +146,12 @@ void DeviceProperties::ShowDevice(const QModelIndex &idx) {
     }
   }
 
+  // Ask the device again each time the dialog is opened.
+  formats_device_.reset();
+  hardware_info_.clear();
+
   UpdateHardwareInfo();
-  UpdateFormats();
+  UpdateFormats(true);
 
   show();
 
@@ -135,6 +160,15 @@ void DeviceProperties::ShowDevice(const QModelIndex &idx) {
 void DeviceProperties::AddHardwareInfo(const int row, const QString &key, const QString &value) {
   ui_->hardware_info->setItem(row, 0, new QTableWidgetItem(key));
   ui_->hardware_info->setItem(row, 1, new QTableWidgetItem(value));
+}
+
+void DeviceProperties::DeviceDataChanged(const QModelIndex &top_left, const QModelIndex &bottom_right) {
+
+  // Devices that are loading change several times a second (their progress): only this device matters.
+  if (index_.isValid() && (top_left.parent() != index_.parent() || index_.row() < top_left.row() || index_.row() > bottom_right.row())) return;
+
+  ModelChanged();
+
 }
 
 void DeviceProperties::ModelChanged() {
@@ -146,7 +180,7 @@ void DeviceProperties::ModelChanged() {
   }
   else {
     UpdateHardwareInfo();
-    UpdateFormats();
+    UpdateFormats(false);
   }
 
 }
@@ -166,19 +200,27 @@ void DeviceProperties::UpdateHardwareInfo() {
         info.remove(key);
     }
 
-    ui_->hardware_info_stack->setCurrentWidget(ui_->hardware_info_page);
-    ui_->hardware_info->clear();
-    ui_->hardware_info->setRowCount(2 + static_cast<int>(info.count()));
-
-    int row = 0;
-    AddHardwareInfo(row++, tr("Model"), lister->DeviceModel(id));
-    AddHardwareInfo(row++, tr("Manufacturer"), lister->DeviceManufacturer(id));
+    QList<QPair<QString, QString>> hardware_info;
+    hardware_info << qMakePair(tr("Model"), lister->DeviceModel(id));
+    hardware_info << qMakePair(tr("Manufacturer"), lister->DeviceManufacturer(id));
     keys = info.keys();
     for (const QString &key : std::as_const(keys)) {
-      AddHardwareInfo(row++, key, info.value(key).toString());
+      hardware_info << qMakePair(key, info.value(key).toString());
     }
 
-    ui_->hardware_info->sortItems(0);
+    ui_->hardware_info_stack->setCurrentWidget(ui_->hardware_info_page);
+
+    // Rebuilt only when it changed, so it doesn't flicker or scroll back while a device is loading.
+    if (hardware_info != hardware_info_) {
+      hardware_info_ = hardware_info;
+      ui_->hardware_info->clear();
+      ui_->hardware_info->setRowCount(static_cast<int>(hardware_info.count()));
+      int row = 0;
+      for (const QPair<QString, QString> &item : std::as_const(hardware_info)) {
+        AddHardwareInfo(row++, item.first, item.second);
+      }
+      ui_->hardware_info->sortItems(0);
+    }
   }
   else {
     ui_->hardware_info_stack->setCurrentWidget(ui_->hardware_info_not_connected_page);
@@ -201,55 +243,80 @@ void DeviceProperties::UpdateHardwareInfo() {
 
 }
 
-void DeviceProperties::UpdateFormats() {
+void DeviceProperties::UpdateFormats(const bool reset) {
 
   DeviceLister *lister = device_manager_->GetLister(index_);
   SharedPtr<ConnectedDevice> device = device_manager_->GetConnectedDevice(index_);
 
-  // Transcode mode
-  MusicStorage::TranscodeMode mode = static_cast<MusicStorage::TranscodeMode>(index_.data(DeviceManager::Role_TranscodeMode).toInt());
-  switch (mode) {
-    case MusicStorage::TranscodeMode::Transcode_Always:
-      ui_->transcode_all->setChecked(true);
-      break;
+  if (reset) {
+    // Transcode mode
+    MusicStorage::TranscodeMode mode = static_cast<MusicStorage::TranscodeMode>(index_.data(DeviceManager::Role_TranscodeMode).toInt());
+    switch (mode) {
+      case MusicStorage::TranscodeMode::Transcode_Always:
+        ui_->transcode_all->setChecked(true);
+        break;
 
-    case MusicStorage::TranscodeMode::Transcode_Never:
-      ui_->transcode_off->setChecked(true);
-      break;
+      case MusicStorage::TranscodeMode::Transcode_Never:
+        ui_->transcode_off->setChecked(true);
+        break;
 
-    case MusicStorage::TranscodeMode::Transcode_Unsupported:
-    default:
-      ui_->transcode_unsupported->setChecked(true);
-      break;
+      case MusicStorage::TranscodeMode::Transcode_Unsupported:
+      default:
+        ui_->transcode_unsupported->setChecked(true);
+        break;
+    }
   }
 
   // If there's no lister then the device is physically disconnected
-  if (!lister) {
+  // If there's a lister but no device then the user just needs to open the device.  This will cause a rescan so we don't do it automatically.
+  if (!lister || !device) {
+    formats_device_.reset();
+    ++formats_generation_;
+    formats_timer_->stop();
+    updating_formats_ = false;
     ui_->formats_stack->setCurrentWidget(ui_->formats_page_not_connected);
-    ui_->open_device->setEnabled(false);
+    ui_->open_device->setEnabled(lister != nullptr);
     return;
   }
 
-  // If there's a lister but no device then the user just needs to open the
-  // device.  This will cause a rescan so we don't do it automatically.
-  if (!device) {
-    ui_->formats_stack->setCurrentWidget(ui_->formats_page_not_connected);
-    ui_->open_device->setEnabled(true);
-    return;
-  }
+  // Asked already (or being asked) for this device.
+  if (formats_device_.lock() == device) return;
 
-  if (!updating_formats_) {
-    // Get the device's supported formats list.  This takes a long time and it blocks, so do it in the background.
-    supported_formats_.clear();
+  // Get the device's supported formats list.  This can take long and it blocks, so do it in the background, and give up
+  // waiting for it after a while: it's only shown here.
+  formats_device_ = device;
+  const int generation = ++formats_generation_;
+  updating_formats_ = true;
+  supported_formats_.clear();
 
-    QFuture<bool> future = QtConcurrent::run(&ConnectedDevice::GetSupportedFiletypes, device, &supported_formats_);
-    QFutureWatcher<bool> *watcher = new QFutureWatcher<bool>(this);
-    QObject::connect(watcher, &QFutureWatcher<bool>::finished, this, &DeviceProperties::UpdateFormatsFinished);
-    watcher->setFuture(future);
+  QFuture<FormatsResult> future = QtConcurrent::run([device]() {
+    FormatsResult result;
+    result.success = device->GetSupportedFiletypes(&result.filetypes);
+    return result;
+  });
+  QFutureWatcher<FormatsResult> *watcher = new QFutureWatcher<FormatsResult>(this);
+  QObject::connect(watcher, &QFutureWatcher<FormatsResult>::finished, this, [this, watcher, generation]() {
+    const FormatsResult result = watcher->result();
+    watcher->deleteLater();
+    if (generation != formats_generation_) return;
+    formats_timer_->stop();
+    updating_formats_ = false;
+    ShowFormats(result.success, result.filetypes, result.success ? QString() : tr("Could not ask the device which file formats it supports."));
+  });
+  watcher->setFuture(future);
 
-    ui_->formats_stack->setCurrentWidget(ui_->formats_page_loading);
-    updating_formats_ = true;
-  }
+  formats_timer_->start();
+  ui_->formats_stack->setCurrentWidget(ui_->formats_page_loading);
+
+}
+
+void DeviceProperties::UpdateFormatsTimeout() {
+
+  if (!updating_formats_) return;
+
+  ++formats_generation_;
+  updating_formats_ = false;
+  ShowFormats(false, QList<Song::FileType>(), tr("The device didn't say which file formats it supports within %1 seconds. Close this dialog and open it again to ask again.").arg(kFormatsTimeoutMsec / 1000));
 
 }
 
@@ -281,20 +348,14 @@ void DeviceProperties::accept() {
 
 void DeviceProperties::OpenDevice() { device_manager_->Connect(index_); }
 
-void DeviceProperties::UpdateFormatsFinished() {
+void DeviceProperties::ShowFormats(const bool success, const QList<Song::FileType> &formats, const QString &error_text) {
 
-  QFutureWatcher<bool> *watcher = static_cast<QFutureWatcher<bool>*>(sender());
-  bool result = watcher->result();
-  watcher->deleteLater();
+  supported_formats_ = success ? formats : QList<Song::FileType>();
 
-  updating_formats_ = false;
-
-  if (!result) {
-    supported_formats_.clear();
-  }
-
-  // Hide widgets if there are no supported types
-  ui_->supported_formats_container->setVisible(!supported_formats_.isEmpty());
+  // Hide widgets if there are no supported types, show what went wrong if asking failed
+  ui_->label_5->setText(error_text.isEmpty() ? formats_text_ : error_text);
+  ui_->supported_formats->setVisible(error_text.isEmpty());
+  ui_->supported_formats_container->setVisible(!supported_formats_.isEmpty() || !error_text.isEmpty());
   ui_->transcode_unsupported->setEnabled(!supported_formats_.isEmpty());
 
   if (ui_->transcode_unsupported->isChecked() && supported_formats_.isEmpty()) {

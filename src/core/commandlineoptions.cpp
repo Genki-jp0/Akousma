@@ -92,6 +92,7 @@ constexpr char kHelpText[] =
     "      --quiet                %31\n"
     "      --verbose              %32\n"
     "      --log-levels <levels>  %33\n"
+    "      --log-file <file>      %45\n"
     "      --version              %34\n"
     "      --create-fingerprint <filename>  %35\n"
     "\n"
@@ -198,6 +199,7 @@ bool CommandlineOptions::Parse() {
       { OPTSTR("quiet"), no_argument, nullptr, LongOptions::Quiet },
       { OPTSTR("verbose"), no_argument, nullptr, LongOptions::Verbose },
       { OPTSTR("log-levels"), required_argument, nullptr, LongOptions::LogLevels },
+      { OPTSTR("log-file"), required_argument, nullptr, LongOptions::LogFile },
       { OPTSTR("version"), no_argument, nullptr, LongOptions::Version },
       { OPTSTR("create-fingerprint"), required_argument, nullptr, LongOptions::CreateFingerPrint },
       { OPTSTR("import-from"), required_argument, nullptr, LongOptions::ImportFrom },
@@ -267,7 +269,8 @@ bool CommandlineOptions::Parse() {
                      QObject::tr("Settings options"),
                      QObject::tr("Export the settings to a file, without passwords and logins, and exit"),
                      QObject::tr("Back up the settings, replace them with an exported file and exit, Akousma must not be running"),
-                     QObject::tr("Back up the settings, reset them to the defaults and exit, Akousma must not be running")
+                     QObject::tr("Back up the settings, reset them to the defaults and exit, Akousma must not be running"),
+                     QObject::tr("Also write the log to <file> (appended), e.g. on Windows, where Akousma has no console")
                      );
 
         std::cout << translated_help_text.toLocal8Bit().constData();
@@ -332,6 +335,9 @@ bool CommandlineOptions::Parse() {
         break;
       case LongOptions::LogLevels:
         log_levels_ = OptArgToString(optarg);
+        break;
+      case LongOptions::LogFile:
+        log_file_ = OptArgToString(optarg);
         break;
       case LongOptions::Version:{
         QString version_text = QString::fromUtf8(kVersionText).arg(QLatin1String(AKOUSMA_VERSION_DISPLAY), QLatin1String(AKOUSMA_BASE_STRAWBERRY_VERSION), QLatin1String(AKOUSMA_BASE_STRAWBERRY_COMMIT));

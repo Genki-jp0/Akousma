@@ -40,6 +40,7 @@
 class QTimer;
 class QThread;
 class WpdScopedComInit;
+class WpdConnection;
 
 // Windows only: lists the MTP devices (phones, music players) Windows reaches through the Windows Portable Devices API.
 // Drives (USB sticks, players in mass storage mode, "MSC" devices in WPD) are left to the GIO lister, which shows them
@@ -88,11 +89,18 @@ class WpdLister : public DeviceLister {
   };
 
   static void DevicesChanged(void *context);
-  static bool ReadDevice(const QString &pnp_device_id, DeviceInfo *info);
+  bool ReadDevice(const QString &pnp_device_id, DeviceInfo *info);
+  // The connection the lister is using, so ShutDown() can cancel it from another thread.
+  void SetBusyConnection(WpdConnection *connection);
+  bool shutting_down();
 
  private:
   QMutex mutex_;
   QMap<QString, DeviceInfo> devices_;  // Unique ID -> device
+
+  QMutex connection_mutex_;
+  WpdConnection *busy_connection_;
+  bool shutting_down_;
 
   ScopedPtr<WpdScopedComInit> com_;
   QThread *com_thread_;

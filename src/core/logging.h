@@ -69,6 +69,9 @@ enum Level {
 
 void Init();
 void SetLevels(const QString &levels);
+// Also appends every line that is logged to this file (flushed line by line), for builds without a console, like
+// Akousma on Windows. Returns false if the file can't be opened.
+bool SetLogFile(const QString &filename);
 
 void DumpStackTrace();
 

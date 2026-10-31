@@ -39,6 +39,7 @@
 #include "connecteddevice.h"
 
 class QThread;
+class QTimer;
 class DeviceLister;
 class DeviceManager;
 class TaskManager;
@@ -89,9 +90,15 @@ class WpdDevice : public ConnectedDevice {
  private Q_SLOTS:
   void LoadFinished(const bool success, WpdConnection *connection);
   void LoaderError(const QString &message);
+  // Connected directly: called in the loader's thread.
+  void SetSupportedFiletypes(const QList<Song::FileType> &filetypes);
+  void LoaderWatchdog();
+  void LoaderAbortTimeout();
 
  private:
   bool GetSupportedFiletypes(QList<Song::FileType> *ret, WpdConnection *connection);
+  // Lets a loader that doesn't stop run out on its own (it deletes itself when it ends) and forgets it.
+  void AbandonLoader();
   QString MusicFolder(QString &error_text);
   QString Folder(const QString &parent_id, const QString &name, QString &error_text);
 
@@ -103,6 +110,12 @@ class WpdDevice : public ConnectedDevice {
   WpdLoader *loader_;
   QThread *loader_thread_;
   bool closing_;
+  QTimer *watchdog_timer_;
+
+  // The file types the device takes, read once (by the loader, or by GetSupportedFiletypes()) and kept.
+  QMutex filetypes_mutex_;
+  bool have_supported_filetypes_;
+  QList<Song::FileType> supported_filetypes_;
 
   QMutex db_busy_;
   bool db_busy_locked_;

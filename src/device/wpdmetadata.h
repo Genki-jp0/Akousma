@@ -75,8 +75,25 @@ QUuid FormatForFileType(const Song::FileType filetype);
 // The file types for the audio formats a device supports (IPortableDeviceCapabilities::GetSupportedFormats), without duplicates.
 QList<Song::FileType> FileTypesForFormats(const QList<QUuid> &formats);
 
+// The file types assumed for a device that doesn't tell which formats it takes.
+QList<Song::FileType> DefaultFileTypes();
+
 // Whether an object is a song: audio content type, or an audio format or file name.
 bool IsAudioObject(const ObjectInfo &info);
+
+// Whether the loader leaves out a folder: hidden folders (".thumbnails", ".Trash" etc.) anywhere, and at the top of a
+// storage (depth 0) the folders phones keep app data, photos, videos, system sounds and messenger media in (Android,
+// DCIM, Pictures, Movies, Alarms, Notifications, Ringtones, LOST.DIR, WhatsApp, Telegram). Case insensitive.
+bool SkipFolder(const QString &name, const int depth);
+
+// The part of the loading progress (0 to 1) a folder covers: [begin, end). A folder's own files take the first share
+// and each subfolder one more, so the progress only goes forward and reaches end when the last subfolder is done.
+struct ProgressSpan {
+  double begin = 0.0;
+  double end = 1.0;
+  // The span of the files directly in the folder (part -1) or of subfolder part (0 to parts - 1) of parts subfolders.
+  ProgressSpan Part(const int part, const int parts) const;
+};
 
 // Song URLs: wpd:/<object ID, percent encoded>. Object IDs are opaque strings, any character can be in them.
 QUrl SongUrl(const QString &object_id);

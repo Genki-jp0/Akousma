@@ -25,12 +25,17 @@
 
 #include "config.h"
 
+#include <atomic>
+
 #include <QObject>
+#include <QMutex>
+#include <QList>
 #include <QString>
 #include <QUrl>
 
 #include "includes/scoped_ptr.h"
 #include "includes/shared_ptr.h"
+#include "core/song.h"
 
 class QThread;
 class TaskManager;
@@ -46,7 +51,12 @@ class WpdLoader : public QObject {
   explicit WpdLoader(const QUrl &url, const SharedPtr<TaskManager> task_manager, const SharedPtr<TagReaderClient> tagreader_client, const SharedPtr<CollectionBackend> backend, QObject *parent = nullptr);
   ~WpdLoader() override;
 
-  void Abort() { abort_ = true; }
+  // Thread safe: stops loading as soon as possible, also in the middle of a call to the device (it's cancelled).
+  // The loader still emits LoadFinished(), without a connection.
+  void Abort();
+
+  // Thread safe: the call to the device the loader is waiting for and since how many milliseconds, empty if none.
+  QString CurrentOperation(qint64 *elapsed_msec);
 
  public Q_SLOTS:
   void LoadDatabase();
@@ -54,19 +64,26 @@ class WpdLoader : public QObject {
  Q_SIGNALS:
   void Error(const QString &message);
   void TaskStarted(const int task_id);
+  // Emitted in the loader's thread, connect it directly.
+  void SupportedFiletypesRead(const QList<Song::FileType> &filetypes);
   void LoadFinished(const bool success, WpdConnection *connection);
 
  private:
-  bool TryLoad();
+  bool TryLoad(const int task_id);
+  bool OpenConnection();
+  bool SleepUnlessAborted(const int msec) const;
 
  private:
   QUrl url_;
   SharedPtr<TaskManager> task_manager_;
   SharedPtr<TagReaderClient> tagreader_client_;
   SharedPtr<CollectionBackend> backend_;
-  ScopedPtr<WpdConnection> connection_;
   QThread *original_thread_;
-  bool abort_;
+  std::atomic<bool> abort_;
+
+  // Guards connection_ against Abort() from another thread.
+  QMutex connection_mutex_;
+  ScopedPtr<WpdConnection> connection_;
 };
 
 #endif  // WPDLOADER_H

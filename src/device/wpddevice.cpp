@@ -23,7 +23,11 @@
 #include "config.h"
 
 #include <QThread>
+#include <QTimer>
+#include <QDeadlineTimer>
 #include <QMutex>
+#include <QMutexLocker>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
 #include <QDateTime>
@@ -54,6 +58,11 @@ class DeviceManager;
 namespace {
 // The folder songs are copied to, at the top of the storage; it's where phones and players look for music.
 constexpr char kMusicFolder[] = "Music";
+// How long closing the device or Akousma waits for the loader to stop once it's aborted.
+constexpr int kLoaderAbortWaitMsec = 5000;
+// How often the watchdog looks at the loader, and from when on it logs a call to the device as slow.
+constexpr int kWatchdogMsec = 10000;
+constexpr qint64 kSlowCallMsec = 10000;
 }  // namespace
 
 WpdDevice::WpdDevice(const QUrl &url,
@@ -74,20 +83,35 @@ WpdDevice::WpdDevice(const QUrl &url,
       loader_(nullptr),
       loader_thread_(nullptr),
       closing_(false),
-      db_busy_locked_(false) {}
+      watchdog_timer_(new QTimer(this)),
+      have_supported_filetypes_(false),
+      db_busy_locked_(false) {
+
+  watchdog_timer_->setInterval(kWatchdogMsec);
+  QObject::connect(watchdog_timer_, &QTimer::timeout, this, &WpdDevice::LoaderWatchdog);
+
+}
 
 WpdDevice::~WpdDevice() {
 
   if (loader_) {
+    // Never wait for the device without an end: the loader is cancelled, and left to end on its own if it doesn't.
+    loader_->Abort();
     loader_thread_->exit();
-    loader_thread_->wait();
-    loader_->deleteLater();
-    loader_ = nullptr;
-    if (db_busy_locked_) {
-      db_busy_.unlock();
-      db_busy_locked_ = false;
+    if (loader_thread_->wait(QDeadlineTimer(kLoaderAbortWaitMsec))) {
+      loader_->deleteLater();
+      loader_ = nullptr;
+      loader_thread_->deleteLater();
+      loader_thread_ = nullptr;
+      if (db_busy_locked_) {
+        db_busy_.unlock();
+        db_busy_locked_ = false;
+      }
     }
-    loader_thread_->deleteLater();
+    else {
+      qLog(Warning) << "The WPD loader of" << url_ << "didn't stop in" << kLoaderAbortWaitMsec << "ms, leaving it";
+      AbandonLoader();
+    }
   }
 
 }
@@ -107,6 +131,7 @@ bool WpdDevice::Init() {
   QObject::connect(loader_, &WpdLoader::Error, this, &WpdDevice::LoaderError);
   QObject::connect(loader_, &WpdLoader::TaskStarted, this, &WpdDevice::TaskStarted);
   QObject::connect(loader_, &WpdLoader::LoadFinished, this, &WpdDevice::LoadFinished);
+  QObject::connect(loader_, &WpdLoader::SupportedFiletypesRead, this, &WpdDevice::SetSupportedFiletypes, Qt::DirectConnection);
   QObject::connect(loader_thread_, &QThread::started, loader_, &WpdLoader::LoadDatabase);
 
   return true;
@@ -118,6 +143,7 @@ void WpdDevice::ConnectAsync() {
   db_busy_.lock();
   db_busy_locked_ = true;
   loader_thread_->start();
+  watchdog_timer_->start();
 
 }
 
@@ -126,7 +152,10 @@ void WpdDevice::Close() {
   closing_ = true;
 
   if (IsLoading()) {
+    // The loader cancels what it's waiting for and ends; if it doesn't, close without it.
+    qLog(Info) << "Closing WPD device" << url_ << "while it's loading, stopping the loader";
     loader_->Abort();
+    QTimer::singleShot(kLoaderAbortWaitMsec, this, &WpdDevice::LoaderAbortTimeout);
   }
   else {
     ConnectedDevice::Close();
@@ -134,7 +163,76 @@ void WpdDevice::Close() {
 
 }
 
+void WpdDevice::LoaderAbortTimeout() {
+
+  if (!loader_) return;  // It finished, LoadFinished() closed the device.
+
+  qLog(Warning) << "The WPD loader of" << url_ << "didn't stop in" << kLoaderAbortWaitMsec << "ms, closing the device without it";
+  AbandonLoader();
+  ConnectedDevice::Close();
+
+}
+
+void WpdDevice::AbandonLoader() {
+
+  if (!loader_) return;
+
+  watchdog_timer_->stop();
+
+  WpdLoader *loader = loader_;
+  QThread *thread = loader_thread_;
+  loader_ = nullptr;
+  loader_thread_ = nullptr;
+
+  QObject::disconnect(loader, nullptr, this, nullptr);
+  // The loader moves itself back to this thread before its thread ends, so both are deleted here once it ends.
+  QObject::connect(thread, &QThread::finished, loader, &QObject::deleteLater);
+  QObject::connect(thread, &QThread::finished, thread, &QObject::deleteLater);
+  thread->exit();
+  if (thread->isFinished()) {
+    loader->deleteLater();
+    thread->deleteLater();
+  }
+
+  if (db_busy_locked_) {
+    db_busy_.unlock();
+    db_busy_locked_ = false;
+  }
+
+}
+
+void WpdDevice::LoaderWatchdog() {
+
+  if (!loader_) {
+    watchdog_timer_->stop();
+    return;
+  }
+
+  qint64 elapsed_msec = 0;
+  const QString operation = loader_->CurrentOperation(&elapsed_msec);
+  if (!operation.isEmpty() && elapsed_msec >= kSlowCallMsec) {
+    qLog(Warning) << "WPD device" << url_ << "has been answering" << operation << "for" << elapsed_msec / 1000 << "seconds";
+  }
+
+}
+
+void WpdDevice::SetSupportedFiletypes(const QList<Song::FileType> &filetypes) {
+
+  QMutexLocker l(&filetypes_mutex_);
+  supported_filetypes_ = filetypes;
+  have_supported_filetypes_ = true;
+
+}
+
 void WpdDevice::LoadFinished(const bool success, WpdConnection *connection) {
+
+  watchdog_timer_->stop();
+
+  // Sent before the loader was given up (AbandonLoader()), the device is closing without it.
+  if (!loader_) {
+    delete connection;
+    return;
+  }
 
   connection_.reset(connection);
 
@@ -328,23 +426,37 @@ bool WpdDevice::FinishDelete(const bool success, QString &error_text) { return F
 
 bool WpdDevice::GetSupportedFiletypes(QList<Song::FileType> *ret) {
 
-  QMutexLocker l(&db_busy_);
+  // Called by the device properties in a thread of their own. This doesn't wait for db_busy_ (unlike MtpDevice, which
+  // libmtp makes do so): that is held while the loader reads the device, which can take minutes.
+  // The loader reads the formats first thing; until then, or if it didn't, ask the device with a connection of our own
+  // (WPD lets several connections use a device at the same time).
+  {
+    QMutexLocker l(&filetypes_mutex_);
+    if (have_supported_filetypes_) {
+      *ret << supported_filetypes_;
+      return true;
+    }
+  }
 
   WpdScopedComInit com;
 
-  // Use the connection the device already holds.
-  if (connection_ && connection_->is_valid()) {
-    return GetSupportedFiletypes(ret, connection_.get());
-  }
-
-  // There's no connection, for example when loading the device failed, so open one only for this.
-  WpdConnection connection(WpdMetadata::PnpDeviceIdFromDeviceUrl(url_));
+  QElapsedTimer timer;
+  timer.start();
+  const QString pnp_device_id = WpdMetadata::PnpDeviceIdFromDeviceUrl(url_);
+  qLog(Info) << "Asking WPD device" << pnp_device_id << "which formats it takes";
+  WpdConnection connection(pnp_device_id);
   if (!connection.is_valid()) {
     qLog(Warning) << "Error connecting to MTP device, couldn't get list of supported filetypes:" << connection.error_text();
     return false;
   }
 
-  return GetSupportedFiletypes(ret, &connection);
+  QList<Song::FileType> filetypes;
+  if (!GetSupportedFiletypes(&filetypes, &connection)) return false;
+  qLog(Info) << "WPD device" << pnp_device_id << "answered with" << filetypes.count() << "file types in" << timer.elapsed() << "ms";
+
+  SetSupportedFiletypes(filetypes);
+  *ret << filetypes;
+  return true;
 
 }
 
@@ -353,7 +465,7 @@ bool WpdDevice::GetSupportedFiletypes(QList<Song::FileType> *ret, WpdConnection 
   const QList<Song::FileType> filetypes = WpdMetadata::FileTypesForFormats(connection->SupportedAudioFormats());
   if (filetypes.isEmpty()) {
     qLog(Warning) << "The MTP device didn't tell which audio formats it supports, assuming the common ones";
-    *ret << Song::FileType::MPEG << Song::FileType::MP4 << Song::FileType::FLAC << Song::FileType::OggVorbis << Song::FileType::OggOpus << Song::FileType::WAV;
+    *ret << WpdMetadata::DefaultFileTypes();
     return true;
   }
 

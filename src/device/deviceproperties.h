@@ -31,14 +31,17 @@
 #include <QFuture>
 #include <QAbstractItemModel>
 #include <QList>
+#include <QPair>
 #include <QString>
 
 #include "includes/shared_ptr.h"
 #include "core/song.h"
 
 class QWidget;
+class QTimer;
 
 class DeviceManager;
+class ConnectedDevice;
 class Ui_DeviceProperties;
 
 class DeviceProperties : public QDialog {
@@ -57,12 +60,16 @@ class DeviceProperties : public QDialog {
  private:
   void UpdateHardwareInfo();
   void AddHardwareInfo(const int row, const QString &key, const QString &value);
-  void UpdateFormats();
+  // Shows the transcode settings of the device too when reset is true (when the dialog is opened), not when the device
+  // only changed, so what the user picked stays.
+  void UpdateFormats(const bool reset);
+  void ShowFormats(const bool success, const QList<Song::FileType> &formats, const QString &error_text);
 
  private Q_SLOTS:
+  void DeviceDataChanged(const QModelIndex &top_left, const QModelIndex &bottom_right);
   void ModelChanged();
   void OpenDevice();
-  void UpdateFormatsFinished();
+  void UpdateFormatsTimeout();
 
  private:
   Ui_DeviceProperties *ui_;
@@ -72,6 +79,13 @@ class DeviceProperties : public QDialog {
 
   bool updating_formats_;
   QList<Song::FileType> supported_formats_;
+  // The device the formats were asked of; they are asked again only for another device, or when the dialog is opened.
+  std::weak_ptr<ConnectedDevice> formats_device_;
+  // Answers to earlier questions (timed out, or for another device) are ignored.
+  int formats_generation_;
+  QTimer *formats_timer_;
+  QString formats_text_;
+  QList<QPair<QString, QString>> hardware_info_;
 };
 
 #endif  // DEVICEPROPERTIES_H

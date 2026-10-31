@@ -203,6 +203,42 @@ QList<Song::FileType> FileTypesForFormats(const QList<QUuid> &formats) {
 
 }
 
+QList<Song::FileType> DefaultFileTypes() {
+  return QList<Song::FileType>() << Song::FileType::MPEG << Song::FileType::MP4 << Song::FileType::FLAC << Song::FileType::OggVorbis << Song::FileType::OggOpus << Song::FileType::WAV;
+}
+
+bool SkipFolder(const QString &name, const int depth) {
+
+  const QString trimmed = name.trimmed();
+  if (trimmed.isEmpty()) return false;
+  if (trimmed.startsWith(u'.')) return true;
+  if (depth > 0) return false;
+
+  static const QStringList kTopLevelFolders = QStringList() << u"Android"_s
+                                                            << u"DCIM"_s
+                                                            << u"Pictures"_s
+                                                            << u"Movies"_s
+                                                            << u"Alarms"_s
+                                                            << u"Notifications"_s
+                                                            << u"Ringtones"_s
+                                                            << u"LOST.DIR"_s
+                                                            << u"WhatsApp"_s
+                                                            << u"Telegram"_s;
+  return kTopLevelFolders.contains(trimmed, Qt::CaseInsensitive);
+
+}
+
+ProgressSpan ProgressSpan::Part(const int part, const int parts) const {
+
+  const double share = (end - begin) / static_cast<double>(qMax(0, parts) + 1);
+  const int index = qBound(-1, part, qMax(0, parts) - 1) + 1;
+  ProgressSpan ret;
+  ret.begin = begin + share * static_cast<double>(index);
+  ret.end = index == parts ? end : ret.begin + share;
+  return ret;
+
+}
+
 bool IsAudioObject(const ObjectInfo &info) {
 
   if (info.audio_content_type) return true;

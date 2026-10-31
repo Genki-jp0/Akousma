@@ -33,6 +33,8 @@
 #include <QVariantList>
 #include <QVariantMap>
 #include <QUrl>
+#include <QScopeGuard>
+#include <QElapsedTimer>
 
 #include "core/logging.h"
 #include "wpdmetadata.h"
@@ -60,6 +62,8 @@ constexpr int kDeviceTypeVideo = 4;
 
 WpdLister::WpdLister(QObject *parent)
     : DeviceLister(parent),
+      busy_connection_(nullptr),
+      shutting_down_(false),
       com_thread_(nullptr),
       notification_(nullptr),
       rescan_timer_(nullptr),
@@ -96,6 +100,13 @@ bool WpdLister::Init() {
 
 void WpdLister::ShutDown() {
 
+  // A device that doesn't answer mustn't keep Akousma from ending.
+  {
+    QMutexLocker l(&connection_mutex_);
+    shutting_down_ = true;
+    if (busy_connection_) busy_connection_->Cancel();
+  }
+
   if (notification_) {
     WpdConnection::UnregisterArrivalNotification(notification_);
     notification_ = nullptr;
@@ -128,17 +139,38 @@ void WpdLister::ScheduleRescan() {
 
 }
 
+void WpdLister::SetBusyConnection(WpdConnection *connection) {
+
+  QMutexLocker l(&connection_mutex_);
+  busy_connection_ = connection;
+  if (busy_connection_ && shutting_down_) busy_connection_->Cancel();
+
+}
+
+bool WpdLister::shutting_down() {
+
+  QMutexLocker l(&connection_mutex_);
+  return shutting_down_;
+
+}
+
 bool WpdLister::ReadDevice(const QString &pnp_device_id, DeviceInfo *info) {
 
-  WpdConnection connection(pnp_device_id);
-  if (!connection.is_valid()) {
-    qLog(Debug) << "Could not open WPD device" << pnp_device_id << connection.error_text();
+  QElapsedTimer timer;
+  timer.start();
+
+  WpdConnection connection(pnp_device_id, false);
+  SetBusyConnection(&connection);
+  const auto clear_busy_connection = qScopeGuard([this]() { SetBusyConnection(nullptr); });
+
+  if (!connection.Open()) {
+    qLog(Info) << "Could not open WPD device" << pnp_device_id << "(" << timer.elapsed() << "ms):" << connection.error_text();
     return false;
   }
 
   WpdConnection::DeviceInfo device_info;
   if (!connection.ReadDeviceInfo(&device_info)) {
-    qLog(Debug) << "Could not read WPD device" << pnp_device_id << connection.error_text();
+    qLog(Info) << "Could not read WPD device" << pnp_device_id << connection.error_text();
     return false;
   }
 
@@ -171,7 +203,7 @@ bool WpdLister::ReadDevice(const QString &pnp_device_id, DeviceInfo *info) {
     info->free_space += storage.free_space;
   }
 
-  qLog(Debug) << "WPD device" << info->friendly_name << info->protocol << "with" << info->storage_count << "storages," << info->free_space << "of" << info->capacity << "bytes free";
+  qLog(Debug) << "WPD device" << info->friendly_name << info->protocol << "with" << info->storage_count << "storages," << info->free_space << "of" << info->capacity << "bytes free," << timer.elapsed() << "ms";
 
   return true;
 
@@ -190,6 +222,7 @@ void WpdLister::Rescan() {
   QMap<QString, DeviceInfo> devices;
   bool waiting_for_storage = false;
   for (const QString &pnp_device_id : pnp_device_ids) {
+    if (shutting_down()) return;
     // Devices that are listed already and show their storage are kept as they are.
     bool known = false;
     for (auto it = old_devices.cbegin(); it != old_devices.cend(); ++it) {
@@ -213,15 +246,21 @@ void WpdLister::Rescan() {
   }
 
   for (auto it = old_devices.cbegin(); it != old_devices.cend(); ++it) {
-    if (!devices.contains(it.key())) Q_EMIT DeviceRemoved(it.key());
+    if (!devices.contains(it.key())) {
+      qLog(Info) << "WPD device" << it.value().friendly_name << it.value().pnp_device_id << "removed";
+      Q_EMIT DeviceRemoved(it.key());
+    }
   }
   for (auto it = devices.cbegin(); it != devices.cend(); ++it) {
+    const DeviceInfo &info = it.value();
     if (!old_devices.contains(it.key())) {
+      qLog(Info) << "WPD device" << info.friendly_name << info.pnp_device_id << info.protocol << "added, with" << info.storage_count << "storages," << info.free_space << "of" << info.capacity << "bytes free";
       Q_EMIT DeviceAdded(it.key());
     }
     else {
       const DeviceInfo &old_info = old_devices[it.key()];
-      if (old_info.storage_count != it.value().storage_count || old_info.capacity != it.value().capacity || old_info.free_space != it.value().free_space || old_info.friendly_name != it.value().friendly_name) {
+      if (old_info.storage_count != info.storage_count || old_info.capacity != info.capacity || old_info.free_space != info.free_space || old_info.friendly_name != info.friendly_name) {
+        qLog(Info) << "WPD device" << info.friendly_name << "changed, now with" << info.storage_count << "storages," << info.free_space << "of" << info.capacity << "bytes free";
         Q_EMIT DeviceChanged(it.key());
       }
     }
@@ -321,8 +360,10 @@ void WpdLister::UpdateDeviceFreeSpace(const QString &id) {
     pnp_device_id = devices_[id].pnp_device_id;
   }
 
-  WpdConnection connection(pnp_device_id);
-  if (!connection.is_valid()) return;
+  WpdConnection connection(pnp_device_id, false);
+  SetBusyConnection(&connection);
+  const auto clear_busy_connection = qScopeGuard([this]() { SetBusyConnection(nullptr); });
+  if (!connection.Open()) return;
 
   quint64 capacity = 0;
   quint64 free_space = 0;

@@ -84,17 +84,44 @@ class WpdConnection {
     quint64 free_space = 0;
   };
 
+  // Why opening the device failed.
+  enum class ErrorKind { None, AccessDenied, Busy, Other };
+
+  // How far ListSongs() is.
+  struct WalkProgress {
+    int folders = 0;          // Folders listed
+    int folders_skipped = 0;  // Folders left out (WpdMetadata::SkipFolder())
+    int objects = 0;          // Files and folders seen
+    double fraction = 0.0;    // 0 to 1, an estimate (WpdMetadata::ProgressSpan)
+  };
+
   using ProgressFunction = std::function<void(const float progress)>;
   // Called for every song found; return false to stop.
   using ObjectFunction = std::function<bool(const WpdMetadata::ObjectInfo &info)>;
+  // Called after every folder ListSongs() looked into.
+  using WalkProgressFunction = std::function<void(const WalkProgress &progress)>;
 
-  // Opens the device (read and write; read only if the device refuses writing).
-  explicit WpdConnection(const QString &pnp_device_id);
+  // Opens the device (read and write; read only if the device refuses writing), unless open is false: then Open()
+  // opens it, so another thread can Cancel() it while it opens.
+  explicit WpdConnection(const QString &pnp_device_id, const bool open = true);
   ~WpdConnection();
 
+  bool Open();
   bool is_valid() const;
   QString error_text() const { return error_text_; }
+  ErrorKind error_kind() const { return error_kind_; }
   QString pnp_device_id() const { return pnp_device_id_; }
+
+  // Thread safe: stops what the connection is doing in another thread (IPortableDevice::Cancel() etc.), and makes it
+  // fail what it's asked to do from now on.
+  void Cancel();
+  bool cancelled() const;
+
+  // Thread safe: the WPD call the connection is waiting for and since how many milliseconds; empty if none.
+  QString CurrentOperation(qint64 *elapsed_msec) const;
+
+  // The COM apartment of the calling thread, for the log ("MTA", "STA", "none" etc.).
+  static QString ApartmentName();
 
   // The PnP device IDs of the WPD devices that are connected. The calling thread needs COM.
   static QStringList DevicePnpIds();
@@ -111,9 +138,11 @@ class WpdConnection {
   // The audio formats the device takes (IPortableDeviceCapabilities::GetSupportedFormats(WPD_CONTENT_TYPE_AUDIO)).
   QList<QUuid> SupportedAudioFormats();
 
-  // Walks the storages and calls callback for every song. Skips the Android folder (app data) and hidden folders at
-  // the top of a storage. Returns false if callback stopped it or the device failed.
-  bool ListSongs(const ObjectFunction &callback);
+  // Walks the storages and calls callback for every song, progress after every folder. Leaves out the folders
+  // WpdMetadata::SkipFolder() names. The properties of a folder's files are read in bulk
+  // (IPortableDevicePropertiesBulk) when the device can, else one file at a time; the full metadata only for songs.
+  // Returns false if callback stopped it, it was cancelled or the device failed.
+  bool ListSongs(const ObjectFunction &callback, const WalkProgressFunction &progress = WalkProgressFunction());
 
   // Reads the start of an object into a file, up to max_bytes (for reading tags of songs the device has no metadata for).
   bool DownloadHead(const QString &object_id, const QString &filename, const qint64 max_bytes);
@@ -132,6 +161,7 @@ class WpdConnection {
   ScopedPtr<Private> d_;
   QString pnp_device_id_;
   QString error_text_;
+  ErrorKind error_kind_;
 };
 
 #endif  // WPDCONNECTION_H

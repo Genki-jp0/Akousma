@@ -55,6 +55,9 @@
 #include <QDateTime>
 #include <QIODevice>
 #include <QBuffer>
+#include <QFile>
+#include <QMutex>
+#include <QMutexLocker>
 #include <QtMessageHandler>
 #include <QMessageLogContext>
 #include <QDebug>
@@ -74,6 +77,10 @@ const char *kDefaultLogLevels = "*:3";
 static constexpr char kMessageHandlerMagic[] = "__logging_message__";
 static const size_t kMessageHandlerMagicLen = strlen(kMessageHandlerMagic);
 static QtMessageHandler sOriginalMessageHandler = nullptr;
+
+// --log-file: lines are written from any thread.
+static QMutex sLogFileMutex;
+static QFile *sLogFile = nullptr;
 
 template<class T>
 static T CreateLogger(Level level, const QString &class_name, int line, const char *category);
@@ -140,14 +147,43 @@ class LoggedDebug : public DebugBase<LoggedDebug> {
   explicit LoggedDebug(QtMsgType t) : DebugBase(t) { nospace() << kMessageHandlerMagic; }
 };
 
+static void WriteLine(QtMsgType type, const char *line) {
+
+  fprintf(type == QtCriticalMsg || type == QtFatalMsg ? stderr : stdout, "%s\n", line);
+  fflush(type == QtCriticalMsg || type == QtFatalMsg ? stderr : stdout);
+
+  QMutexLocker l(&sLogFileMutex);
+  if (sLogFile) {
+    sLogFile->write(line);
+    sLogFile->write("\n", 1);
+    sLogFile->flush();
+  }
+
+}
+
+bool SetLogFile(const QString &filename) {
+
+  QFile *file = new QFile(filename);
+  if (!file->open(QIODevice::WriteOnly | QIODevice::Append)) {
+    std::cerr << "Could not open the log file " << filename.toLocal8Bit().constData() << ": " << file->errorString().toLocal8Bit().constData() << std::endl;
+    delete file;
+    return false;
+  }
+
+  QMutexLocker l(&sLogFileMutex);
+  delete sLogFile;
+  sLogFile = file;
+  return true;
+
+}
+
 static void MessageHandler(QtMsgType type, const QMessageLogContext &message_log_context, const QString &message) {
 
   Q_UNUSED(message_log_context)
 
   if (message.startsWith(QLatin1String(kMessageHandlerMagic))) {
     QByteArray message_data = message.toUtf8();
-    fprintf(type == QtCriticalMsg || type == QtFatalMsg ? stderr : stdout, "%s\n", message_data.constData() + kMessageHandlerMagicLen);
-    fflush(type == QtCriticalMsg || type == QtFatalMsg ? stderr : stdout);
+    WriteLine(type, message_data.constData() + kMessageHandlerMagicLen);
     return;
   }
 
@@ -172,8 +208,7 @@ static void MessageHandler(QtMsgType type, const QMessageLogContext &message_log
     d << line.toLocal8Bit().constData();
     if (d.buf_) {
       d.buf_->close();
-      fprintf(type == QtCriticalMsg || type == QtFatalMsg ? stderr : stdout, "%s\n", d.buf_->buffer().constData());
-      fflush(type == QtCriticalMsg || type == QtFatalMsg ? stderr : stdout);
+      WriteLine(type, d.buf_->buffer().constData());
     }
   }
 

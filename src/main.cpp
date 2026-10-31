@@ -177,6 +177,9 @@ int main(int argc, char *argv[]) {
     // Parse commandline options - need to do this before starting the full QApplication, so it works without an X server
     if (!options.Parse()) return 1;
     logging::SetLevels(options.log_levels());
+    if (!options.log_file().isEmpty() && logging::SetLogFile(options.log_file())) {
+      qLog(Info) << "Akousma" << AKOUSMA_VERSION_DISPLAY << "logging to" << options.log_file() << "with log levels" << options.log_levels();
+    }
     if (!options.export_settings().isEmpty()) {
       // Reading the settings is safe while Akousma runs.
       const SettingsTransfer::Result result = SettingsTransfer::Export(options.export_settings());

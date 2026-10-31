@@ -262,3 +262,80 @@ TEST(WpdMetadataTest, OleDates) {
   EXPECT_EQ(WpdMetadata::SecondsFromOleDate(-1.0), 0);
 
 }
+
+TEST(WpdMetadataTest, SkipFolder) {
+
+  // App data, photos, videos, system sounds and messenger media at the top of a storage.
+  EXPECT_TRUE(WpdMetadata::SkipFolder(u"Android"_s, 0));
+  EXPECT_TRUE(WpdMetadata::SkipFolder(u"android"_s, 0));
+  EXPECT_TRUE(WpdMetadata::SkipFolder(u"DCIM"_s, 0));
+  EXPECT_TRUE(WpdMetadata::SkipFolder(u"Pictures"_s, 0));
+  EXPECT_TRUE(WpdMetadata::SkipFolder(u"Movies"_s, 0));
+  EXPECT_TRUE(WpdMetadata::SkipFolder(u"Ringtones"_s, 0));
+  EXPECT_TRUE(WpdMetadata::SkipFolder(u"Notifications"_s, 0));
+  EXPECT_TRUE(WpdMetadata::SkipFolder(u"Alarms"_s, 0));
+  EXPECT_TRUE(WpdMetadata::SkipFolder(u"LOST.DIR"_s, 0));
+  EXPECT_TRUE(WpdMetadata::SkipFolder(u"WhatsApp"_s, 0));
+  EXPECT_TRUE(WpdMetadata::SkipFolder(u"Telegram"_s, 0));
+
+  // The same names further down can hold music (Music/Movies soundtracks, an album called "Pictures").
+  EXPECT_FALSE(WpdMetadata::SkipFolder(u"Pictures"_s, 1));
+  EXPECT_FALSE(WpdMetadata::SkipFolder(u"Android"_s, 2));
+  EXPECT_FALSE(WpdMetadata::SkipFolder(u"DCIM"_s, 3));
+
+  // Hidden folders anywhere.
+  EXPECT_TRUE(WpdMetadata::SkipFolder(u".thumbnails"_s, 0));
+  EXPECT_TRUE(WpdMetadata::SkipFolder(u".Trash-1000"_s, 4));
+
+  // Where music is.
+  EXPECT_FALSE(WpdMetadata::SkipFolder(u"Music"_s, 0));
+  EXPECT_FALSE(WpdMetadata::SkipFolder(u"Download"_s, 0));
+  EXPECT_FALSE(WpdMetadata::SkipFolder(u"Podcasts"_s, 0));
+  EXPECT_FALSE(WpdMetadata::SkipFolder(u"Audiobooks"_s, 0));
+  EXPECT_FALSE(WpdMetadata::SkipFolder(u"Android Lust"_s, 0));
+  EXPECT_FALSE(WpdMetadata::SkipFolder(QString(), 0));
+
+}
+
+TEST(WpdMetadataTest, ProgressSpan) {
+
+  const WpdMetadata::ProgressSpan all;
+  EXPECT_DOUBLE_EQ(all.begin, 0.0);
+  EXPECT_DOUBLE_EQ(all.end, 1.0);
+
+  // No subfolders: the files take the whole span.
+  const WpdMetadata::ProgressSpan files_only = all.Part(-1, 0);
+  EXPECT_DOUBLE_EQ(files_only.begin, 0.0);
+  EXPECT_DOUBLE_EQ(files_only.end, 1.0);
+
+  // Three subfolders: four equal parts, the files first, the last subfolder ends exactly at the end.
+  const WpdMetadata::ProgressSpan files = all.Part(-1, 3);
+  EXPECT_DOUBLE_EQ(files.begin, 0.0);
+  EXPECT_DOUBLE_EQ(files.end, 0.25);
+  const WpdMetadata::ProgressSpan first = all.Part(0, 3);
+  EXPECT_DOUBLE_EQ(first.begin, 0.25);
+  EXPECT_DOUBLE_EQ(first.end, 0.5);
+  const WpdMetadata::ProgressSpan last = all.Part(2, 3);
+  EXPECT_DOUBLE_EQ(last.begin, 0.75);
+  EXPECT_DOUBLE_EQ(last.end, 1.0);
+
+  // Nested spans stay inside their parent and only go forward.
+  const WpdMetadata::ProgressSpan nested = first.Part(1, 1);
+  EXPECT_DOUBLE_EQ(nested.begin, 0.375);
+  EXPECT_DOUBLE_EQ(nested.end, 0.5);
+  EXPECT_LE(first.Part(-1, 1).end, nested.begin);
+
+  // Out of range parts are clamped.
+  EXPECT_DOUBLE_EQ(all.Part(7, 3).end, 1.0);
+  EXPECT_DOUBLE_EQ(all.Part(-5, 3).begin, 0.0);
+
+}
+
+TEST(WpdMetadataTest, DefaultFileTypes) {
+
+  const QList<Song::FileType> filetypes = WpdMetadata::DefaultFileTypes();
+  EXPECT_TRUE(filetypes.contains(Song::FileType::MPEG));
+  EXPECT_TRUE(filetypes.contains(Song::FileType::FLAC));
+  EXPECT_FALSE(filetypes.contains(Song::FileType::Unknown));
+
+}
