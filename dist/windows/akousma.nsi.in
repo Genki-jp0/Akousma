@@ -488,116 +488,27 @@ Section "Akousma" Akousma
   ; MSVC specific files
 
 !ifdef msvc
-
-!ifdef arch_x64
-  File "libcrypto-4-x64.dll"
-  File "libssl-4-x64.dll"
-!endif
-!ifdef arch_arm64
-  File "libcrypto-4-arm64.dll"
-  File "libssl-4-arm64.dll"
-!endif
-
-  File "FLAC.dll"
-  File "brotlicommon.dll"
-  File "brotlidec.dll"
-  File "chromaprint.dll"
-  File "ebur128.dll"
-  File "faac-2.dll"
-  File "faad-2.dll"
-  File "fdk-aac.dll"
-  File "ffi-7.dll"
-  File "getopt.dll"
-  File "gio-2.0-0.dll"
+  ; Akousma's direct dependencies, which must be there.
   File "glib-2.0-0.dll"
-  File "gme.dll"
-  File "gmodule-2.0-0.dll"
   File "gobject-2.0-0.dll"
-  File "gstadaptivedemux-1.0-0.dll"
-  File "gstapp-1.0-0.dll"
-  File "gstaudio-1.0-0.dll"
-  File "gstbadaudio-1.0-0.dll"
-  File "gstbase-1.0-0.dll"
-  File "gstcodecparsers-1.0-0.dll"
-  File "gstfft-1.0-0.dll"
-  File "gstisoff-1.0-0.dll"
-  File "gstmpegts-1.0-0.dll"
-  File "gstnet-1.0-0.dll"
-  File "gstpbutils-1.0-0.dll"
   File "gstreamer-1.0-0.dll"
-  File "gstriff-1.0-0.dll"
-  File "gstrtp-1.0-0.dll"
-  File "gstrtsp-1.0-0.dll"
-  File "gstsdp-1.0-0.dll"
-  File "gsttag-1.0-0.dll"
-  File "gsturidownloader-1.0-0.dll"
-  File "gstvideo-1.0-0.dll"
-  File "harfbuzz.dll"
-  File "intl-8.dll"
-  File "jasper.dll"
-  File "jpeg62.dll"
+  File "gstbase-1.0-0.dll"
+  File "gstaudio-1.0-0.dll"
   File "kdsingleapplication-qt6.dll"
-  File "libbs2b.dll"
-  File "liblzma.dll"
-  File "libmp3lame.dll"
-  File "libopenmpt.dll"
-  File "libsharpyuv.dll"
-  File "libwebp.dll"
-  File "libwebpdemux.dll"
-  File "libwebpmux.dll"
-  File "mpcdec.dll"
-  File "mpg123.dll"
-  File "nghttp2.dll"
-  File "ogg.dll"
-  File "opus.dll"
-  File "orc-0.4-0.dll"
-  File "psl-5.dll"
+  File "tag.dll"
 !ifdef qtsparkle
   File "qtsparkle-qt6.dll"
 !endif
-  File "soup-3.0-0.dll"
-  File "sqlite3.dll"
-  File "tag.dll"
-  File "uchardet.dll"
-  File "vorbis.dll"
-  File "vorbisfile.dll"
-  File "wavpackdll.dll"
-
-!ifdef release
-  File "bz2.dll"
-  File "freetype.dll"
-  File "libpng16.dll"
-  File "libspeex.dll"
-  File "pcre2-8.dll"
-  File "pcre2-16.dll"
-  File "z.dll"
-  File "tiff.dll"
-!endif
-!ifdef debug
-  File "bz2d.dll"
-  File "freetyped.dll"
-  File "libpng16d.dll"
-  File "libspeexd.dll"
-  File "pcre2-8d.dll"
-  File "pcre2-16d.dll"
-  File "zd.dll"
-  File "tiffd.dll"
-!endif
-
+  ; All other DLLs in this folder are the ones CopyDLLDependencies.ps1 found akousma.exe, the tools and the Qt and GStreamer
+  ; plugins need, so take all of them, with no names of indirect or versioned DLLs (ICU, FFmpeg, OpenSSL, ...) that a build
+  ; may not need or may have with another version number. Build-Akousma.ps1 stages them in an empty folder.
+  File "*.dll"
 !endif ; MSVC
 
   ; Common files
 
-  File "icudt78.dll"
-!ifdef msvc && arch_arm64
-  File "fftw3.dll"
-!else
-  File "libfftw3-3.dll"
-!endif
+  ; Qt, which must be there.
 !ifdef msvc && debug
-  File "icuin78d.dll"
-  File "icuuc78d.dll"
-  File "libxml2d.dll"
   File "Qt6Concurrentd.dll"
   File "Qt6Cored.dll"
   File "Qt6Guid.dll"
@@ -608,9 +519,6 @@ Section "Akousma" Akousma
 !endif
   File "Qt6Widgetsd.dll"
 !else
-  File "icuin78.dll"
-  File "icuuc78.dll"
-  File "libxml2.dll"
   File "Qt6Concurrent.dll"
   File "Qt6Core.dll"
   File "Qt6Gui.dll"
@@ -622,12 +530,18 @@ Section "Akousma" Akousma
   File "Qt6Widgets.dll"
 !endif
 
-  File "avcodec-63.dll"
-  File "avfilter-12.dll"
-  File "avformat-63.dll"
-  File "avutil-61.dll"
-  File "swresample-7.dll"
-  File "swscale-10.dll"
+!ifdef mingw
+  ; Indirect dependencies of the MinGW build; ICU and FFmpeg by pattern, their file names carry the version.
+  File "icu*.dll"
+  File "libfftw3-3.dll"
+  File "libxml2.dll"
+  File "avcodec-*.dll"
+  File "avfilter-*.dll"
+  File "avformat-*.dll"
+  File "avutil-*.dll"
+  File "swresample-*.dll"
+  File "swscale-*.dll"
+!endif
 
   ; Register Akousma with Default Programs
   Var /GLOBAL AppIcon
@@ -1065,6 +979,9 @@ Section "Uninstall"
 
 !endif ; MinGW
 
+; The DLLs Build-Akousma.ps1 staged for this installer (akousma-uninstall-dlls.nsh, written next to akousma.nsi).
+!include /NONFATAL "akousma-uninstall-dlls.nsh"
+
 ; MSVC specific files
 
 !ifdef msvc
@@ -1167,15 +1084,24 @@ Section "Uninstall"
 
   ; Common files
 
-  Delete "$INSTDIR\icudt78.dll"
+  ; ICU, FFmpeg and OpenSSL by pattern: their file names carry the version, which changes between updates.
+  Delete "$INSTDIR\icudt*.dll"
+  Delete "$INSTDIR\icuin*.dll"
+  Delete "$INSTDIR\icuuc*.dll"
+  Delete "$INSTDIR\avcodec-*.dll"
+  Delete "$INSTDIR\avfilter-*.dll"
+  Delete "$INSTDIR\avformat-*.dll"
+  Delete "$INSTDIR\avutil-*.dll"
+  Delete "$INSTDIR\swresample-*.dll"
+  Delete "$INSTDIR\swscale-*.dll"
+  Delete "$INSTDIR\libcrypto-*.dll"
+  Delete "$INSTDIR\libssl-*.dll"
 !ifdef msvc && arch_arm64
   Delete "$INSTDIR\fftw3.dll"
 !else
   Delete "$INSTDIR\libfftw3-3.dll"
 !endif
 !ifdef msvc && debug
-  Delete "$INSTDIR\icuin78d.dll"
-  Delete "$INSTDIR\icuuc78d.dll"
   Delete "$INSTDIR\libxml2d.dll"
   Delete "$INSTDIR\Qt6Concurrentd.dll"
   Delete "$INSTDIR\Qt6Cored.dll"
@@ -1185,8 +1111,6 @@ Section "Uninstall"
   Delete "$INSTDIR\Qt6Svgd.dll"
   Delete "$INSTDIR\Qt6Widgetsd.dll"
 !else
-  Delete "$INSTDIR\icuin78.dll"
-  Delete "$INSTDIR\icuuc78.dll"
   Delete "$INSTDIR\libxml2.dll"
   Delete "$INSTDIR\Qt6Concurrent.dll"
   Delete "$INSTDIR\Qt6Core.dll"
@@ -1196,13 +1120,6 @@ Section "Uninstall"
   Delete "$INSTDIR\Qt6Svg.dll"
   Delete "$INSTDIR\Qt6Widgets.dll"
 !endif
-
-  Delete "$INSTDIR\avcodec-63.dll"
-  Delete "$INSTDIR\avfilter-12.dll"
-  Delete "$INSTDIR\avformat-63.dll"
-  Delete "$INSTDIR\avutil-61.dll"
-  Delete "$INSTDIR\swresample-7.dll"
-  Delete "$INSTDIR\swscale-10.dll"
 
 !ifdef mingw
   Delete "$INSTDIR\gio-modules\libgiognutls.dll"
