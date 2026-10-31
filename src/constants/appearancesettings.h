@@ -127,6 +127,21 @@ constexpr char kIconSizePlaylistButtons[] = "icon_size_playlist_buttons";
 constexpr char kIconSizeLeftPanelButtons[] = "icon_size_left_panel_buttons";
 constexpr char kIconSizeConfigureButtons[] = "icon_size_configure_buttons";
 
+// Akousma: layout of the player (Settings > Appearance > Layout).
+// Akousma uses Clementine's sizes and puts repeat and shuffle beside the playback buttons, Strawberry is upstream's original layout, Custom are the
+// user's own values. The values of the presets are below; choosing a preset in the settings writes its values to the keys, so the rest of the
+// program only reads the keys (icon sizes above, the ones below, PlayingWidget/mode and the tabbar background).
+enum class PlayerLayout {
+  Akousma = 0,
+  Strawberry = 1,
+  Custom = 2
+};
+constexpr char kPlayerLayout[] = "player_layout";
+// Repeat and shuffle beside the playback buttons, in their size (else in the status bar, as in Strawberry).
+constexpr char kSequenceBesidePlayControls[] = "sequence_beside_play_controls";
+// Minimum height of the playback controls row (the analyzer).
+constexpr char kPlayerControlsHeight[] = "player_controls_height";
+
 constexpr bool kDefaultDarkMode = false;
 constexpr bool kDefaultSystemIcons = false;
 constexpr bool kDefaultUseCustomColorSet = false;
@@ -134,7 +149,7 @@ constexpr WindowBackdrop kDefaultWindowBackdrop = WindowBackdrop::None;
 constexpr bool kDefaultWindowBackdropTranslucentContent = false;
 constexpr bool kDefaultTabBarSystemColor = false;
 constexpr bool kDefaultTabBarGradient = true;
-constexpr TabBarBackground kDefaultTabBarBackground = TabBarBackground::Strawberry;
+constexpr TabBarBackground kDefaultTabBarBackground = TabBarBackground::Clementine;  // Akousma layout
 constexpr bool kDefaultTabBarGradientCustomColors = false;
 constexpr TabBarGradientDirection kDefaultTabBarGradientDirection = TabBarGradientDirection::Horizontal;
 // By default the image fills the sidebar, keeping its aspect ratio and cutting the sides.
@@ -157,12 +172,54 @@ constexpr bool kDefaultBackgroundImageKeepAspectRatio = true;
 constexpr int kDefaultBackgroundImageBlurRadius = 0;
 constexpr int kDefaultBackgroundImageOpacityLevel = 40;
 
-constexpr int kDefaultIconSizeTabbarSmallMode = 32;
-constexpr int kDefaultIconSizeTabbarLargeMode = 40;
-constexpr int kDefaultIconSizePlayControlButtons = 32;
-constexpr int kDefaultIconSizePlaylistButtons = 20;
-constexpr int kDefaultIconSizeLeftPanelButtons = 22;
-constexpr int kDefaultIconSizeConfigureButtons = 20;
+// What each layout sets. Akousma: Clementine's sizes (clementine-player/Clementine master, see the comments), Strawberry: upstream's defaults.
+struct PlayerLayoutValues {
+  int icon_size_tabbar_small_mode;
+  int icon_size_tabbar_large_mode;
+  int icon_size_play_control_buttons;
+  int icon_size_playlist_buttons;
+  int icon_size_left_panel_buttons;
+  int icon_size_configure_buttons;
+  bool sequence_beside_play_controls;
+  bool small_playing_cover;
+  int player_controls_height;
+  TabBarBackground tabbar_background;
+  int sidebar_width;  // Initial width of the left side (tabs and collection), before the user moves the splitter.
+};
+
+constexpr PlayerLayoutValues kPlayerLayoutAkousma {
+  22,     // src/widgets/fancytabwidget.cpp: IconSize_SmallSidebar = QSize(22, 22)
+  24,     // src/widgets/fancytabwidget.cpp: IconSize_LargeSidebar = QSize(24, 24)
+  22,     // src/ui/mainwindow.ui: back_button, pause_play_button, stop_button, forward_button iconSize 22x22
+  16,     // src/playlist/playlistcontainer.ui: playlist toolbar buttons iconSize 16x16
+  16,     // src/playlist/playlistlistcontainer.ui, src/widgets/fileview.ui: buttons iconSize 16x16
+  16,     // src/library/libraryfilterwidget.ui: options button iconSize 16x16
+  true,   // Akousma: repeat and shuffle beside the playback buttons (Clementine: src/playlist/playlistsequence.ui, 22x22 in the status bar)
+  true,   // src/widgets/nowplayingwidget.cpp: mode_(SmallSongDetails), s.value("mode", SmallSongDetails)
+  36,     // src/ui/mainwindow.ui: analyzer minimumSize 0x36
+  TabBarBackground::Clementine,  // src/widgets/fancytabwidget.cpp: FancyTabWidget::paintEvent, data/sidebar_background.png
+  300     // src/ui/mainwindow.cpp: ui_->splitter->setSizes(QList<int>() << 300 << width() - 300)
+};
+
+constexpr PlayerLayoutValues kPlayerLayoutStrawberry {
+  32, 40, 32, 20, 22, 20,
+  false,  // In the status bar, between the playlist summary and the seek bar.
+  false,  // Large album cover.
+  36,
+  TabBarBackground::Strawberry,
+  20
+};
+
+constexpr PlayerLayout kDefaultPlayerLayout = PlayerLayout::Akousma;
+constexpr bool kDefaultSequenceBesidePlayControls = kPlayerLayoutAkousma.sequence_beside_play_controls;
+constexpr int kDefaultPlayerControlsHeight = kPlayerLayoutAkousma.player_controls_height;
+
+constexpr int kDefaultIconSizeTabbarSmallMode = kPlayerLayoutAkousma.icon_size_tabbar_small_mode;
+constexpr int kDefaultIconSizeTabbarLargeMode = kPlayerLayoutAkousma.icon_size_tabbar_large_mode;
+constexpr int kDefaultIconSizePlayControlButtons = kPlayerLayoutAkousma.icon_size_play_control_buttons;
+constexpr int kDefaultIconSizePlaylistButtons = kPlayerLayoutAkousma.icon_size_playlist_buttons;
+constexpr int kDefaultIconSizeLeftPanelButtons = kPlayerLayoutAkousma.icon_size_left_panel_buttons;
+constexpr int kDefaultIconSizeConfigureButtons = kPlayerLayoutAkousma.icon_size_configure_buttons;
 
 }  // namespace AppearanceSettings
 

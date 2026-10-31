@@ -60,6 +60,7 @@ PlaylistSequence::PlaylistSequence(QWidget *parent, SettingsProvider *settings)
       percent_interest_song_(0) {
 
   ui_->setupUi(this);
+  default_stylesheet_ = styleSheet();
 
   // Icons
   ui_->repeat->setIcon(AddDesaturatedIcon(IconLoader::Load(u"media-playlist-repeat"_s)));
@@ -121,6 +122,20 @@ void PlaylistSequence::Save() {
 
   settings_->setValue(u"shuffle_mode"_s, static_cast<int>(shuffle_mode_));
   settings_->setValue(u"repeat_mode"_s, static_cast<int>(repeat_mode_));
+
+}
+
+// Akousma: beside the playback buttons, repeat and shuffle get the icon size, button size and look (auto raise) of the playback buttons.
+// Otherwise they look as in Strawberry's status bar.
+void PlaylistSequence::SetBesidePlayControls(const bool beside, const int icon_size, const QSize &button_size) {
+
+  setStyleSheet(beside ? QString() : default_stylesheet_);
+  const int size = beside ? icon_size : static_cast<int>(fontMetrics().height() * 1.2);
+  for (QToolButton *button : {ui_->repeat, ui_->shuffle}) {
+    button->setAutoRaise(beside);
+    button->setIconSize(QSize(size, size));
+    button->setMinimumSize(beside ? button_size : QSize(0, 0));
+  }
 
 }
 

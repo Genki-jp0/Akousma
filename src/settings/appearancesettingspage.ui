@@ -161,6 +161,252 @@
     </widget>
    </item>
    <item>
+    <widget class="QGroupBox" name="groupbox_player_layout">
+     <property name="title">
+      <string>Layout</string>
+     </property>
+     <layout class="QVBoxLayout" name="layout_groupbox_player_layout">
+      <item>
+       <layout class="QHBoxLayout" name="layout_player_layout">
+        <item>
+         <widget class="QLabel" name="label_player_layout">
+          <property name="text">
+           <string>Layout</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="combobox_player_layout">
+          <property name="toolTip">
+           <string>Akousma: Clementine's sizes, repeat and shuffle beside the playback buttons. Strawberry: Strawberry's original layout and sizes. Custom: set the sizes below yourself.</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="spacer_player_layout">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_player_layout_description">
+        <property name="text">
+         <string notr="true"></string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QWidget" name="widget_player_layout_custom" native="true">
+        <layout class="QGridLayout" name="layout_player_layout_custom">
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item row="0" column="0" colspan="3">
+          <widget class="QCheckBox" name="checkbox_sequence_beside_play_controls">
+           <property name="text">
+            <string>Repeat and shuffle buttons beside the playback buttons, in the same size</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0" colspan="3">
+          <widget class="QCheckBox" name="checkbox_small_playing_cover">
+           <property name="toolTip">
+            <string>The album cover of the playing song in the sidebar: small with the song details beside it, or large with the details below. The cover's context menu can also change it.</string>
+           </property>
+           <property name="text">
+            <string>Small album cover in the sidebar</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="label_player_controls_height">
+           <property name="text">
+            <string>Playback controls and analyzer height</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QSpinBox" name="spinbox_player_controls_height">
+           <property name="suffix">
+            <string> px</string>
+           </property>
+           <property name="minimum">
+            <number>16</number>
+           </property>
+           <property name="maximum">
+            <number>128</number>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="2">
+          <spacer name="spacer_player_layout_custom">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupbox_icon_sizes">
+     <property name="title">
+      <string>Icon sizes</string>
+     </property>
+     <layout class="QHBoxLayout" name="layout_groupbox_icon_sizes">
+      <item>
+       <layout class="QGridLayout" name="layout_icon_sizes">
+        <item row="3" column="0">
+         <widget class="QLabel" name="label_icon_size_playlist_buttons">
+          <property name="text">
+           <string>Playlist buttons</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="label_icon_size_tabbar_large_mode">
+          <property name="text">
+           <string>Tabbar large mode</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="label_icon_size_play_control_buttons">
+          <property name="text">
+           <string>Play control buttons</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QSpinBox" name="spinbox_icon_size_play_control_buttons">
+          <property name="minimum">
+           <number>16</number>
+          </property>
+          <property name="maximum">
+           <number>64</number>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="1">
+         <widget class="QSpinBox" name="spinbox_icon_size_left_panel_buttons">
+          <property name="minimum">
+           <number>16</number>
+          </property>
+          <property name="maximum">
+           <number>64</number>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="0">
+         <widget class="QLabel" name="label_icon_size_configure_buttons">
+          <property name="text">
+           <string>Configure buttons</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1">
+         <widget class="QSpinBox" name="spinbox_icon_size_playlist_buttons">
+          <property name="minimum">
+           <number>16</number>
+          </property>
+          <property name="maximum">
+           <number>64</number>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="1">
+         <widget class="QSpinBox" name="spinbox_icon_size_configure_buttons">
+          <property name="minimum">
+           <number>16</number>
+          </property>
+          <property name="maximum">
+           <number>64</number>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="0">
+         <widget class="QLabel" name="label_icon_size_left_panel_buttons">
+          <property name="text">
+           <string>Files, playlists and queue buttons</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QSpinBox" name="spinbox_icon_size_tabbar_large_mode">
+          <property name="minimum">
+           <number>16</number>
+          </property>
+          <property name="maximum">
+           <number>64</number>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="0">
+         <widget class="QLabel" name="label_icon_size_tabbar_small_mode">
+          <property name="text">
+           <string>Tabbar small mode</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QSpinBox" name="spinbox_icon_size_tabbar_small_mode">
+          <property name="minimum">
+           <number>16</number>
+          </property>
+          <property name="maximum">
+           <number>64</number>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <spacer name="spacer_icon_sizes">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
     <widget class="QGroupBox" name="groupbox_colors">
      <property name="toolTip">
       <string>Changing colors is only supported with some styles</string>
@@ -650,134 +896,6 @@
     </widget>
    </item>
    <item>
-    <widget class="QGroupBox" name="groupbox_icon_sizes">
-     <property name="title">
-      <string>Icon sizes</string>
-     </property>
-     <layout class="QHBoxLayout" name="layout_groupbox_icon_sizes">
-      <item>
-       <layout class="QGridLayout" name="layout_icon_sizes">
-        <item row="3" column="0">
-         <widget class="QLabel" name="label_icon_size_playlist_buttons">
-          <property name="text">
-           <string>Playlist buttons</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="0">
-         <widget class="QLabel" name="label_icon_size_tabbar_large_mode">
-          <property name="text">
-           <string>Tabbar large mode</string>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="0">
-         <widget class="QLabel" name="label_icon_size_play_control_buttons">
-          <property name="text">
-           <string>Play control buttons</string>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="1">
-         <widget class="QSpinBox" name="spinbox_icon_size_play_control_buttons">
-          <property name="minimum">
-           <number>16</number>
-          </property>
-          <property name="maximum">
-           <number>64</number>
-          </property>
-         </widget>
-        </item>
-        <item row="4" column="1">
-         <widget class="QSpinBox" name="spinbox_icon_size_left_panel_buttons">
-          <property name="minimum">
-           <number>16</number>
-          </property>
-          <property name="maximum">
-           <number>64</number>
-          </property>
-         </widget>
-        </item>
-        <item row="5" column="0">
-         <widget class="QLabel" name="label_icon_size_configure_buttons">
-          <property name="text">
-           <string>Configure buttons</string>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="1">
-         <widget class="QSpinBox" name="spinbox_icon_size_playlist_buttons">
-          <property name="minimum">
-           <number>16</number>
-          </property>
-          <property name="maximum">
-           <number>64</number>
-          </property>
-         </widget>
-        </item>
-        <item row="5" column="1">
-         <widget class="QSpinBox" name="spinbox_icon_size_configure_buttons">
-          <property name="minimum">
-           <number>16</number>
-          </property>
-          <property name="maximum">
-           <number>64</number>
-          </property>
-         </widget>
-        </item>
-        <item row="4" column="0">
-         <widget class="QLabel" name="label_icon_size_left_panel_buttons">
-          <property name="text">
-           <string>Files, playlists and queue buttons</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="1">
-         <widget class="QSpinBox" name="spinbox_icon_size_tabbar_large_mode">
-          <property name="minimum">
-           <number>16</number>
-          </property>
-          <property name="maximum">
-           <number>64</number>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="0">
-         <widget class="QLabel" name="label_icon_size_tabbar_small_mode">
-          <property name="text">
-           <string>Tabbar small mode</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="1">
-         <widget class="QSpinBox" name="spinbox_icon_size_tabbar_small_mode">
-          <property name="minimum">
-           <number>16</number>
-          </property>
-          <property name="maximum">
-           <number>64</number>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <spacer name="spacer_icon_sizes">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>40</width>
-          <height>20</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item>
     <spacer name="spacer_bottom">
      <property name="orientation">
       <enum>Qt::Vertical</enum>
@@ -798,6 +916,16 @@
   <tabstop>checkbox_system_icons</tabstop>
   <tabstop>combobox_window_backdrop</tabstop>
   <tabstop>checkbox_window_backdrop_translucent_content</tabstop>
+  <tabstop>combobox_player_layout</tabstop>
+  <tabstop>checkbox_sequence_beside_play_controls</tabstop>
+  <tabstop>checkbox_small_playing_cover</tabstop>
+  <tabstop>spinbox_player_controls_height</tabstop>
+  <tabstop>spinbox_icon_size_tabbar_small_mode</tabstop>
+  <tabstop>spinbox_icon_size_tabbar_large_mode</tabstop>
+  <tabstop>spinbox_icon_size_play_control_buttons</tabstop>
+  <tabstop>spinbox_icon_size_playlist_buttons</tabstop>
+  <tabstop>spinbox_icon_size_left_panel_buttons</tabstop>
+  <tabstop>spinbox_icon_size_configure_buttons</tabstop>
   <tabstop>use_system_color_set</tabstop>
   <tabstop>use_custom_color_set</tabstop>
   <tabstop>button_dark_colors</tabstop>
@@ -823,12 +951,6 @@
   <tabstop>checkbox_background_image_do_not_cut</tabstop>
   <tabstop>slider_background_image_blur</tabstop>
   <tabstop>slider_background_image_opacity</tabstop>
-  <tabstop>spinbox_icon_size_tabbar_small_mode</tabstop>
-  <tabstop>spinbox_icon_size_tabbar_large_mode</tabstop>
-  <tabstop>spinbox_icon_size_play_control_buttons</tabstop>
-  <tabstop>spinbox_icon_size_playlist_buttons</tabstop>
-  <tabstop>spinbox_icon_size_left_panel_buttons</tabstop>
-  <tabstop>spinbox_icon_size_configure_buttons</tabstop>
  </tabstops>
  <resources/>
  <connections/>

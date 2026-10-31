@@ -52,11 +52,6 @@
 using namespace std::chrono_literals;
 using namespace Qt::Literals::StringLiterals;
 
-namespace {
-constexpr int IconSize_LargeSidebar = 40;
-constexpr int IconSize_SmallSidebar = 32;
-}  // namespace
-
 const char *FancyTabWidget::kTabMode = "tab_mode";
 const char *FancyTabWidget::kCurrentTab = "current_tab";
 
@@ -67,8 +62,8 @@ FancyTabWidget::FancyTabWidget(QWidget *parent)
       bottom_widget_(nullptr),
       bg_color_system_(true),
       bg_gradient_(true),
-      iconsize_smallsidebar_(IconSize_SmallSidebar),
-      iconsize_largesidebar_(IconSize_LargeSidebar) {
+      iconsize_smallsidebar_(AppearanceSettings::kDefaultIconSizeTabbarSmallMode),
+      iconsize_largesidebar_(AppearanceSettings::kDefaultIconSizeTabbarLargeMode) {
 
   FancyTabBar *tabBar = new FancyTabBar(this);
   setTabBar(tabBar);
@@ -143,8 +138,8 @@ void FancyTabWidget::ReloadSettings() {
   if (!bg_color_system_) {
     bg_color_ = s.value(AppearanceSettings::kTabBarColor, bg_color_).value<QColor>();
   }
-  iconsize_smallsidebar_ = s.value(AppearanceSettings::kIconSizeTabbarSmallMode, IconSize_SmallSidebar).toInt();
-  iconsize_largesidebar_ = s.value(AppearanceSettings::kIconSizeTabbarLargeMode, IconSize_LargeSidebar).toInt();
+  iconsize_smallsidebar_ = s.value(AppearanceSettings::kIconSizeTabbarSmallMode, AppearanceSettings::kDefaultIconSizeTabbarSmallMode).toInt();
+  iconsize_largesidebar_ = s.value(AppearanceSettings::kIconSizeTabbarLargeMode, AppearanceSettings::kDefaultIconSizeTabbarLargeMode).toInt();
   bg_mode_ = s.value(AppearanceSettings::kTabBarBackground, static_cast<int>(AppearanceSettings::kDefaultTabBarBackground)).toInt();
   bg_gradient_custom_colors_ = s.value(AppearanceSettings::kTabBarGradientCustomColors, AppearanceSettings::kDefaultTabBarGradientCustomColors).toBool();
   bg_gradient_start_color_ = s.value(AppearanceSettings::kTabBarGradientStartColor, bg_color_.lighter(117)).value<QColor>();

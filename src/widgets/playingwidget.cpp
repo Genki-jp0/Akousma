@@ -69,7 +69,8 @@ constexpr int kTopBorder = 4;
 PlayingWidget::PlayingWidget(QWidget *parent)
     : QWidget(parent),
       album_cover_choice_controller_(nullptr),
-      mode_(Mode::LargeSongDetails),
+      mode_(kDefaultMode),
+      mode_group_(nullptr),
       menu_(new QMenu(this)),
       above_statusbar_action_(nullptr),
       fit_cover_width_action_(nullptr),
@@ -92,7 +93,8 @@ PlayingWidget::PlayingWidget(QWidget *parent)
   // Load settings
   Settings s;
   s.beginGroup(kSettingsGroup);
-  mode_ = static_cast<Mode>(s.value(kMode, static_cast<int>(Mode::LargeSongDetails)).toInt());
+  // Akousma: small cover by default, as Clementine (Settings > Appearance > Layout).
+  mode_ = static_cast<Mode>(s.value(kMode, static_cast<int>(kDefaultMode)).toInt());
   fit_width_ = s.value(kFitCoverWidth, false).toBool();
   s.endGroup();
 
@@ -100,7 +102,8 @@ PlayingWidget::PlayingWidget(QWidget *parent)
   setAcceptDrops(true);
 
   // Context menu
-  QActionGroup *mode_group = new QActionGroup(this);
+  mode_group_ = new QActionGroup(this);
+  QActionGroup *mode_group = mode_group_;
   CreateModeAction(Mode::SmallSongDetails, tr("Small album cover"), mode_group);
   CreateModeAction(Mode::LargeSongDetails, tr("Large album cover"), mode_group);
   menu_->addActions(mode_group->actions());
@@ -234,6 +237,23 @@ void PlayingWidget::SetMode(const Mode mode) {
   s.beginGroup(kSettingsGroup);
   s.setValue(kMode, static_cast<int>(mode_));
   s.endGroup();
+
+}
+
+// Settings > Appearance > Layout writes the mode when a layout is chosen; the context menu also changes it.
+void PlayingWidget::ReloadSettings() {
+
+  Settings s;
+  s.beginGroup(kSettingsGroup);
+  const Mode mode = static_cast<Mode>(s.value(kMode, static_cast<int>(kDefaultMode)).toInt());
+  s.endGroup();
+
+  if (mode == mode_) return;
+
+  const QList<QAction*> actions = mode_group_->actions();
+  const qsizetype idx = mode == Mode::SmallSongDetails ? 0 : 1;
+  if (idx < actions.count()) actions[idx]->setChecked(true);
+  SetMode(mode);
 
 }
 

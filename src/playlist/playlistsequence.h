@@ -29,6 +29,7 @@
 #include <QString>
 #include <QIcon>
 #include <QPixmap>
+#include <QSize>
 
 #include "includes/scoped_ptr.h"
 
@@ -70,6 +71,8 @@ class PlaylistSequence : public QWidget {
   int half_playing_time_s() const { return half_playing_time_s_; }
   int percent_interest_song() const { return percent_interest_song_; }
 
+  void SetBesidePlayControls(const bool beside, const int icon_size, const QSize &button_size);
+
  public Q_SLOTS:
   void SetRepeatMode(const PlaylistSequence::RepeatMode mode);
   void SetShuffleMode(const PlaylistSequence::ShuffleMode mode);
@@ -95,6 +98,7 @@ class PlaylistSequence : public QWidget {
   Ui_PlaylistSequence *ui_;
   ScopedPtr<SettingsProvider> settings_;
 
+  QString default_stylesheet_;
   QMenu *repeat_menu_;
   QMenu *shuffle_menu_;
 

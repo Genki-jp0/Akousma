@@ -54,6 +54,7 @@
 #include <QMimeData>
 #include <QPalette>
 #include <QTimer>
+#include <QBoxLayout>
 #include <QKeySequence>
 #include <QMenu>
 #include <QAction>
@@ -1121,7 +1122,13 @@ MainWindow::MainWindow(Application *app,
   }
 
   if (!settings.contains(MainWindowSettings::kSplitterState) || !ui_->splitter->restoreState(settings.value(MainWindowSettings::kSplitterState).toByteArray())) {
-    ui_->splitter->setSizes(QList<int>() << 20 << (width() - 20));
+    // First start: Akousma's layout starts with Clementine's sidebar width, Strawberry's with the narrowest.
+    Settings appearance_settings;
+    appearance_settings.beginGroup(AppearanceSettings::kSettingsGroup);
+    const AppearanceSettings::PlayerLayout player_layout = static_cast<AppearanceSettings::PlayerLayout>(appearance_settings.value(AppearanceSettings::kPlayerLayout, static_cast<int>(AppearanceSettings::kDefaultPlayerLayout)).toInt());
+    appearance_settings.endGroup();
+    const int sidebar_width = player_layout == AppearanceSettings::PlayerLayout::Strawberry ? AppearanceSettings::kPlayerLayoutStrawberry.sidebar_width : AppearanceSettings::kPlayerLayoutAkousma.sidebar_width;
+    ui_->splitter->setSizes(QList<int>() << sidebar_width << (width() - sidebar_width));
   }
 
   ui_->tabs->setCurrentIndex(settings.value(FancyTabWidget::kCurrentTab, 1).toInt());
@@ -1324,6 +1331,8 @@ void MainWindow::ReloadSettings() {
 
   s.beginGroup(AppearanceSettings::kSettingsGroup);
   int iconsize = s.value(AppearanceSettings::kIconSizePlayControlButtons, AppearanceSettings::kDefaultIconSizePlayControlButtons).toInt();
+  const bool sequence_beside_play_controls = s.value(AppearanceSettings::kSequenceBesidePlayControls, AppearanceSettings::kDefaultSequenceBesidePlayControls).toBool();
+  const int player_controls_height = s.value(AppearanceSettings::kPlayerControlsHeight, AppearanceSettings::kDefaultPlayerControlsHeight).toInt();
   s.endGroup();
 
   systemtrayicon_->SetTrayiconProgress(trayicon_progress);
@@ -1340,6 +1349,8 @@ void MainWindow::ReloadSettings() {
   ui_->stop_button->setIconSize(QSize(iconsize, iconsize));
   ui_->forward_button->setIconSize(QSize(iconsize, iconsize));
   ui_->button_love->setIconSize(QSize(iconsize, iconsize));
+  ApplyPlayerLayout(sequence_beside_play_controls, iconsize, player_controls_height);
+  ui_->widget_playing->ReloadSettings();
 
   s.beginGroup(BackendSettings::kSettingsGroup);
   bool volume_control = s.value(BackendSettings::kVolumeControl, BackendSettings::kDefaultVolumeControl).toBool();
@@ -3127,6 +3138,35 @@ void MainWindow::TaskCountChanged(const int count) {
   else {
     ui_->status_bar_stack->setCurrentWidget(ui_->multi_loading_indicator);
   }
+
+}
+
+// Akousma: repeat and shuffle beside the playback buttons (after next), or in the status bar as in Strawberry; and the height of the controls row.
+void MainWindow::ApplyPlayerLayout(const bool sequence_beside_play_controls, const int icon_size, const int player_controls_height) {
+
+  ui_->analyzer->setMinimumHeight(player_controls_height);
+
+  PlaylistSequence *sequence = ui_->playlist_sequence;
+  QBoxLayout *controls_layout = ui_->layout_player_controls;
+  QBoxLayout *status_bar_layout = ui_->layout_status_bar_internal;
+  if (sequence_beside_play_controls) {
+    if (controls_layout->indexOf(sequence) < 0) {
+      status_bar_layout->removeWidget(sequence);
+      controls_layout->insertWidget(controls_layout->indexOf(ui_->forward_button) + 1, sequence);
+    }
+  }
+  else if (status_bar_layout->indexOf(sequence) < 0) {
+    controls_layout->removeWidget(sequence);
+    status_bar_layout->insertWidget(status_bar_layout->indexOf(ui_->line_5) + 1, sequence);
+  }
+  ui_->line_5->setVisible(!sequence_beside_play_controls);
+  sequence->SetBesidePlayControls(sequence_beside_play_controls, icon_size, ui_->back_button->sizeHint());
+  sequence->show();
+
+  // The small album cover is as high as the controls and the status bar together, update it once the layouts have the new sizes.
+  QTimer::singleShot(0, this, [this]() {
+    ui_->widget_playing->set_ideal_height(ui_->status_bar->sizeHint().height() + ui_->player_controls->sizeHint().height());
+  });
 
 }
 

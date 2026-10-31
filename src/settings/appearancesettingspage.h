@@ -69,6 +69,7 @@ class AppearanceSettingsPage : public SettingsPage {
   void TabBarSelectGradientColor(const bool start);
   void TabBarSelectBackgroundImage();
   void UpdateTabBarBackgroundPreviews();
+  void PlayerLayoutChosen();
   void PlaylistPlayingSongColorSystem(const bool checked);
   void PlaylistPlayingSongSelectColor();
 
@@ -90,6 +91,8 @@ class AppearanceSettingsPage : public SettingsPage {
   // Apply current_colors_ to the application palette (live preview).
   void ApplyCustomColors();
   void SetTabBarBackground(const int background);
+  void UpdatePlayerLayoutControls();
+  bool PlayerLayoutMatches(const AppearanceSettings::PlayerLayoutValues &values) const;
   // Human-readable label for a palette color role.
   static QString ColorRoleLabel(const QPalette::ColorRole role);
 
@@ -103,6 +106,7 @@ class AppearanceSettingsPage : public SettingsPage {
   QMap<QPalette::ColorRole, QColor> original_colors_;
   QMap<QPalette::ColorRole, QColor> current_colors_;
   QMap<QPalette::ColorRole, QPointer<QPushButton>> color_selectors_;
+  bool original_small_playing_cover_ = true;
   QColor current_tabbar_bg_color_;
   QColor original_tabbar_bg_color_;
   QColor current_tabbar_gradient_start_color_;

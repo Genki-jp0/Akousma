@@ -80,6 +80,9 @@ namespace {
 // Size of the sidebar background previews in the Tabbar background dropdown.
 constexpr int kTabBarPreviewWidth = 150;
 constexpr int kTabBarPreviewHeight = 48;
+// Where PlayingWidget keeps its album cover mode (0 small, 1 large).
+constexpr char kPlayingWidgetSettingsGroup[] = "PlayingWidget";
+constexpr char kPlayingWidgetMode[] = "mode";
 }  // namespace
 
 AppearanceSettingsPage::AppearanceSettingsPage(SettingsDialog *dialog, SharedPtr<Appearance> appearance, QWidget *parent)
@@ -142,6 +145,12 @@ AppearanceSettingsPage::AppearanceSettingsPage(SettingsDialog *dialog, SharedPtr
 
   QObject::connect(ui_->select_tabbar_color, &QPushButton::pressed, this, &AppearanceSettingsPage::TabBarSelectBGColor);
   QObject::connect(ui_->tabbar_system_color, &QRadioButton::toggled, this, &AppearanceSettingsPage::TabBarSystemColor);
+  // Layout
+  ui_->combobox_player_layout->addItem(tr("Akousma (Clementine sizes, repeat and shuffle beside the playback buttons)"), static_cast<int>(PlayerLayout::Akousma));
+  ui_->combobox_player_layout->addItem(tr("Strawberry (original layout)"), static_cast<int>(PlayerLayout::Strawberry));
+  ui_->combobox_player_layout->addItem(tr("Custom"), static_cast<int>(PlayerLayout::Custom));
+  QObject::connect(ui_->combobox_player_layout, QOverload<int>::of(&QComboBox::activated), this, &AppearanceSettingsPage::PlayerLayoutChosen);
+
   // Tabbar background: a dropdown with a preview of each background, like the moodbar styles.
   ui_->tabbar_background->setIconSize(QSize(kTabBarPreviewWidth, kTabBarPreviewHeight));
   ui_->tabbar_background->addItem(tr("Clementine background"), static_cast<int>(TabBarBackground::Clementine));
@@ -353,6 +362,30 @@ void AppearanceSettingsPage::Load() {
   ui_->spinbox_icon_size_left_panel_buttons->setValue(s.value(kIconSizeLeftPanelButtons, kDefaultIconSizeLeftPanelButtons).toInt());
   ui_->spinbox_icon_size_configure_buttons->setValue(s.value(kIconSizeConfigureButtons, kDefaultIconSizeConfigureButtons).toInt());
 
+  // Layout
+  ui_->checkbox_sequence_beside_play_controls->setChecked(s.value(kSequenceBesidePlayControls, kDefaultSequenceBesidePlayControls).toBool());
+  ui_->spinbox_player_controls_height->setValue(s.value(kPlayerControlsHeight, kDefaultPlayerControlsHeight).toInt());
+  {
+    Settings playing_widget_settings;
+    playing_widget_settings.beginGroup(QLatin1String(kPlayingWidgetSettingsGroup));
+    original_small_playing_cover_ = playing_widget_settings.value(QLatin1String(kPlayingWidgetMode), kPlayerLayoutAkousma.small_playing_cover ? 0 : 1).toInt() == 0;
+    playing_widget_settings.endGroup();
+  }
+  ui_->checkbox_small_playing_cover->setChecked(original_small_playing_cover_);
+  PlayerLayout player_layout = PlayerLayout::Custom;
+  if (s.contains(kPlayerLayout)) {
+    player_layout = static_cast<PlayerLayout>(s.value(kPlayerLayout).toInt());
+  }
+  // Not chosen yet (e.g. settings imported from Strawberry): the layout whose values are set.
+  else if (PlayerLayoutMatches(kPlayerLayoutAkousma)) {
+    player_layout = PlayerLayout::Akousma;
+  }
+  else if (PlayerLayoutMatches(kPlayerLayoutStrawberry)) {
+    player_layout = PlayerLayout::Strawberry;
+  }
+  ui_->combobox_player_layout->setCurrentIndex(qMax(0, ui_->combobox_player_layout->findData(static_cast<int>(player_layout))));
+  UpdatePlayerLayoutControls();
+
   original_tabbar_bg_color_ = current_tabbar_bg_color_;
   original_background_image_filename_ = background_image_filename_;
   original_playlist_playing_song_color_ = current_playlist_playing_song_color_;
@@ -481,6 +514,19 @@ void AppearanceSettingsPage::Save() {
   s.setValue(kIconSizePlaylistButtons, ui_->spinbox_icon_size_playlist_buttons->value());
   s.setValue(kIconSizeLeftPanelButtons, ui_->spinbox_icon_size_left_panel_buttons->value());
   s.setValue(kIconSizeConfigureButtons, ui_->spinbox_icon_size_configure_buttons->value());
+
+  // Layout
+  s.setValue(kPlayerLayout, ui_->combobox_player_layout->currentData().toInt());
+  s.setValue(kSequenceBesidePlayControls, ui_->checkbox_sequence_beside_play_controls->isChecked());
+  s.setValue(kPlayerControlsHeight, ui_->spinbox_player_controls_height->value());
+  // Only when changed here, the album cover's context menu changes it too.
+  if (ui_->checkbox_small_playing_cover->isChecked() != original_small_playing_cover_) {
+    Settings playing_widget_settings;
+    playing_widget_settings.beginGroup(QLatin1String(kPlayingWidgetSettingsGroup));
+    playing_widget_settings.setValue(QLatin1String(kPlayingWidgetMode), ui_->checkbox_small_playing_cover->isChecked() ? 0 : 1);
+    playing_widget_settings.endGroup();
+    original_small_playing_cover_ = ui_->checkbox_small_playing_cover->isChecked();
+  }
 
   s.endGroup();
 
@@ -765,6 +811,63 @@ void AppearanceSettingsPage::TabBarBackgroundChanged() {
   ui_->tabbar_background_image_do_not_cut->setEnabled(!tile && ui_->tabbar_background_image_stretch->isChecked() && ui_->tabbar_background_image_keep_aspect_ratio->isChecked());
   ui_->tabbar_background_image_maxsize->setEnabled(!ui_->tabbar_background_image_stretch->isChecked() || tile);
   ui_->tabbar_background_image_position->setEnabled(!tile);
+
+}
+
+// A layout was chosen in the dropdown: Akousma and Strawberry set their values, Custom starts from the values of the layout chosen before.
+void AppearanceSettingsPage::PlayerLayoutChosen() {
+
+  const PlayerLayout player_layout = static_cast<PlayerLayout>(ui_->combobox_player_layout->currentData().toInt());
+  if (player_layout != PlayerLayout::Custom) {
+    const PlayerLayoutValues &values = player_layout == PlayerLayout::Strawberry ? kPlayerLayoutStrawberry : kPlayerLayoutAkousma;
+    ui_->spinbox_icon_size_tabbar_small_mode->setValue(values.icon_size_tabbar_small_mode);
+    ui_->spinbox_icon_size_tabbar_large_mode->setValue(values.icon_size_tabbar_large_mode);
+    ui_->spinbox_icon_size_play_control_buttons->setValue(values.icon_size_play_control_buttons);
+    ui_->spinbox_icon_size_playlist_buttons->setValue(values.icon_size_playlist_buttons);
+    ui_->spinbox_icon_size_left_panel_buttons->setValue(values.icon_size_left_panel_buttons);
+    ui_->spinbox_icon_size_configure_buttons->setValue(values.icon_size_configure_buttons);
+    ui_->checkbox_sequence_beside_play_controls->setChecked(values.sequence_beside_play_controls);
+    ui_->checkbox_small_playing_cover->setChecked(values.small_playing_cover);
+    ui_->spinbox_player_controls_height->setValue(values.player_controls_height);
+    SetTabBarBackground(static_cast<int>(values.tabbar_background));
+  }
+  UpdatePlayerLayoutControls();
+
+  set_changed();
+
+}
+
+void AppearanceSettingsPage::UpdatePlayerLayoutControls() {
+
+  const PlayerLayout player_layout = static_cast<PlayerLayout>(ui_->combobox_player_layout->currentData().toInt());
+  const bool custom = player_layout == PlayerLayout::Custom;
+  ui_->widget_player_layout_custom->setEnabled(custom);
+  ui_->groupbox_icon_sizes->setEnabled(custom);
+
+  switch (player_layout) {
+    case PlayerLayout::Akousma:
+      ui_->label_player_layout_description->setText(tr("Clementine's sizes: %1 px playback buttons with repeat and shuffle beside them in the same size, a small album cover with the song details in the sidebar and Clementine's sidebar background.").arg(kPlayerLayoutAkousma.icon_size_play_control_buttons));
+      break;
+    case PlayerLayout::Strawberry:
+      ui_->label_player_layout_description->setText(tr("Strawberry's original layout: %1 px playback buttons, repeat and shuffle in the status bar, a large album cover in the sidebar and the strawberry sidebar background.").arg(kPlayerLayoutStrawberry.icon_size_play_control_buttons));
+      break;
+    case PlayerLayout::Custom:
+      ui_->label_player_layout_description->setText(tr("Set the sizes and positions below and the icon sizes yourself. The sidebar background is chosen under Tabbar background."));
+      break;
+  }
+
+}
+
+bool AppearanceSettingsPage::PlayerLayoutMatches(const PlayerLayoutValues &values) const {
+
+  return ui_->spinbox_icon_size_tabbar_small_mode->value() == values.icon_size_tabbar_small_mode &&
+         ui_->spinbox_icon_size_tabbar_large_mode->value() == values.icon_size_tabbar_large_mode &&
+         ui_->spinbox_icon_size_play_control_buttons->value() == values.icon_size_play_control_buttons &&
+         ui_->spinbox_icon_size_playlist_buttons->value() == values.icon_size_playlist_buttons &&
+         ui_->spinbox_icon_size_left_panel_buttons->value() == values.icon_size_left_panel_buttons &&
+         ui_->spinbox_icon_size_configure_buttons->value() == values.icon_size_configure_buttons &&
+         ui_->checkbox_sequence_beside_play_controls->isChecked() == values.sequence_beside_play_controls &&
+         ui_->spinbox_player_controls_height->value() == values.player_controls_height;
 
 }
 
