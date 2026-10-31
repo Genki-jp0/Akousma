@@ -66,7 +66,8 @@ WaveformProxyStyle::WaveformProxyStyle(QSlider *slider, QObject *parent)
 
   QObject::connect(fade_timeline_, &QTimeLine::valueChanged, this, &WaveformProxyStyle::FaderValueChanged);
 
-  // Seed show_ from QSettings and establish the initial size policy, mirroring how MoodbarProxyStyle normalizes the slider through ReloadSettings on creation.
+  // Start the slider at the standard height (show_ is off), then load the color from QSettings.
+  SetSliderExpanding(false);
   ReloadSettings();
 
 }
@@ -102,6 +103,9 @@ void WaveformProxyStyle::SetShowWaveform(const bool show) {
 
   show_ = show;
 
+  // Hiding hands the slider back at the standard height; from then on the active seekbar mode's proxy owns the size policy (see NextState()).
+  if (!show_) SetSliderExpanding(false);
+
   NextState();
 
   // Notify the controller so it starts or stops generating the current song's waveform for the seekbar.
@@ -113,9 +117,9 @@ void WaveformProxyStyle::NextState() {
 
   const bool visible = show_ && !data_.isEmpty();
 
-  // While the regular slider should stay at the standard size (Fixed), the waveform should use all available space (MinimumExpanding) so it expands vertically when active (REN-03).
-  slider_->setSizePolicy(QSizePolicy::Expanding, visible ? QSizePolicy::MinimumExpanding : QSizePolicy::Fixed);
-  slider_->updateGeometry();
+  // The waveform and the moodbar proxy styles sit on the same slider and both set its vertical size policy, so only the one the seekbar mode shows may do it here.
+  // Otherwise this proxy, hidden in moodbar mode, reset it to Fixed from ReloadSettings() (Preferences OK/Apply) or SetWaveformData() and squashed the moodbar into a thin strip.
+  if (show_) SetSliderExpanding(visible);
 
   if ((visible && (state_ == State::WaveformOn || state_ == State::FadingToOn)) || (!visible && (state_ == State::WaveformOff || state_ == State::FadingToOff))) {
     return;
@@ -142,6 +146,14 @@ void WaveformProxyStyle::NextState() {
   }
 
   state_ = visible ? State::FadingToOn : State::FadingToOff;
+
+}
+
+void WaveformProxyStyle::SetSliderExpanding(const bool expanding) {
+
+  // While the regular slider should stay at the standard size (Fixed), the waveform should use all available space (MinimumExpanding) so it expands vertically when active (REN-03).
+  slider_->setSizePolicy(QSizePolicy::Expanding, expanding ? QSizePolicy::MinimumExpanding : QSizePolicy::Fixed);
+  slider_->updateGeometry();
 
 }
 

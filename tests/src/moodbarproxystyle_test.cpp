@@ -31,12 +31,17 @@
 #include <QColor>
 #include <QRect>
 #include <QSize>
+#include <QSizePolicy>
 #include <QSlider>
 #include <QStandardPaths>
 #include <QStyle>
 #include <QStyleOptionSlider>
 
 #include "moodbar/moodbarproxystyle.h"
+
+#ifdef HAVE_WAVEFORM
+#  include "waveform/waveformproxystyle.h"
+#endif
 
 // Regression test: the rendered moodbar kept the colors of the palette it was first drawn with, so after the Windows window
 // backdrop was turned off (translucent Window color -> opaque one) the margin around it was drawn with the old color.
@@ -93,3 +98,35 @@ TEST(MoodbarProxyStyleTest, PaletteChangeRendersNewPixmap) {
   delete style;
 
 }
+
+#ifdef HAVE_WAVEFORM
+// Regression test: the moodbar and the waveform proxy styles share the seek slider and both set its vertical size policy.
+// In moodbar mode the hidden waveform proxy reset it to Fixed (on Preferences OK/Apply, or when it got data), so the moodbar was drawn as a thin strip.
+TEST(MoodbarProxyStyleTest, HiddenWaveformProxyKeepsMoodbarExpanded) {
+
+  QStandardPaths::setTestModeEnabled(true);
+
+  QSlider slider(Qt::Horizontal);
+  MoodbarProxyStyle *moodbar_style = new MoodbarProxyStyle(&slider);
+  WaveformProxyStyle *waveform_style = new WaveformProxyStyle(&slider);
+  slider.setStyle(moodbar_style);
+
+  moodbar_style->SetShowMoodbar(true);
+  moodbar_style->SetMoodbarData(QByteArray(3 * 1000, '\x80'));
+  ASSERT_EQ(slider.sizePolicy().verticalPolicy(), QSizePolicy::MinimumExpanding);
+
+  waveform_style->ReloadSettings();
+  EXPECT_EQ(slider.sizePolicy().verticalPolicy(), QSizePolicy::MinimumExpanding);
+
+  waveform_style->SetWaveformData(QByteArray());
+  EXPECT_EQ(slider.sizePolicy().verticalPolicy(), QSizePolicy::MinimumExpanding);
+
+  // Switching the seekbar to the normal slider still gives it back its standard height.
+  moodbar_style->SetShowMoodbar(false);
+  EXPECT_EQ(slider.sizePolicy().verticalPolicy(), QSizePolicy::Fixed);
+
+  delete waveform_style;
+  delete moodbar_style;
+
+}
+#endif

@@ -91,6 +91,7 @@ class MoodbarProxyStyle : public QProxyStyle {
 
  private:
   void NextState();
+  void SetSliderExpanding(const bool expanding);
 
   void Render(const ComplexControl control, const QStyleOptionSlider *option, QPainter *painter, const QWidget *widget);
   void EnsureMoodbarRendered(const QStyleOptionSlider *opt);

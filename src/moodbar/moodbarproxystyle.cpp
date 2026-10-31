@@ -36,6 +36,7 @@
 #include <QStyle>
 #include <QEvent>
 
+#include "core/logging.h"
 #include "core/settings.h"
 
 #include "moodbarproxystyle.h"
@@ -104,6 +105,9 @@ void MoodbarProxyStyle::SetShowMoodbar(const bool show) {
 
   show_ = show;
 
+  // Hiding hands the slider back at the standard height; from then on the active seekbar mode's proxy owns the size policy (see NextState()).
+  if (!show_) SetSliderExpanding(false);
+
   NextState();
 
   // Notify the controller so it starts or stops generating the current song's moodbar for the seekbar.
@@ -115,10 +119,9 @@ void MoodbarProxyStyle::NextState() {
 
   const bool visible = show_ && !data_.isEmpty();
 
-  // While the regular slider should stay at the standard size (Fixed),
-  // moodbars should use all available space (MinimumExpanding).
-  slider_->setSizePolicy(QSizePolicy::Expanding, visible ? QSizePolicy::MinimumExpanding : QSizePolicy::Fixed);
-  slider_->updateGeometry();
+  // The moodbar and the waveform proxy styles sit on the same slider and both set its vertical size policy, so only the one the seekbar mode shows may do it here.
+  // Otherwise the hidden waveform proxy (whose NextState() also runs on Preferences OK/Apply) reset it to Fixed and squashed the shown moodbar into a thin strip.
+  if (show_) SetSliderExpanding(visible);
 
   if ((visible && (state_ == State::MoodbarOn || state_ == State::FadingToOn)) || (!visible && (state_ == State::MoodbarOff || state_ == State::FadingToOff))) {
     return;
@@ -145,6 +148,15 @@ void MoodbarProxyStyle::NextState() {
   }
 
   state_ = visible ? State::FadingToOn : State::FadingToOff;
+
+}
+
+void MoodbarProxyStyle::SetSliderExpanding(const bool expanding) {
+
+  // While the regular slider should stay at the standard size (Fixed),
+  // moodbars should use all available space (MinimumExpanding).
+  slider_->setSizePolicy(QSizePolicy::Expanding, expanding ? QSizePolicy::MinimumExpanding : QSizePolicy::Fixed);
+  slider_->updateGeometry();
 
 }
 
@@ -259,6 +271,8 @@ void MoodbarProxyStyle::EnsureMoodbarRendered(const QStyleOptionSlider *opt) {
   }
 
   if (moodbar_pixmap_dirty_) {
+    // Logged once per render (resize, palette, style or data change), not per paint, so a squashed seekbar shows up in --log-file with its size and policy.
+    qLog(Debug) << "Rendering seekbar moodbar: state" << static_cast<int>(state_) << "slider" << slider_->size() << "option rect" << opt->rect << "vertical policy" << slider_->sizePolicy().verticalPolicy();
     moodbar_pixmap_ = MoodbarPixmap(moodbar_colors_, slider_->size(), slider_->palette(), opt);
     moodbar_pixmap_dirty_ = false;
   }
