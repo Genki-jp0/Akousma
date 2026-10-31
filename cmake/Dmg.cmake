@@ -33,7 +33,7 @@ if(MACDEPLOYTOOL_EXECUTABLE)
       set(DMG_NAME akousma)
     endif()
     add_custom_target(dmg
-      COMMAND ${CREATEDMG_EXECUTABLE} --volname Akousma --background "${CMAKE_SOURCE_DIR}/dist/macos/dmg_background.png" --app-drop-link 450 218 --icon akousma.app 150 218 --window-size 600 450 ${CREATEDMG_CODESIGN} ${CREATEDMG_SKIP_JENKINS_ARG} ${DMG_NAME}-${STRAWBERRY_VERSION_PACKAGE}-${CMAKE_HOST_SYSTEM_PROCESSOR}.dmg akousma.app
+      COMMAND ${CREATEDMG_EXECUTABLE} --volname Akousma --background "${CMAKE_SOURCE_DIR}/dist/macos/dmg_background.png" --app-drop-link 450 218 --icon akousma.app 150 218 --window-size 600 450 ${CREATEDMG_CODESIGN} ${CREATEDMG_SKIP_JENKINS_ARG} ${DMG_NAME}-${AKOUSMA_VERSION_PACKAGE}-${CMAKE_HOST_SYSTEM_PROCESSOR}.dmg akousma.app
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     )
   endif()

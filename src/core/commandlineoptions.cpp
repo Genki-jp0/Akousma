@@ -101,7 +101,7 @@ constexpr char kHelpText[] =
     "      --import-quiet          %39\n"
     "      --import-passwords      %40\n";
 
-constexpr char kVersionText[] = "Akousma %1 (based on Strawberry)";
+constexpr char kVersionText[] = "Akousma %1\nBased on Strawberry %2 (%3)";
 
 }  // namespace
 
@@ -321,7 +321,7 @@ bool CommandlineOptions::Parse() {
         log_levels_ = OptArgToString(optarg);
         break;
       case LongOptions::Version:{
-        QString version_text = QString::fromUtf8(kVersionText).arg(QLatin1String(STRAWBERRY_VERSION_DISPLAY));
+        QString version_text = QString::fromUtf8(kVersionText).arg(QLatin1String(AKOUSMA_VERSION_DISPLAY), QLatin1String(AKOUSMA_BASE_STRAWBERRY_VERSION), QLatin1String(AKOUSMA_BASE_STRAWBERRY_COMMIT));
         std::cout << version_text.toLocal8Bit().constData() << std::endl;
         std::exit(0);
       }

@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
 
   // Use the same application name and version as the application, the version is part of the user agent sent by the network tests.
   QCoreApplication::setApplicationName(u"Akousma"_s);
-  QCoreApplication::setApplicationVersion(QStringLiteral(STRAWBERRY_VERSION_DISPLAY));
+  QCoreApplication::setApplicationVersion(QStringLiteral(AKOUSMA_VERSION));
 
   // Keep settings written by the tests out of the users own configuration.
   // Every test binary shares the application name set above, so give each process its own directory to keep them from writing to the same settings when run in parallel.

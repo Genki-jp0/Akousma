@@ -153,7 +153,7 @@ int main(int argc, char *argv[]) {
 
   QCoreApplication::setApplicationName(u"Akousma"_s);
   QCoreApplication::setOrganizationName(u"Akousma"_s);
-  QCoreApplication::setApplicationVersion(QStringLiteral(STRAWBERRY_VERSION_DISPLAY));
+  QCoreApplication::setApplicationVersion(QStringLiteral(AKOUSMA_VERSION));
   QCoreApplication::setOrganizationDomain(u"genki_jp0.github.io"_s);
 
   // This makes us show up nicely in gnome-volume-control
@@ -215,7 +215,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   // Output the version, so when people attach log output to bug reports they don't have to tell us which version they're using.
-  qLog(Info) << "Akousma" << STRAWBERRY_VERSION_DISPLAY << "Qt" << QLibraryInfo::version().toString();
+  qLog(Info) << "Akousma" << AKOUSMA_VERSION_DISPLAY << "based on Strawberry" << AKOUSMA_BASE_STRAWBERRY_VERSION << AKOUSMA_BASE_STRAWBERRY_COMMIT << "Qt" << QLibraryInfo::version().toString();
   qLog(Info) << QStringLiteral("%1 %2 - (%3 %4) [%5]").arg(QSysInfo::prettyProductName(), QSysInfo::productVersion(), QSysInfo::kernelType(), QSysInfo::kernelVersion(), QSysInfo::currentCpuArchitecture());
 
   // Seed the random number generators.

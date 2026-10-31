@@ -3,7 +3,8 @@ set(STRAWBERRY_VERSION_MINOR 2)
 set(STRAWBERRY_VERSION_PATCH 31)
 #set(STRAWBERRY_VERSION_PRERELEASE rc1)
 
-set(INCLUDE_GIT_REVISION ON)
+# Akousma: off. These variables describe the Strawberry code base; Akousma's own version is in cmake/AkousmaVersion.cmake.
+set(INCLUDE_GIT_REVISION OFF)
 
 set(majorminorpatch "${STRAWBERRY_VERSION_MAJOR}.${STRAWBERRY_VERSION_MINOR}.${STRAWBERRY_VERSION_PATCH}")
 
@@ -78,7 +79,7 @@ else()
   set(STRAWBERRY_VERSION_RPM_R   "1")
 endif()
 
-message(STATUS "Akousma Version:")
+message(STATUS "Strawberry code base version:")
 message(STATUS "Display:  ${STRAWBERRY_VERSION_DISPLAY}")
 message(STATUS "Package:  ${STRAWBERRY_VERSION_PACKAGE}")
 message(STATUS "RPM:      ${STRAWBERRY_VERSION_RPM_V}-${STRAWBERRY_VERSION_RPM_R}")

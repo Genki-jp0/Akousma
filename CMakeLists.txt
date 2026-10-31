@@ -11,6 +11,7 @@ include(CheckCXXSourceRuns)
 include(CheckIncludeFiles)
 include(FindPkgConfig)
 include(cmake/Version.cmake)
+include(cmake/AkousmaVersion.cmake)
 include(cmake/OptionalComponent.cmake)
 include(cmake/ApiCredentials.cmake)
 

@@ -20,8 +20,8 @@
  */
 
 #include "config.h"
+#include "version.h"
 
-#include <QCoreApplication>
 #include <QWidget>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -161,7 +161,9 @@ QString AboutDialog::MainHtml() const {
   QString ret;
 
   ret += "<p>"_L1;
-  ret += tr("Version %1").arg(QCoreApplication::applicationVersion());
+  ret += tr("Version %1").arg(QLatin1String(AKOUSMA_VERSION_DISPLAY));
+  ret += "<br />"_L1;
+  ret += tr("Based on Strawberry %1 (%2)").arg(QLatin1String(AKOUSMA_BASE_STRAWBERRY_VERSION), QStringLiteral("<a style=\"color:%1;\" href=\"https://github.com/strawberrymusicplayer/strawberry/commit/%2\">%2</a>").arg(palette().text().color().name(), QLatin1String(AKOUSMA_BASE_STRAWBERRY_COMMIT)));
   ret += "</p>"_L1;
 
   ret += "<p>"_L1;

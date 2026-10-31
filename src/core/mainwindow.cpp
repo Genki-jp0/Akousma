@@ -1235,6 +1235,7 @@ MainWindow::MainWindow(Application *app,
   if (!sparkle_url.isEmpty()) {
     qLog(Debug) << "Creating Qt Sparkle updater";
     qtsparkle::Updater *updater = new qtsparkle::Updater(sparkle_url, this);
+    // QtSparkle reads upstream Strawberry's feed, so it compares against the Strawberry version Akousma is based on.
     updater->SetVersion(QStringLiteral(STRAWBERRY_VERSION_PACKAGE));
     QObject::connect(action_check_updates, &QAction::triggered, updater, &qtsparkle::Updater::CheckNow);
   }
