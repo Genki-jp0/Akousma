@@ -968,6 +968,7 @@ set(HEADERS
   src/core/jsonbaserequest.h
   src/core/oauthenticator.h
   src/core/appearance.h
+  src/core/iconloader.h
 
   src/credentialsmanager/credentialsmanager.h
   src/credentialsmanager/credentialsreply.h
@@ -1876,8 +1877,20 @@ endif()
 
 target_link_libraries(akousma PUBLIC strawberry_lib)
 
+# Bundled icon sets (Settings > Appearance > Icon set), made by dist/scripts/extract-iconsets.py. Each one is a separate
+# iconsets/<id>.rcc, loaded at runtime from next to the program (Windows, the build folder) or from share/akousma/iconsets.
+set(AKOUSMA_ICONSETS adwaita breeze breeze-dark clementine elementary oxygen papirus papirus-dark tango)
+set(AKOUSMA_ICONSET_FILES)
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/iconsets")
+foreach(iconset ${AKOUSMA_ICONSETS})
+  qt_add_binary_resources(iconset_${iconset} "${CMAKE_CURRENT_SOURCE_DIR}/data/iconsets/${iconset}.qrc" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/iconsets/${iconset}.rcc")
+  add_dependencies(akousma iconset_${iconset})
+  list(APPEND AKOUSMA_ICONSET_FILES "${CMAKE_CURRENT_BINARY_DIR}/iconsets/${iconset}.rcc")
+endforeach()
+
 if(NOT APPLE)
   install(TARGETS akousma RUNTIME DESTINATION bin)
+  install(FILES ${AKOUSMA_ICONSET_FILES} DESTINATION share/akousma/iconsets)
 endif()
 
 if(HAVE_TRANSLATIONS AND INSTALL_TRANSLATIONS AND INSTALL_TRANSLATIONS_FILES)

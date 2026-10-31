@@ -44,16 +44,6 @@
          </widget>
         </item>
         <item>
-         <widget class="QCheckBox" name="checkbox_system_icons">
-          <property name="toolTip">
-           <string>You need to restart Akousma for this setting to take affect</string>
-          </property>
-          <property name="text">
-           <string>System icons</string>
-          </property>
-         </widget>
-        </item>
-        <item>
          <spacer name="spacer_style">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
@@ -67,6 +57,63 @@
          </spacer>
         </item>
        </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="layout_icon_set">
+        <item>
+         <widget class="QLabel" name="label_icon_set">
+          <property name="text">
+           <string>Icon set</string>
+          </property>
+          <property name="buddy">
+           <cstring>combobox_icon_set</cstring>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="combobox_icon_set">
+          <property name="toolTip">
+           <string>Icons a set doesn't have come from Akousma's own icons. Akousma restarts to use another icon set.</string>
+          </property>
+          <property name="sizeAdjustPolicy">
+           <enum>QComboBox::AdjustToContents</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="button_icon_set_folder">
+          <property name="toolTip">
+           <string>Opens the folder for your own icon themes: put a freedesktop icon theme folder (with its index.theme) there and it is listed as an icon set.</string>
+          </property>
+          <property name="text">
+           <string>Your icon themes...</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="spacer_icon_set">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_icon_set_info">
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+        <property name="textInteractionFlags">
+         <set>Qt::TextSelectableByMouse</set>
+        </property>
+       </widget>
       </item>
       <item>
        <widget class="QWidget" name="widget_window_backdrop" native="true">
@@ -913,7 +960,8 @@
  <tabstops>
   <tabstop>combobox_style</tabstop>
   <tabstop>checkbox_dark_mode</tabstop>
-  <tabstop>checkbox_system_icons</tabstop>
+  <tabstop>combobox_icon_set</tabstop>
+  <tabstop>button_icon_set_folder</tabstop>
   <tabstop>combobox_window_backdrop</tabstop>
   <tabstop>checkbox_window_backdrop_translucent_content</tabstop>
   <tabstop>combobox_player_layout</tabstop>

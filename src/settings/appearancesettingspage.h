@@ -36,6 +36,7 @@
 #include "settingspage.h"
 #include "constants/appearancesettings.h"
 #include "widgets/fancytabwidget.h"
+#include "core/iconloader.h"
 #include "tabbarthemes.h"
 
 class QWidget;
@@ -79,6 +80,8 @@ class AppearanceSettingsPage : public SettingsPage {
   void UpdateTabBarThemeButtons();
   void PlaylistPlayingSongColorSystem(const bool checked);
   void PlaylistPlayingSongSelectColor();
+  void IconSetChanged();
+  void OpenIconSetFolder();
 
  private:
   void Cancel() override;
@@ -105,6 +108,11 @@ class AppearanceSettingsPage : public SettingsPage {
   QString AskTabBarThemeName(const QString &title, const QString &initial_name, const qsizetype except_index, bool *overwrite);
   static FancyTabWidget::BackgroundOptions ThemeBackgroundOptions(const TabBarThemes::Theme &theme);
   bool PlayerLayoutMatches(const AppearanceSettings::PlayerLayoutValues &values) const;
+  // Fills the icon set dropdown, each set with a preview of a few of its icons, and selects id.
+  void UpdateIconSetItems(const QString &id);
+  // The icon set chosen on this page, the one in use until the dropdown is filled.
+  QString SelectedIconSet() const;
+  IconLoader::IconSet SelectedIconSetEntry() const;
   // Human-readable label for a palette color role.
   static QString ColorRoleLabel(const QPalette::ColorRole role);
 
@@ -129,6 +137,9 @@ class AppearanceSettingsPage : public SettingsPage {
   QString original_background_image_filename_;
   QColor current_playlist_playing_song_color_;
   QColor original_playlist_playing_song_color_;
+  QList<IconLoader::IconSet> icon_sets_;
+  // The icon set the user was last asked to restart for, so Apply doesn't ask again.
+  QString restart_asked_icon_set_;
 };
 
 #endif  // APPEARANCESETTINGSPAGE_H

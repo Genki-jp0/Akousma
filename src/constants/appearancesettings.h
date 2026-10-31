@@ -42,6 +42,9 @@ enum class BackgroundImagePosition {
 
 constexpr char kStyle[] = "style";
 constexpr char kSystemThemeIcons[] = "system_icons";
+// The icon set (Settings > Appearance > Icon set): "akousma" (built-in), "system" (Linux), a bundled set such as "breeze",
+// or "theme:<folder>" for an icon theme in <data dir>/icons. Before it existed, system_icons=true meant "system".
+constexpr char kIconSet[] = "icon_set";
 constexpr char kDarkMode[] = "dark_mode";
 constexpr char kUseCustomColorSet[] = "use-custom-color-set";
 

@@ -71,12 +71,13 @@ class SettingsTransfer {
   static void ExportWithDialog(QWidget *parent);
   static bool ImportWithDialog(QWidget *parent);
   static bool ResetWithDialog(QWidget *parent);
+  // Asks whether to restart now for a change that needs a restart. Returns true when the user wants to restart now.
+  static bool AskRestart(QWidget *parent, const QString &title, const QString &text);
 
  private:
   static QString PendingFileName();
   static QString NewBackupDir();
   static bool KeepOnReset(const QString &key);
-  static bool AskRestart(QWidget *parent, const QString &title, const QString &text);
 };
 
 #endif  // SETTINGSTRANSFER_H

@@ -56,6 +56,11 @@
 #include <QIcon>
 #include <QPixmap>
 #include <QPainter>
+#include <QTimer>
+#include <QSignalBlocker>
+#include <QDir>
+#include <QUrl>
+#include <QDesktopServices>
 
 #include "appearancesettingspage.h"
 #include "constants/appearancesettings.h"
@@ -65,6 +70,7 @@
 #include "core/stylehelper.h"
 #include "core/settings.h"
 #include "core/appearance.h"
+#include "core/settingstransfer.h"
 #include "widgets/fancytabwidget.h"
 #include "tabbarthemes.h"
 #include "settingspage.h"
@@ -83,13 +89,18 @@ namespace {
 // Size of the sidebar background previews in the Tabbar background dropdown.
 constexpr int kTabBarPreviewWidth = 150;
 constexpr int kTabBarPreviewHeight = 48;
+
+// The icons shown for each icon set in its dropdown.
+constexpr int kIconSetPreviewIconSize = 20;
+constexpr int kIconSetPreviewSpacing = 4;
+constexpr const char16_t *kIconSetPreviewIcons[] = { u"media-playback-start", u"media-skip-forward", u"media-playlist-shuffle", u"folder-sound", u"edit-find", u"configure", u"document-save" };
 // Where PlayingWidget keeps its album cover mode (0 small, 1 large).
 constexpr char kPlayingWidgetSettingsGroup[] = "PlayingWidget";
 constexpr char kPlayingWidgetMode[] = "mode";
 // Item data of the user's themes in the Tabbar background dropdown, their name is in kTabBarThemeNameRole.
 constexpr int kTabBarThemeItem = -1;
 constexpr int kTabBarThemeNameRole = Qt::UserRole + 1;
-constexpr int kTabBarBadgeSize = 16;
+constexpr int kTabBarBadgeSize = 20;
 
 // A checkerboard like a transparency grid, the preview of the custom image before an image is chosen.
 void DrawCheckerboard(QPainter *p, const QRect &rect) {
@@ -102,33 +113,9 @@ void DrawCheckerboard(QPainter *p, const QRect &rect) {
   }
 }
 
-// The badge of the custom image preview: the theme's edit icon, or a pencil drawn here, on a round background.
-void DrawEditBadge(QPainter *p, const QRect &rect) {
-
-  p->save();
-  p->setRenderHint(QPainter::Antialiasing);
-  p->setPen(Qt::NoPen);
-  p->setBrush(QColor(255, 255, 255, 230));
-  p->drawEllipse(rect.adjusted(-2, -2, 2, 2));
-  if (QIcon::hasThemeIcon(u"document-edit"_s)) {
-    QIcon::fromTheme(u"document-edit"_s).paint(p, rect.adjusted(1, 1, -1, -1));
-  }
-  else {
-    // A pencil from the lower left to the upper right.
-    p->translate(rect.center());
-    p->rotate(-45);
-    const qreal length = rect.width() * 0.8;
-    const qreal width = rect.width() * 0.28;
-    p->setBrush(QColor(230, 160, 40));
-    p->drawRect(QRectF(-length / 2 + width, -width / 2, length - width * 1.4, width));
-    p->setBrush(QColor(220, 90, 90));
-    p->drawRect(QRectF(length / 2 - width * 0.4, -width / 2, width * 0.5, width));
-    p->setBrush(QColor(60, 60, 60));
-    const QPointF tip[3] = { QPointF(-length / 2, 0), QPointF(-length / 2 + width, -width / 2), QPointF(-length / 2 + width, width / 2) };
-    p->drawPolygon(tip, 3);
-  }
-  p->restore();
-
+// The badge of the custom image preview: the edit icon of the chosen icon set, or the built-in one. No badge without one.
+void DrawEditBadge(QPainter *p, const QRect &rect, const QPixmap &icon) {
+  if (!icon.isNull()) p->drawPixmap(rect, icon);
 }
 
 }  // namespace
@@ -251,11 +238,15 @@ AppearanceSettingsPage::AppearanceSettingsPage(SettingsDialog *dialog, SharedPtr
   QObject::connect(ui_->slider_background_image_blur, &QSlider::valueChanged, this, &AppearanceSettingsPage::BackgroundImageBlurLevelChanged);
   QObject::connect(ui_->slider_background_image_opacity, &QSlider::valueChanged, this, &AppearanceSettingsPage::BackgroundImageOpacityLevelChanged);
 
-#if defined(Q_OS_MACOS) || defined(Q_OS_WIN32)
-  ui_->checkbox_system_icons->setEnabled(false);
-#else
-  ui_->checkbox_system_icons->setEnabled(true);
-#endif
+  // Icon set: a dropdown with a few icons of each set.
+  constexpr int preview_icon_count = static_cast<int>(sizeof(kIconSetPreviewIcons) / sizeof(kIconSetPreviewIcons[0]));
+  ui_->combobox_icon_set->setIconSize(QSize(preview_icon_count * (kIconSetPreviewIconSize + kIconSetPreviewSpacing) - kIconSetPreviewSpacing, kIconSetPreviewIconSize));
+  QObject::connect(ui_->combobox_icon_set, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &AppearanceSettingsPage::IconSetChanged);
+  QObject::connect(ui_->button_icon_set_folder, &QPushButton::clicked, this, &AppearanceSettingsPage::OpenIconSetFolder);
+  // "Follow system icon theme" shows the desktop's theme now.
+  if (IconThemeWatcher *watcher = IconLoader::ThemeWatcher()) {
+    QObject::connect(watcher, &IconThemeWatcher::IconThemeChanged, this, [this]() { UpdateIconSetItems(SelectedIconSet()); });
+  }
 
   AppearanceSettingsPage::Load();
 
@@ -275,9 +266,7 @@ void AppearanceSettingsPage::Load() {
   original_style_ = QApplication::style() ? QApplication::style()->objectName() : QString();
   ComboBoxLoadFromSettings(s, ui_->combobox_style, QLatin1String(kStyle), u"default"_s);
 
-#if !defined(Q_OS_MACOS) && !defined(Q_OS_WIN32)
-  ui_->checkbox_system_icons->setChecked(s.value(kSystemThemeIcons, kDefaultSystemIcons).toBool());
-#endif
+  UpdateIconSetItems(IconLoader::IconSetFromSettings());
 
 #ifdef Q_OS_WIN32
   {
@@ -473,11 +462,23 @@ void AppearanceSettingsPage::Save() {
     selected_style = appearance_->default_style();
   }
 
-#if defined(Q_OS_MACOS) || defined(Q_OS_WIN32)
-  s.setValue(kSystemThemeIcons, false);
-#else
-  s.setValue(kSystemThemeIcons, ui_->checkbox_system_icons->isChecked());
-#endif
+  // Icon set. system_icons is kept up to date for older versions reading these settings.
+  const QString icon_set = ui_->combobox_icon_set->currentData().toString().isEmpty() ? QLatin1String(IconLoader::kIconSetBuiltIn) : ui_->combobox_icon_set->currentData().toString();
+  s.setValue(kIconSet, icon_set);
+  s.setValue(kSystemThemeIcons, icon_set == QLatin1String(IconLoader::kIconSetSystem));
+  // The icons are set when the windows are made, so another icon set needs a restart. Ask after all pages are saved.
+  if (icon_set != IconLoader::CurrentIconSet() && icon_set != restart_asked_icon_set_) {
+    restart_asked_icon_set_ = icon_set;
+    const QString icon_set_name = ui_->combobox_icon_set->currentText();
+    QPointer<SettingsDialog> settings_dialog = dialog();
+    QTimer::singleShot(0, settings_dialog, [settings_dialog, icon_set_name]() {
+      if (!settings_dialog) return;
+      QWidget *parent = settings_dialog->isVisible() ? static_cast<QWidget*>(settings_dialog) : settings_dialog->parentWidget();
+      if (SettingsTransfer::AskRestart(parent, tr("Icon set"), tr("Akousma uses the icon set \"%1\" from the next start.").arg(icon_set_name))) {
+        settings_dialog->RequestRestart();
+      }
+    });
+  }
 
   s.setValue(kDarkMode, Utilities::StyleHasDarkModeSupport(selected_style) ? ui_->checkbox_dark_mode->isChecked() : false);
 
@@ -960,7 +961,11 @@ void AppearanceSettingsPage::UpdateTabBarBackgroundPreviews() {
   options.image_opacity = ui_->tabbar_background_image_opacity->value();
   options.image_tint = ui_->tabbar_background_image_tint->isChecked();
 
-  const QList<QPair<QIcon, QString>> tabs = { qMakePair(IconLoader::Load(u"library-music"_s), tr("Collection")), qMakePair(IconLoader::Load(u"view-media-playlist"_s), tr("Playlists")) };
+  // The icons of the icon set chosen on this page.
+  const IconLoader::IconSet icon_set = SelectedIconSetEntry();
+  const qreal device_pixel_ratio = devicePixelRatioF();
+  const QList<QPair<QIcon, QString>> tabs = { qMakePair(QIcon(IconLoader::IconSetPixmap(icon_set, u"library-music"_s, qRound(24 * device_pixel_ratio))), tr("Collection")), qMakePair(QIcon(IconLoader::IconSetPixmap(icon_set, u"view-media-playlist"_s, qRound(24 * device_pixel_ratio))), tr("Playlists")) };
+  const QPixmap edit_badge = IconLoader::IconSetPixmap(icon_set, u"document-edit"_s, qRound(kTabBarBadgeSize * device_pixel_ratio));
   const int tab_width = kTabBarPreviewWidth / static_cast<int>(tabs.count());
   constexpr int kIconSize = 24;
 
@@ -1007,7 +1012,7 @@ void AppearanceSettingsPage::UpdateTabBarBackgroundPreviews() {
       p.drawText(text_rect, Qt::AlignHCenter | Qt::AlignBottom, tabs[t].second);
     }
     if (custom_badge) {
-      DrawEditBadge(&p, QRect(pixmap.width() - kTabBarBadgeSize - 4, 4, kTabBarBadgeSize, kTabBarBadgeSize));
+      DrawEditBadge(&p, QRect(pixmap.width() - kTabBarBadgeSize - 4, 4, kTabBarBadgeSize, kTabBarBadgeSize), edit_badge);
     }
     p.end();
     ui_->tabbar_background->setItemData(i, pixmap, Qt::DecorationRole);
@@ -1315,5 +1320,109 @@ void AppearanceSettingsPage::PlaylistPlayingSongSelectColor() {
   UpdateColorSelectorColor(ui_->select_playlist_playing_song_color, current_playlist_playing_song_color_);
 
   set_changed();
+
+}
+
+void AppearanceSettingsPage::UpdateIconSetItems(const QString &id) {
+
+  const QSignalBlocker blocker(ui_->combobox_icon_set);
+  ui_->combobox_icon_set->clear();
+  icon_sets_ = IconLoader::IconSets();
+
+  const QSize icon_size = ui_->combobox_icon_set->iconSize();
+  const qreal device_pixel_ratio = devicePixelRatioF();
+  const int pixmap_icon_size = qRound(kIconSetPreviewIconSize * device_pixel_ratio);
+
+  int current_index = 0;
+  for (const IconLoader::IconSet &icon_set : std::as_const(icon_sets_)) {
+    QPixmap preview(icon_size * device_pixel_ratio);
+    preview.setDevicePixelRatio(device_pixel_ratio);
+    preview.fill(Qt::transparent);
+    {
+      QPainter p(&preview);
+      p.setRenderHint(QPainter::SmoothPixmapTransform);
+      int x = 0;
+      for (const char16_t *name : kIconSetPreviewIcons) {
+        const QPixmap icon = IconLoader::IconSetPixmap(icon_set, QString::fromUtf16(name), pixmap_icon_size);
+        p.drawPixmap(QRect(x, 0, kIconSetPreviewIconSize, kIconSetPreviewIconSize), icon);
+        x += kIconSetPreviewIconSize + kIconSetPreviewSpacing;
+      }
+    }
+    QString text = icon_set.name;
+    if (icon_set.type == IconLoader::IconSetType::UserTheme) {
+      text = tr("%1 (your icon theme)").arg(icon_set.name);
+    }
+    else if (icon_set.type == IconLoader::IconSetType::SystemTheme) {
+      text = tr("%1 (installed icon theme)").arg(icon_set.name);
+    }
+    ui_->combobox_icon_set->addItem(QIcon(preview), text, icon_set.id);
+    if (icon_set.id == id) current_index = ui_->combobox_icon_set->count() - 1;
+  }
+  ui_->combobox_icon_set->setCurrentIndex(current_index);
+  IconSetChanged();
+
+}
+
+IconLoader::IconSet AppearanceSettingsPage::SelectedIconSetEntry() const {
+
+  const int index = ui_->combobox_icon_set->currentIndex();
+  if (index >= 0 && index < icon_sets_.count()) return icon_sets_.at(index);
+  return IconLoader::FindIconSet(IconLoader::CurrentIconSet());
+
+}
+
+QString AppearanceSettingsPage::SelectedIconSet() const {
+
+  const QString id = ui_->combobox_icon_set->currentData().toString();
+  return id.isEmpty() ? IconLoader::CurrentIconSet() : id;
+
+}
+
+void AppearanceSettingsPage::IconSetChanged() {
+
+  const int index = ui_->combobox_icon_set->currentIndex();
+  if (index < 0 || index >= icon_sets_.count()) {
+    ui_->label_icon_set_info->clear();
+    return;
+  }
+
+  const IconLoader::IconSet &icon_set = icon_sets_.at(index);
+  QString info;
+  switch (icon_set.type) {
+    case IconLoader::IconSetType::BuiltIn:
+      info = tr("Akousma's own icons.");
+      break;
+    case IconLoader::IconSetType::System:
+      info = tr("The icon theme of your desktop, also when you change it there. Icons it doesn't have come from Akousma's own icons.");
+      break;
+    case IconLoader::IconSetType::SystemTheme:
+      info = tr("An icon theme installed on this computer, in %1. Icons it doesn't have come from Akousma's own icons.").arg(QDir::toNativeSeparators(icon_set.path));
+      break;
+    case IconLoader::IconSetType::Bundled:
+      info = tr("%1 of %2 icons from %3, the others are Akousma's own: logos and ratings always are. Licence: %4. Source: %5").arg(icon_set.icons).arg(IconLoader::ThemableIconCount()).arg(icon_set.name, icon_set.licence, icon_set.source);
+      break;
+    case IconLoader::IconSetType::UserTheme:
+      info = tr("Your icon theme in %1. Icons it doesn't have come from Akousma's own icons.").arg(QDir::toNativeSeparators(icon_set.path));
+      break;
+  }
+  if (icon_set.id != IconLoader::CurrentIconSet()) {
+    info += u' ' + tr("Akousma restarts to use it.");
+  }
+  ui_->label_icon_set_info->setText(info);
+
+  // The sidebar previews show the icons of the chosen set.
+  UpdateTabBarBackgroundPreviews();
+
+}
+
+void AppearanceSettingsPage::OpenIconSetFolder() {
+
+  const QString dir = IconLoader::UserIconsDir();
+  if (!QDir().mkpath(dir)) {
+    QMessageBox::warning(this, tr("Icon set"), tr("Could not create the folder %1.").arg(QDir::toNativeSeparators(dir)));
+    return;
+  }
+  QMessageBox::information(this, tr("Icon set"), tr("Put an icon theme folder (a freedesktop icon theme with its index.theme file, PNG icons work everywhere, SVG icons need the Qt SVG plugin) into %1 and it is listed as an icon set the next time you open the settings.").arg(QDir::toNativeSeparators(dir)));
+  QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
 
 }
