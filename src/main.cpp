@@ -329,6 +329,10 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  // Platform themes such as qt6ct set the application style sheet from a queued call. Deliver the queued calls now, while
+  // there are no widgets yet: after the main window is made, Qt would have to restyle about 1800 widgets (upstream #2571).
+  QCoreApplication::sendPostedEvents();
+
   // Resources
   Q_INIT_RESOURCE(data);
   Q_INIT_RESOURCE(icons);
