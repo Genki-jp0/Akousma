@@ -84,7 +84,7 @@
       <item>
        <widget class="QCheckBox" name="startup_scan">
         <property name="text">
-         <string>Update the collection when Strawberry starts</string>
+         <string>Update the collection when Akousma starts</string>
         </property>
        </widget>
       </item>
@@ -193,7 +193,7 @@
       <item>
        <widget class="QLineEdit" name="cover_art_patterns">
         <property name="toolTip">
-         <string>When looking for album art Strawberry will first look for picture files that contain one of these words.
+         <string>When looking for album art Akousma will first look for picture files that contain one of these words.
 If there are no matches then it will use the largest image in the directory.</string>
         </property>
        </widget>

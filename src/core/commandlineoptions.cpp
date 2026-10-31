@@ -58,7 +58,7 @@ using namespace Qt::Literals::StringLiterals;
 namespace {
 
 constexpr char kHelpText[] =
-    "%1: strawberry [%2] [%3]\n"
+    "%1: akousma [%2] [%3]\n"
     "\n"
     "%4:\n"
     "  -p, --play                 %5\n"

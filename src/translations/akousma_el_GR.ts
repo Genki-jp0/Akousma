@@ -19,8 +19,8 @@
       <translation type="unfinished">About</translation>
     </message>
     <message>
-      <source>About Strawberry</source>
-      <translation type="unfinished">About Strawberry</translation>
+      <source>About Akousma</source>
+      <translation type="unfinished">About Akousma</translation>
     </message>
     <message>
       <source>Version %1</source>
@@ -630,12 +630,12 @@
       <translation>Επαναφορά στις προεπιλογές</translation>
     </message>
     <message>
-      <source>You might need to restart Strawberry for this setting to fully apply</source>
-      <translation>Ίσως να πρέπει να επανεκκινήσετε το Srawberry για να ενεργοποιηθεί αυτή η ρύθμιση</translation>
+      <source>You might need to restart Akousma for this setting to fully apply</source>
+      <translation>Ίσως να πρέπει να επανεκκινήσετε το Akousma για να ενεργοποιηθεί αυτή η ρύθμιση</translation>
     </message>
     <message>
-      <source>You need to restart Strawberry for this setting to take affect</source>
-      <translation>Θα πρέπει να επανεκκινήσετε το Srawberry για να ενεργοποιηθεί αυτή η ρύθμιση</translation>
+      <source>You need to restart Akousma for this setting to take affect</source>
+      <translation>Θα πρέπει να επανεκκινήσετε το Akousma για να ενεργοποιηθεί αυτή η ρύθμιση</translation>
     </message>
     <message>
       <source>System icons</source>
@@ -825,8 +825,8 @@
       <translation>Ξεθώριασμα σε παύση / ξεθώριασμα σε συνέχιση</translation>
     </message>
     <message>
-      <source>You need to restart Strawberry for this setting to take affect</source>
-      <translation>Θα πρέπει να επανεκκινήσετε το Srawberry για να ενεργοποιηθεί αυτή η ρύθμιση</translation>
+      <source>You need to restart Akousma for this setting to take affect</source>
+      <translation>Θα πρέπει να επανεκκινήσετε το Akousma για να ενεργοποιηθεί αυτή η ρύθμιση</translation>
     </message>
     <message>
       <source>Map the volume slider to a decibel scale so that perceived loudness changes evenly. Each 1% step equals 0.5 dB, 100% is 0 dB and 0% is silence.</source>
@@ -908,8 +908,8 @@
       <translation>Χρησιμοποιήστε την προεπιλογή του συστήματος</translation>
     </message>
     <message>
-      <source>You will need to restart Strawberry if you change the language.</source>
-      <translation>Θα χρειαστεί να επανεκκινήσετε το Strawberry αν αλλάξετε τη γλώσσα.</translation>
+      <source>You will need to restart Akousma if you change the language.</source>
+      <translation>Θα χρειαστεί να επανεκκινήσετε το Akousma αν αλλάξετε τη γλώσσα.</translation>
     </message>
     <message>
       <source>Using the menu to add a song will...</source>
@@ -1226,8 +1226,8 @@
       <translation>Αυτόματη ενημέρωση</translation>
     </message>
     <message>
-      <source>Update the collection when Strawberry starts</source>
-      <translation>Ενημερώστε τη συλλογή όταν ξεκινά το Strawberry</translation>
+      <source>Update the collection when Akousma starts</source>
+      <translation>Ενημερώστε τη συλλογή όταν ξεκινά το Akousma</translation>
     </message>
     <message>
       <source>Monitor the collection for changes</source>
@@ -1258,9 +1258,9 @@
       <translation>Προτιμώμενα ονόματα αρχείων εξωφύλλου (χωρισμένα με κόμμα)</translation>
     </message>
     <message>
-      <source>When looking for album art Strawberry will first look for picture files that contain one of these words.
+      <source>When looking for album art Akousma will first look for picture files that contain one of these words.
 If there are no matches then it will use the largest image in the directory.</source>
-      <translation>Όταν ψάχνει για εξώφυλλο άλμπουμ ο Strawberry θα ψάξει πρώτα για αρχεία εικόνων που περιέχουν μία από αυτές τις λέξεις.
+      <translation>Όταν ψάχνει για εξώφυλλο άλμπουμ ο Akousma θα ψάξει πρώτα για αρχεία εικόνων που περιέχουν μία από αυτές τις λέξεις.
 Εάν δεν υπάρχουν αντιστοιχίες, τότε θα χρησιμοποιήσει τη μεγαλύτερη εικόνα στον κατάλογο.</translation>
     </message>
     <message>
@@ -2051,24 +2051,24 @@ If there are no matches then it will use the largest image in the directory.</so
       <translation>Σύνδεση συσκευής</translation>
     </message>
     <message>
-      <source>This is the first time you have connected this device.  Strawberry will now scan the device to find music files - this may take some time.</source>
-      <translation>Αυτή είναι η πρώτη φορά που συνδέετε αυτήν τη συσκευή. Το Strawberry θα σαρώσει τώρα τη συσκευή για να βρει αρχεία μουσικής - αυτό μπορεί να πάρει κάποιο χρόνο.</translation>
+      <source>This is the first time you have connected this device.  Akousma will now scan the device to find music files - this may take some time.</source>
+      <translation>Αυτή είναι η πρώτη φορά που συνδέετε αυτήν τη συσκευή. Το Akousma θα σαρώσει τώρα τη συσκευή για να βρει αρχεία μουσικής - αυτό μπορεί να πάρει κάποιο χρόνο.</translation>
     </message>
     <message>
       <source>This device will not work properly</source>
       <translation>Αυτή η συσκευή δεν θα λειτουργήσει σωστά</translation>
     </message>
     <message>
-      <source>This is an MTP device, but you compiled Strawberry without libmtp support.</source>
-      <translation>Αυτή είναι μια συσκευή MTP, αλλά συντάξατε το Strawberry χωρίς υποστήριξη libmtp.</translation>
+      <source>This is an MTP device, but you compiled Akousma without libmtp support.</source>
+      <translation>Αυτή είναι μια συσκευή MTP, αλλά συντάξατε το Akousma χωρίς υποστήριξη libmtp.</translation>
     </message>
     <message>
       <source>If you continue, this device will work slowly and songs copied to it may not work.</source>
       <translation>Αν συνεχίσετε, αυτή η συσκευή θα λειτουργεί αργά και τα τραγούδια που αντιγράφονται σε αυτήν ενδέχεται να μην λειτουργούν.</translation>
     </message>
     <message>
-      <source>This is an iPod, but you compiled Strawberry without libgpod support.</source>
-      <translation>Αυτό είναι ένα iPod, αλλά έχετε συντάξει (compile) το Strawberry χωρίς υποστήριξη libgpod.</translation>
+      <source>This is an iPod, but you compiled Akousma without libgpod support.</source>
+      <translation>Αυτό είναι ένα iPod, αλλά έχετε συντάξει (compile) το Akousma χωρίς υποστήριξη libgpod.</translation>
     </message>
     <message>
       <source>This type of device is not supported: %1</source>
@@ -2114,8 +2114,8 @@ If there are no matches then it will use the largest image in the directory.</so
       <translation>Αυτή η συσκευή υποστηρίζει τις ακόλουθες μορφές αρχείων:</translation>
     </message>
     <message>
-      <source>Strawberry can automatically convert the music you copy to this device into a format that it can play.</source>
-      <translation>Ο Strawberry μπορεί να μετατρέψει αυτόματα τη μουσική που αντιγράφετε σε αυτή τη συσκευή σε μια μορφή που μπορεί να παίξει.</translation>
+      <source>Akousma can automatically convert the music you copy to this device into a format that it can play.</source>
+      <translation>Ο Akousma μπορεί να μετατρέψει αυτόματα τη μουσική που αντιγράφετε σε αυτή τη συσκευή σε μια μορφή που μπορεί να παίξει.</translation>
     </message>
     <message>
       <source>Do not convert any music</source>
@@ -2134,8 +2134,8 @@ If there are no matches then it will use the largest image in the directory.</so
       <translation>Προτιμώμενη μορφή</translation>
     </message>
     <message>
-      <source>This device must be connected and opened before Strawberry can see what file formats it supports.</source>
-      <translation>Αυτή η συσκευή πρέπει να συνδεθεί και να ανοίξει πριν το Strawberry μπορεί να δει ποιες μορφές αρχείων υποστηρίζει.</translation>
+      <source>This device must be connected and opened before Akousma can see what file formats it supports.</source>
+      <translation>Αυτή η συσκευή πρέπει να συνδεθεί και να ανοίξει πριν το Akousma μπορεί να δει ποιες μορφές αρχείων υποστηρίζει.</translation>
     </message>
     <message>
       <source>Open device</source>
@@ -2189,8 +2189,8 @@ If there are no matches then it will use the largest image in the directory.</so
       <translation>Διαγραφή από τη συσκευή...</translation>
     </message>
     <message>
-      <source>Forgetting a device will remove it from this list and Strawberry will have to rescan all the songs again next time you connect it.</source>
-      <translation>Ξεχνώντας μια συσκευή θα την αφαιρέσετε από αυτή τη λίστα και το Strawberry θα πρέπει να επανακτήσει όλα τα τραγούδια την επόμενη φορά που θα τη συνδέσετε.</translation>
+      <source>Forgetting a device will remove it from this list and Akousma will have to rescan all the songs again next time you connect it.</source>
+      <translation>Ξεχνώντας μια συσκευή θα την αφαιρέσετε από αυτή τη λίστα και το Akousma θα πρέπει να επανακτήσει όλα τα τραγούδια την επόμενη φορά που θα τη συνδέσετε.</translation>
     </message>
     <message>
       <source>Delete files</source>
@@ -2768,7 +2768,7 @@ If there are no matches then it will use the largest image in the directory.</so
   <context>
     <name>ErrorDialog</name>
     <message>
-      <source>Strawberry Error</source>
+      <source>Akousma Error</source>
       <translation>Εξώφυλλο από ενσωματωμένη εικόνα</translation>
     </message>
   </context>
@@ -3087,8 +3087,8 @@ If there are no matches then it will use the largest image in the directory.</so
       <translation>Χρήση συντομεύσεων X11 όταν είναι διαθέσιμες</translation>
     </message>
     <message>
-      <source>You need to launch System Preferences and allow Strawberry to &quot;&lt;span style=&quot;font-style:italic&quot;&gt;control your computer&lt;/span&gt;&quot; to use global shortcuts in Strawberry.</source>
-      <translation>Θα πρέπει να εκκινήσετε τις Προτιμήσεις συστήματος και να επιτρέψετε στο Straberry να &quot;&lt;span style=&quot;font-style:italic&quot;&gt;να ελέγχει τον υπολογιστή σας&lt;/span&gt;&quot; να χρησιμοποιεί καθολικές συντομεύσεις στo Strawberry.</translation>
+      <source>You need to launch System Preferences and allow Akousma to &quot;&lt;span style=&quot;font-style:italic&quot;&gt;control your computer&lt;/span&gt;&quot; to use global shortcuts in Akousma.</source>
+      <translation>Θα πρέπει να εκκινήσετε τις Προτιμήσεις συστήματος και να επιτρέψετε στο Straberry να &quot;&lt;span style=&quot;font-style:italic&quot;&gt;να ελέγχει τον υπολογιστή σας&lt;/span&gt;&quot; να χρησιμοποιεί καθολικές συντομεύσεις στo Akousma.</translation>
     </message>
     <message>
       <source>Action</source>
@@ -3418,8 +3418,8 @@ If there are no matches then it will use the largest image in the directory.</so
   <context>
     <name>MainWindow</name>
     <message>
-      <source>Strawberry Music Player</source>
-      <translation>Αναπαραγωγέας Μουσικής Strawberry</translation>
+      <source>Akousma</source>
+      <translation>Akousma</translation>
     </message>
     <message>
       <source>MenuPopupToolButton</source>
@@ -3534,8 +3534,8 @@ If there are no matches then it will use the largest image in the directory.</so
       <translation>Ctrl+P</translation>
     </message>
     <message>
-      <source>&amp;About Strawberry</source>
-      <translation>&amp;Σχετικά Με Strawberry</translation>
+      <source>&amp;About Akousma</source>
+      <translation>&amp;Σχετικά Με Akousma</translation>
     </message>
     <message>
       <source>F1</source>
@@ -3822,12 +3822,12 @@ If there are no matches then it will use the largest image in the directory.</so
       <translation>Έλεγχος για ενημερώσεις...</translation>
     </message>
     <message>
-      <source>Strawberry running under Rosetta</source>
-      <translation>Φράουλα που τρέχουν κάτω από Rosetta</translation>
+      <source>Akousma running under Rosetta</source>
+      <translation>Akousma που τρέχουν κάτω από Rosetta</translation>
     </message>
     <message>
-      <source>You are running Strawberry under Rosetta. Running Strawberry under Rosetta is unsupported and known to have issues. You should download Strawberry for the correct CPU architecture from %1</source>
-      <translation>Τρέχετε το Strawberry κάτω από Rosetta. Η χρήση του Strawberry κάτω από Rosetta δεν υποστηρίζεται και είναι γνωστό ότι παρουσιάζει προβλήματα. Θα πρέπει να λάβετε το Strawberry για τη σωστή αρχιτεκτονική CPU από %1</translation>
+      <source>You are running Akousma under Rosetta. Running Akousma under Rosetta is unsupported and known to have issues. You should download Akousma for the correct CPU architecture from %1</source>
+      <translation>Τρέχετε το Akousma κάτω από Rosetta. Η χρήση του Akousma κάτω από Rosetta δεν υποστηρίζεται και είναι γνωστό ότι παρουσιάζει προβλήματα. Θα πρέπει να λάβετε το Akousma για τη σωστή αρχιτεκτονική CPU από %1</translation>
     </message>
     <message>
       <source>Sponsoring Strawberry</source>
@@ -3918,8 +3918,8 @@ If there are no matches then it will use the largest image in the directory.</so
       <translation>Κανένα από τα επιλεγμένα τραγούδια δεν ήταν κατάλληλο για αντιγραφή σε μια συσκευή</translation>
     </message>
     <message>
-      <source>The version of Strawberry you&apos;ve just updated to requires a full collection rescan because of the new features listed below:</source>
-      <translation>Η έκδοση του Strawberry που μόλις ενημερώθηκε απαιτεί πλήρη επανασάρωση συλλογής λόγω των νέων χαρακτηριστικών που αναφέρονται παρακάτω:</translation>
+      <source>The version of Akousma you&apos;ve just updated to requires a full collection rescan because of the new features listed below:</source>
+      <translation>Η έκδοση του Akousma που μόλις ενημερώθηκε απαιτεί πλήρη επανασάρωση συλλογής λόγω των νέων χαρακτηριστικών που αναφέρονται παρακάτω:</translation>
     </message>
     <message>
       <source>Would you like to run a full rescan right now?</source>
@@ -4082,8 +4082,8 @@ If there are no matches then it will use the largest image in the directory.</so
       <translation>Ειδοποιήσεις</translation>
     </message>
     <message>
-      <source>Strawberry can show a message when the track changes.</source>
-      <translation>Το Strawberry μπορεί να εμφανίσει ένα μήνυμα όταν αλλάζει το τραγούδι.</translation>
+      <source>Akousma can show a message when the track changes.</source>
+      <translation>Το Akousma μπορεί να εμφανίσει ένα μήνυμα όταν αλλάζει το τραγούδι.</translation>
     </message>
     <message>
       <source>Notification type</source>
@@ -7620,12 +7620,12 @@ Are you sure you want to continue?</source>
       <translation>Ακυρώθηκε.</translation>
     </message>
     <message>
-      <source>Received a %1 encrypted stream from Tidal, which Strawberry does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</source>
-      <translation type="unfinished">Received a %1 encrypted stream from Tidal, which Strawberry does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</translation>
+      <source>Received a %1 encrypted stream from Tidal, which Akousma does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</source>
+      <translation type="unfinished">Received a %1 encrypted stream from Tidal, which Akousma does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</translation>
     </message>
     <message>
-      <source>Received an encrypted stream from Tidal, which Strawberry does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</source>
-      <translation type="unfinished">Received an encrypted stream from Tidal, which Strawberry does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</translation>
+      <source>Received an encrypted stream from Tidal, which Akousma does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</source>
+      <translation type="unfinished">Received an encrypted stream from Tidal, which Akousma does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</translation>
     </message>
   </context>
   <context>
@@ -7635,8 +7635,8 @@ Are you sure you want to continue?</source>
       <translation>Λήψη ετικετών</translation>
     </message>
     <message>
-      <source>Strawberry was unable to find results for this file</source>
-      <translation>Το Strawberry δεν μπόρεσε να βρει αποτελέσματα για αυτό το αρχείο</translation>
+      <source>Akousma was unable to find results for this file</source>
+      <translation>Το Akousma δεν μπόρεσε να βρει αποτελέσματα για αυτό το αρχείο</translation>
     </message>
     <message>
       <source>Select best possible match</source>

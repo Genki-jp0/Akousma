@@ -32,7 +32,7 @@
         <item>
          <widget class="QComboBox" name="combobox_style">
           <property name="toolTip">
-           <string>You might need to restart Strawberry for this setting to fully apply</string>
+           <string>You might need to restart Akousma for this setting to fully apply</string>
           </property>
          </widget>
         </item>
@@ -46,7 +46,7 @@
         <item>
          <widget class="QCheckBox" name="checkbox_system_icons">
           <property name="toolTip">
-           <string>You need to restart Strawberry for this setting to take affect</string>
+           <string>You need to restart Akousma for this setting to take affect</string>
           </property>
           <property name="text">
            <string>System icons</string>
@@ -147,7 +147,7 @@
          <item>
           <widget class="QLabel" name="label_window_backdrop_info">
            <property name="text">
-            <string>Mica and Mica Alt need Windows 11 22H2 or later; on Windows 10, Acrylic uses the older acrylic blur. Changing the backdrop, or setting it back to None, applies immediately; turning it on from None needs a restart of Strawberry. The window is drawn opaque while Windows transparency effects are off or in a Remote Desktop session.</string>
+            <string>Mica and Mica Alt need Windows 11 22H2 or later; on Windows 10, Acrylic uses the older acrylic blur. Changing the backdrop, or setting it back to None, applies immediately; turning it on from None needs a restart of Akousma. The window is drawn opaque while Windows transparency effects are off or in a Remote Desktop session.</string>
            </property>
            <property name="wordWrap">
             <bool>true</bool>

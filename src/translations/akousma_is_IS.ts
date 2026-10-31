@@ -19,8 +19,8 @@
       <translation type="unfinished">About</translation>
     </message>
     <message>
-      <source>About Strawberry</source>
-      <translation type="unfinished">About Strawberry</translation>
+      <source>About Akousma</source>
+      <translation type="unfinished">About Akousma</translation>
     </message>
     <message>
       <source>Version %1</source>
@@ -630,12 +630,12 @@
       <translation>Endurstilla á sjálfgefið</translation>
     </message>
     <message>
-      <source>You might need to restart Strawberry for this setting to fully apply</source>
-      <translation>Þú gætir þurft að endurræsa Strawberry til að þessi stilling taki gildi að fullu</translation>
+      <source>You might need to restart Akousma for this setting to fully apply</source>
+      <translation>Þú gætir þurft að endurræsa Akousma til að þessi stilling taki gildi að fullu</translation>
     </message>
     <message>
-      <source>You need to restart Strawberry for this setting to take affect</source>
-      <translation>Þú þarft að endurræsa Strawberry til að þessi stilling taki gildi</translation>
+      <source>You need to restart Akousma for this setting to take affect</source>
+      <translation>Þú þarft að endurræsa Akousma til að þessi stilling taki gildi</translation>
     </message>
     <message>
       <source>System icons</source>
@@ -825,8 +825,8 @@
       <translation>Deyfa út þegar sett er í bið / Afdeyfa þegar haldið er áfram</translation>
     </message>
     <message>
-      <source>You need to restart Strawberry for this setting to take affect</source>
-      <translation>Þú þarft að endurræsa Strawberry til að þessi stilling taki gildi</translation>
+      <source>You need to restart Akousma for this setting to take affect</source>
+      <translation>Þú þarft að endurræsa Akousma til að þessi stilling taki gildi</translation>
     </message>
     <message>
       <source>Map the volume slider to a decibel scale so that perceived loudness changes evenly. Each 1% step equals 0.5 dB, 100% is 0 dB and 0% is silence.</source>
@@ -908,8 +908,8 @@
       <translation>Nota sjálfgefnar stillingar kerfisins</translation>
     </message>
     <message>
-      <source>You will need to restart Strawberry if you change the language.</source>
-      <translation>Þú munt þurfa að endurræsa Strawberry ef þú skiptir um tungumál.</translation>
+      <source>You will need to restart Akousma if you change the language.</source>
+      <translation>Þú munt þurfa að endurræsa Akousma ef þú skiptir um tungumál.</translation>
     </message>
     <message>
       <source>Using the menu to add a song will...</source>
@@ -1226,8 +1226,8 @@
       <translation>Sjálfvirk uppfærsla</translation>
     </message>
     <message>
-      <source>Update the collection when Strawberry starts</source>
-      <translation>Uppfæra safn þegar Strawberry ræsist</translation>
+      <source>Update the collection when Akousma starts</source>
+      <translation>Uppfæra safn þegar Akousma ræsist</translation>
     </message>
     <message>
       <source>Monitor the collection for changes</source>
@@ -1258,9 +1258,9 @@
       <translation>Umbeðin skráarheiti umslagsmynda (aðgreind með kommu)</translation>
     </message>
     <message>
-      <source>When looking for album art Strawberry will first look for picture files that contain one of these words.
+      <source>When looking for album art Akousma will first look for picture files that contain one of these words.
 If there are no matches then it will use the largest image in the directory.</source>
-      <translation>Þegar leitað er að umslagsmyndum mun Strawberry leita fyrst að heitum myndskráa sem innihalda eitt af þessum orðum.
+      <translation>Þegar leitað er að umslagsmyndum mun Akousma leita fyrst að heitum myndskráa sem innihalda eitt af þessum orðum.
 Ef engar samsvaranir finnast, verður notast víð stærstu myndina í möppunni.</translation>
     </message>
     <message>
@@ -2051,24 +2051,24 @@ Ef engar samsvaranir finnast, verður notast víð stærstu myndina í möppunni
       <translation>Tengja tæki</translation>
     </message>
     <message>
-      <source>This is the first time you have connected this device.  Strawberry will now scan the device to find music files - this may take some time.</source>
-      <translation>Þetta er í fyrsta skipti sem þú tengir þetta tæki. Strawberry mun núna skanna tækið til að finna tónlistarskrár - það gæti tekið nokkra stund.</translation>
+      <source>This is the first time you have connected this device.  Akousma will now scan the device to find music files - this may take some time.</source>
+      <translation>Þetta er í fyrsta skipti sem þú tengir þetta tæki. Akousma mun núna skanna tækið til að finna tónlistarskrár - það gæti tekið nokkra stund.</translation>
     </message>
     <message>
       <source>This device will not work properly</source>
       <translation>Þetta tæki mun ekki virka eðlilega</translation>
     </message>
     <message>
-      <source>This is an MTP device, but you compiled Strawberry without libmtp support.</source>
-      <translation>Þetta er MTP-tæki, en þú vistþýddir Strawberry án stuðnings við libmtp.</translation>
+      <source>This is an MTP device, but you compiled Akousma without libmtp support.</source>
+      <translation>Þetta er MTP-tæki, en þú vistþýddir Akousma án stuðnings við libmtp.</translation>
     </message>
     <message>
       <source>If you continue, this device will work slowly and songs copied to it may not work.</source>
       <translation>Ef þú heldur áfram, mun þetta tæki ekki virka eðlilega og lögin sem afrituð eru yfir á það gætu ekki virkað.</translation>
     </message>
     <message>
-      <source>This is an iPod, but you compiled Strawberry without libgpod support.</source>
-      <translation>Þetta er iPod, en þú vistþýddir Strawberry án stuðnings við libgpod.</translation>
+      <source>This is an iPod, but you compiled Akousma without libgpod support.</source>
+      <translation>Þetta er iPod, en þú vistþýddir Akousma án stuðnings við libgpod.</translation>
     </message>
     <message>
       <source>This type of device is not supported: %1</source>
@@ -2114,7 +2114,7 @@ Ef engar samsvaranir finnast, verður notast víð stærstu myndina í möppunni
       <translation>Þetta tæki styður eftirfarandi skráasnið:</translation>
     </message>
     <message>
-      <source>Strawberry can automatically convert the music you copy to this device into a format that it can play.</source>
+      <source>Akousma can automatically convert the music you copy to this device into a format that it can play.</source>
       <translation>/ getur sjálfkrafa umbreytt tónlistinni sem þú afritar á þetta tæki yfir í snið sem það getur spilað.</translation>
     </message>
     <message>
@@ -2134,8 +2134,8 @@ Ef engar samsvaranir finnast, verður notast víð stærstu myndina í möppunni
       <translation>Umbeðið snið</translation>
     </message>
     <message>
-      <source>This device must be connected and opened before Strawberry can see what file formats it supports.</source>
-      <translation>Þetta tæki verður að vera tengt og opnað áður en Strawberry getur séð hvaða skráasnið það styður.</translation>
+      <source>This device must be connected and opened before Akousma can see what file formats it supports.</source>
+      <translation>Þetta tæki verður að vera tengt og opnað áður en Akousma getur séð hvaða skráasnið það styður.</translation>
     </message>
     <message>
       <source>Open device</source>
@@ -2189,8 +2189,8 @@ Ef engar samsvaranir finnast, verður notast víð stærstu myndina í möppunni
       <translation>Eyða af tæki...</translation>
     </message>
     <message>
-      <source>Forgetting a device will remove it from this list and Strawberry will have to rescan all the songs again next time you connect it.</source>
-      <translation>Að gleyma tæki þýðir að það er tekið af þessum lista og þarf Strawberry skanna öll lög á því næst þegar það er tengt.</translation>
+      <source>Forgetting a device will remove it from this list and Akousma will have to rescan all the songs again next time you connect it.</source>
+      <translation>Að gleyma tæki þýðir að það er tekið af þessum lista og þarf Akousma skanna öll lög á því næst þegar það er tengt.</translation>
     </message>
     <message>
       <source>Delete files</source>
@@ -2768,8 +2768,8 @@ Ef engar samsvaranir finnast, verður notast víð stærstu myndina í möppunni
   <context>
     <name>ErrorDialog</name>
     <message>
-      <source>Strawberry Error</source>
-      <translation>Villa í Strawberry</translation>
+      <source>Akousma Error</source>
+      <translation>Villa í Akousma</translation>
     </message>
   </context>
   <context>
@@ -3087,8 +3087,8 @@ Ef engar samsvaranir finnast, verður notast víð stærstu myndina í möppunni
       <translation>Nota flýtilykla X11 þegar þeir eru tiltækir</translation>
     </message>
     <message>
-      <source>You need to launch System Preferences and allow Strawberry to &quot;&lt;span style=&quot;font-style:italic&quot;&gt;control your computer&lt;/span&gt;&quot; to use global shortcuts in Strawberry.</source>
-      <translation>Þú þarft að fara í kerfisstillingarnar þínar og leyfa Strawberry að &quot;&lt;span style=&quot;font-style:italic&quot;&gt;stýra tölvunni þinni&lt;/span&gt;&quot; til þess að geta notað altækar flýtileiðir í Strawberry.</translation>
+      <source>You need to launch System Preferences and allow Akousma to &quot;&lt;span style=&quot;font-style:italic&quot;&gt;control your computer&lt;/span&gt;&quot; to use global shortcuts in Akousma.</source>
+      <translation>Þú þarft að fara í kerfisstillingarnar þínar og leyfa Akousma að &quot;&lt;span style=&quot;font-style:italic&quot;&gt;stýra tölvunni þinni&lt;/span&gt;&quot; til þess að geta notað altækar flýtileiðir í Akousma.</translation>
     </message>
     <message>
       <source>Action</source>
@@ -3418,8 +3418,8 @@ Ef engar samsvaranir finnast, verður notast víð stærstu myndina í möppunni
   <context>
     <name>MainWindow</name>
     <message>
-      <source>Strawberry Music Player</source>
-      <translation>Strawberry tónlistarspilari</translation>
+      <source>Akousma</source>
+      <translation>Akousma</translation>
     </message>
     <message>
       <source>MenuPopupToolButton</source>
@@ -3534,8 +3534,8 @@ Ef engar samsvaranir finnast, verður notast víð stærstu myndina í möppunni
       <translation>Ctrl+P</translation>
     </message>
     <message>
-      <source>&amp;About Strawberry</source>
-      <translation>&amp;Um Strawberry</translation>
+      <source>&amp;About Akousma</source>
+      <translation>&amp;Um Akousma</translation>
     </message>
     <message>
       <source>F1</source>
@@ -3822,12 +3822,12 @@ Ef engar samsvaranir finnast, verður notast víð stærstu myndina í möppunni
       <translation>Athuga með uppfærslur...</translation>
     </message>
     <message>
-      <source>Strawberry running under Rosetta</source>
-      <translation>Strawberry keyrandi undir Rosetta</translation>
+      <source>Akousma running under Rosetta</source>
+      <translation>Akousma keyrandi undir Rosetta</translation>
     </message>
     <message>
-      <source>You are running Strawberry under Rosetta. Running Strawberry under Rosetta is unsupported and known to have issues. You should download Strawberry for the correct CPU architecture from %1</source>
-      <translation>Þú ert að keyra Strawberry undir Rosetta. Að keyra Strawberry undir Rosetta er ekki með stuðning og eru þekkt vandamál við að gera slíkt. Þú ættir að sækja Strawberry fyrir rétta gerð örgjörva frá %1</translation>
+      <source>You are running Akousma under Rosetta. Running Akousma under Rosetta is unsupported and known to have issues. You should download Akousma for the correct CPU architecture from %1</source>
+      <translation>Þú ert að keyra Akousma undir Rosetta. Að keyra Akousma undir Rosetta er ekki með stuðning og eru þekkt vandamál við að gera slíkt. Þú ættir að sækja Akousma fyrir rétta gerð örgjörva frá %1</translation>
     </message>
     <message>
       <source>Sponsoring Strawberry</source>
@@ -3918,8 +3918,8 @@ Ef engar samsvaranir finnast, verður notast víð stærstu myndina í möppunni
       <translation>Ekkert af völdu lögunum henta til að afrita yfir á tæki</translation>
     </message>
     <message>
-      <source>The version of Strawberry you&apos;ve just updated to requires a full collection rescan because of the new features listed below:</source>
-      <translation>Sú útgáfa af Strawberry sem þú varst að uppfæra í, krefst þess að safnið sé skannað til fulls. Það er vegna nýrra eiginleika sem taldir eru upp hér fyrir neðan:</translation>
+      <source>The version of Akousma you&apos;ve just updated to requires a full collection rescan because of the new features listed below:</source>
+      <translation>Sú útgáfa af Akousma sem þú varst að uppfæra í, krefst þess að safnið sé skannað til fulls. Það er vegna nýrra eiginleika sem taldir eru upp hér fyrir neðan:</translation>
     </message>
     <message>
       <source>Would you like to run a full rescan right now?</source>
@@ -4082,8 +4082,8 @@ Ef engar samsvaranir finnast, verður notast víð stærstu myndina í möppunni
       <translation>Tilkynningar</translation>
     </message>
     <message>
-      <source>Strawberry can show a message when the track changes.</source>
-      <translation>Strawberry getur birt skilaboð þegar skipt er um lag.</translation>
+      <source>Akousma can show a message when the track changes.</source>
+      <translation>Akousma getur birt skilaboð þegar skipt er um lag.</translation>
     </message>
     <message>
       <source>Notification type</source>
@@ -7620,12 +7620,12 @@ Ertu viss um að þú viljir halda áfram?</translation>
       <translation>Hætt við.</translation>
     </message>
     <message>
-      <source>Received a %1 encrypted stream from Tidal, which Strawberry does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</source>
-      <translation type="unfinished">Received a %1 encrypted stream from Tidal, which Strawberry does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</translation>
+      <source>Received a %1 encrypted stream from Tidal, which Akousma does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</source>
+      <translation type="unfinished">Received a %1 encrypted stream from Tidal, which Akousma does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</translation>
     </message>
     <message>
-      <source>Received an encrypted stream from Tidal, which Strawberry does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</source>
-      <translation type="unfinished">Received an encrypted stream from Tidal, which Strawberry does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</translation>
+      <source>Received an encrypted stream from Tidal, which Akousma does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</source>
+      <translation type="unfinished">Received an encrypted stream from Tidal, which Akousma does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</translation>
     </message>
   </context>
   <context>
@@ -7635,8 +7635,8 @@ Ertu viss um að þú viljir halda áfram?</translation>
       <translation>Merkjasækir</translation>
     </message>
     <message>
-      <source>Strawberry was unable to find results for this file</source>
-      <translation>Strawberry fann engar niðurstöður fyrir þessa skrá</translation>
+      <source>Akousma was unable to find results for this file</source>
+      <translation>Akousma fann engar niðurstöður fyrir þessa skrá</translation>
     </message>
     <message>
       <source>Select best possible match</source>

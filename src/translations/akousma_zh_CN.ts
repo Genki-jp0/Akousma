@@ -19,8 +19,8 @@
       <translation type="unfinished">About</translation>
     </message>
     <message>
-      <source>About Strawberry</source>
-      <translation type="unfinished">About Strawberry</translation>
+      <source>About Akousma</source>
+      <translation type="unfinished">About Akousma</translation>
     </message>
     <message>
       <source>Version %1</source>
@@ -630,12 +630,12 @@
       <translation type="unfinished">Reset to default</translation>
     </message>
     <message>
-      <source>You might need to restart Strawberry for this setting to fully apply</source>
-      <translation>您可能需要重启 Strawberry 才能使此设置完全生效</translation>
+      <source>You might need to restart Akousma for this setting to fully apply</source>
+      <translation>您可能需要重启 Akousma 才能使此设置完全生效</translation>
     </message>
     <message>
-      <source>You need to restart Strawberry for this setting to take affect</source>
-      <translation type="unfinished">You need to restart Strawberry for this setting to take affect</translation>
+      <source>You need to restart Akousma for this setting to take affect</source>
+      <translation type="unfinished">You need to restart Akousma for this setting to take affect</translation>
     </message>
     <message>
       <source>System icons</source>
@@ -825,8 +825,8 @@
       <translation>暂停时淡出/恢复时淡入</translation>
     </message>
     <message>
-      <source>You need to restart Strawberry for this setting to take affect</source>
-      <translation>您需要重启 Strawberry 才能使此设置生效</translation>
+      <source>You need to restart Akousma for this setting to take affect</source>
+      <translation>您需要重启 Akousma 才能使此设置生效</translation>
     </message>
     <message>
       <source>Map the volume slider to a decibel scale so that perceived loudness changes evenly. Each 1% step equals 0.5 dB, 100% is 0 dB and 0% is silence.</source>
@@ -908,8 +908,8 @@
       <translation>使用系统默认</translation>
     </message>
     <message>
-      <source>You will need to restart Strawberry if you change the language.</source>
-      <translation>如果更改语言，您需要重启 Strawberry 使设置生效。</translation>
+      <source>You will need to restart Akousma if you change the language.</source>
+      <translation>如果更改语言，您需要重启 Akousma 使设置生效。</translation>
     </message>
     <message>
       <source>Using the menu to add a song will...</source>
@@ -1226,8 +1226,8 @@
       <translation>自动更新</translation>
     </message>
     <message>
-      <source>Update the collection when Strawberry starts</source>
-      <translation>Strawberry 启动时更新媒体库</translation>
+      <source>Update the collection when Akousma starts</source>
+      <translation>Akousma 启动时更新媒体库</translation>
     </message>
     <message>
       <source>Monitor the collection for changes</source>
@@ -1258,10 +1258,10 @@
       <translation>专辑封面的文件名 (逗号分隔)</translation>
     </message>
     <message>
-      <source>When looking for album art Strawberry will first look for picture files that contain one of these words.
+      <source>When looking for album art Akousma will first look for picture files that contain one of these words.
 If there are no matches then it will use the largest image in the directory.</source>
-      <translation>当查找专辑封面时，Strawberry 将首先查找包含这些关键词的图片。
-如果未能匹配，Strawberry 将使用目录下最大的图片。</translation>
+      <translation>当查找专辑封面时，Akousma 将首先查找包含这些关键词的图片。
+如果未能匹配，Akousma 将使用目录下最大的图片。</translation>
     </message>
     <message>
       <source>Display options</source>
@@ -2051,24 +2051,24 @@ If there are no matches then it will use the largest image in the directory.</so
       <translation>连接设备</translation>
     </message>
     <message>
-      <source>This is the first time you have connected this device.  Strawberry will now scan the device to find music files - this may take some time.</source>
-      <translation>这是您第一次连接该设备。Strawberry 将扫描设备上的音乐文件 - 这需要花费一些时间。</translation>
+      <source>This is the first time you have connected this device.  Akousma will now scan the device to find music files - this may take some time.</source>
+      <translation>这是您第一次连接该设备。Akousma 将扫描设备上的音乐文件 - 这需要花费一些时间。</translation>
     </message>
     <message>
       <source>This device will not work properly</source>
       <translation>这个设备将不会正常工作</translation>
     </message>
     <message>
-      <source>This is an MTP device, but you compiled Strawberry without libmtp support.</source>
-      <translation>这个一部 MTP 设备，但是您可以通过 Strawberry 来编辑而无需 libmtp 的支持。</translation>
+      <source>This is an MTP device, but you compiled Akousma without libmtp support.</source>
+      <translation>这个一部 MTP 设备，但是您可以通过 Akousma 来编辑而无需 libmtp 的支持。</translation>
     </message>
     <message>
       <source>If you continue, this device will work slowly and songs copied to it may not work.</source>
       <translation>如果您选择继续，设备运行将会变慢并且复制歌曲工作可能无法正常进行。</translation>
     </message>
     <message>
-      <source>This is an iPod, but you compiled Strawberry without libgpod support.</source>
-      <translation>这是 iPod 设备，但 Strawberry 编译时未包含 libgpod 支持。</translation>
+      <source>This is an iPod, but you compiled Akousma without libgpod support.</source>
+      <translation>这是 iPod 设备，但 Akousma 编译时未包含 libgpod 支持。</translation>
     </message>
     <message>
       <source>This type of device is not supported: %1</source>
@@ -2114,8 +2114,8 @@ If there are no matches then it will use the largest image in the directory.</so
       <translation>该设备支持以下文件格式：</translation>
     </message>
     <message>
-      <source>Strawberry can automatically convert the music you copy to this device into a format that it can play.</source>
-      <translation>Strawberry 可自动将要复制到设备的文件转换为它可以播放的格式。</translation>
+      <source>Akousma can automatically convert the music you copy to this device into a format that it can play.</source>
+      <translation>Akousma 可自动将要复制到设备的文件转换为它可以播放的格式。</translation>
     </message>
     <message>
       <source>Do not convert any music</source>
@@ -2134,8 +2134,8 @@ If there are no matches then it will use the largest image in the directory.</so
       <translation>首选格式</translation>
     </message>
     <message>
-      <source>This device must be connected and opened before Strawberry can see what file formats it supports.</source>
-      <translation>必须连接并开启设备，Strawberry 才能查询其支持的格式。</translation>
+      <source>This device must be connected and opened before Akousma can see what file formats it supports.</source>
+      <translation>必须连接并开启设备，Akousma 才能查询其支持的格式。</translation>
     </message>
     <message>
       <source>Open device</source>
@@ -2189,8 +2189,8 @@ If there are no matches then it will use the largest image in the directory.</so
       <translation>从设备删除...</translation>
     </message>
     <message>
-      <source>Forgetting a device will remove it from this list and Strawberry will have to rescan all the songs again next time you connect it.</source>
-      <translation>解除关联将从列表中移除此设备。下次连接时，Strawberry 需重新扫描所有曲目。</translation>
+      <source>Forgetting a device will remove it from this list and Akousma will have to rescan all the songs again next time you connect it.</source>
+      <translation>解除关联将从列表中移除此设备。下次连接时，Akousma 需重新扫描所有曲目。</translation>
     </message>
     <message>
       <source>Delete files</source>
@@ -2768,8 +2768,8 @@ If there are no matches then it will use the largest image in the directory.</so
   <context>
     <name>ErrorDialog</name>
     <message>
-      <source>Strawberry Error</source>
-      <translation>Strawberry 错误</translation>
+      <source>Akousma Error</source>
+      <translation>Akousma 错误</translation>
     </message>
   </context>
   <context>
@@ -3087,8 +3087,8 @@ If there are no matches then it will use the largest image in the directory.</so
       <translation>使用 X11 快捷键（如果可用）</translation>
     </message>
     <message>
-      <source>You need to launch System Preferences and allow Strawberry to &quot;&lt;span style=&quot;font-style:italic&quot;&gt;control your computer&lt;/span&gt;&quot; to use global shortcuts in Strawberry.</source>
-      <translation>您需要在系统设置中开启&quot;&lt;span style=&quot; font-style:italic;&quot;&gt;控制您的电脑&lt;/span&gt;&quot;选项，允许 Strawberry 使用全局快捷键。</translation>
+      <source>You need to launch System Preferences and allow Akousma to &quot;&lt;span style=&quot;font-style:italic&quot;&gt;control your computer&lt;/span&gt;&quot; to use global shortcuts in Akousma.</source>
+      <translation>您需要在系统设置中开启&quot;&lt;span style=&quot; font-style:italic;&quot;&gt;控制您的电脑&lt;/span&gt;&quot;选项，允许 Akousma 使用全局快捷键。</translation>
     </message>
     <message>
       <source>Action</source>
@@ -3418,8 +3418,8 @@ If there are no matches then it will use the largest image in the directory.</so
   <context>
     <name>MainWindow</name>
     <message>
-      <source>Strawberry Music Player</source>
-      <translation>Strawberry 音乐播放器</translation>
+      <source>Akousma</source>
+      <translation>Akousma</translation>
     </message>
     <message>
       <source>MenuPopupToolButton</source>
@@ -3534,8 +3534,8 @@ If there are no matches then it will use the largest image in the directory.</so
       <translation>Ctrl+P</translation>
     </message>
     <message>
-      <source>&amp;About Strawberry</source>
-      <translation>关于 Strawberry(&amp;A)</translation>
+      <source>&amp;About Akousma</source>
+      <translation>关于 Akousma(&amp;A)</translation>
     </message>
     <message>
       <source>F1</source>
@@ -3822,12 +3822,12 @@ If there are no matches then it will use the largest image in the directory.</so
       <translation>检查更新...</translation>
     </message>
     <message>
-      <source>Strawberry running under Rosetta</source>
-      <translation>Strawberry 正在 Rosetta 下运行</translation>
+      <source>Akousma running under Rosetta</source>
+      <translation>Akousma 正在 Rosetta 下运行</translation>
     </message>
     <message>
-      <source>You are running Strawberry under Rosetta. Running Strawberry under Rosetta is unsupported and known to have issues. You should download Strawberry for the correct CPU architecture from %1</source>
-      <translation>您正在 Rosetta 下运行 Strawberry。Rosetta 下运行 Strawberry 不受支持且已知存在问题。您应从 %1 下载适合正确 CPU 架构的 Strawberry</translation>
+      <source>You are running Akousma under Rosetta. Running Akousma under Rosetta is unsupported and known to have issues. You should download Akousma for the correct CPU architecture from %1</source>
+      <translation>您正在 Rosetta 下运行 Akousma。Rosetta 下运行 Akousma 不受支持且已知存在问题。您应从 %1 下载适合正确 CPU 架构的 Akousma</translation>
     </message>
     <message>
       <source>Sponsoring Strawberry</source>
@@ -3918,8 +3918,8 @@ If there are no matches then it will use the largest image in the directory.</so
       <translation>已选择的曲目均不适合复制到设备</translation>
     </message>
     <message>
-      <source>The version of Strawberry you&apos;ve just updated to requires a full collection rescan because of the new features listed below:</source>
-      <translation>已更新 Strawberry，由于添加了如下特性，您需要更新您的收藏：</translation>
+      <source>The version of Akousma you&apos;ve just updated to requires a full collection rescan because of the new features listed below:</source>
+      <translation>已更新 Akousma，由于添加了如下特性，您需要更新您的收藏：</translation>
     </message>
     <message>
       <source>Would you like to run a full rescan right now?</source>
@@ -4082,8 +4082,8 @@ If there are no matches then it will use the largest image in the directory.</so
       <translation>通知</translation>
     </message>
     <message>
-      <source>Strawberry can show a message when the track changes.</source>
-      <translation>Strawberry 可在曲目发生变化时显示提示。</translation>
+      <source>Akousma can show a message when the track changes.</source>
+      <translation>Akousma 可在曲目发生变化时显示提示。</translation>
     </message>
     <message>
       <source>Notification type</source>
@@ -7615,12 +7615,12 @@ Are you sure you want to continue?</source>
       <translation>已取消。</translation>
     </message>
     <message>
-      <source>Received a %1 encrypted stream from Tidal, which Strawberry does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</source>
-      <translation type="unfinished">Received a %1 encrypted stream from Tidal, which Strawberry does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</translation>
+      <source>Received a %1 encrypted stream from Tidal, which Akousma does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</source>
+      <translation type="unfinished">Received a %1 encrypted stream from Tidal, which Akousma does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</translation>
     </message>
     <message>
-      <source>Received an encrypted stream from Tidal, which Strawberry does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</source>
-      <translation type="unfinished">Received an encrypted stream from Tidal, which Strawberry does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</translation>
+      <source>Received an encrypted stream from Tidal, which Akousma does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</source>
+      <translation type="unfinished">Received an encrypted stream from Tidal, which Akousma does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</translation>
     </message>
   </context>
   <context>
@@ -7630,8 +7630,8 @@ Are you sure you want to continue?</source>
       <translation>标签提取程序</translation>
     </message>
     <message>
-      <source>Strawberry was unable to find results for this file</source>
-      <translation>Strawberry 无法为此文件查找结果</translation>
+      <source>Akousma was unable to find results for this file</source>
+      <translation>Akousma 无法为此文件查找结果</translation>
     </message>
     <message>
       <source>Select best possible match</source>

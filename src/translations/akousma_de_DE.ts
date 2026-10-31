@@ -19,8 +19,8 @@
       <translation type="unfinished">About</translation>
     </message>
     <message>
-      <source>About Strawberry</source>
-      <translation type="unfinished">About Strawberry</translation>
+      <source>About Akousma</source>
+      <translation type="unfinished">About Akousma</translation>
     </message>
     <message>
       <source>Version %1</source>
@@ -630,12 +630,12 @@
       <translation type="unfinished">Reset to default</translation>
     </message>
     <message>
-      <source>You might need to restart Strawberry for this setting to fully apply</source>
-      <translation type="unfinished">You might need to restart Strawberry for this setting to fully apply</translation>
+      <source>You might need to restart Akousma for this setting to fully apply</source>
+      <translation type="unfinished">You might need to restart Akousma for this setting to fully apply</translation>
     </message>
     <message>
-      <source>You need to restart Strawberry for this setting to take affect</source>
-      <translation type="unfinished">You need to restart Strawberry for this setting to take affect</translation>
+      <source>You need to restart Akousma for this setting to take affect</source>
+      <translation type="unfinished">You need to restart Akousma for this setting to take affect</translation>
     </message>
     <message>
       <source>System icons</source>
@@ -825,8 +825,8 @@
       <translation>Ausblenden bei Pause / Einblenden beim Fortsetzen</translation>
     </message>
     <message>
-      <source>You need to restart Strawberry for this setting to take affect</source>
-      <translation type="unfinished">You need to restart Strawberry for this setting to take affect</translation>
+      <source>You need to restart Akousma for this setting to take affect</source>
+      <translation type="unfinished">You need to restart Akousma for this setting to take affect</translation>
     </message>
     <message>
       <source>Map the volume slider to a decibel scale so that perceived loudness changes evenly. Each 1% step equals 0.5 dB, 100% is 0 dB and 0% is silence.</source>
@@ -908,8 +908,8 @@
       <translation>Standardeinstellungen des Systems benutzen</translation>
     </message>
     <message>
-      <source>You will need to restart Strawberry if you change the language.</source>
-      <translation>Sie müssen Strawberry nach dem Ändern der Sprache neu starten.</translation>
+      <source>You will need to restart Akousma if you change the language.</source>
+      <translation>Sie müssen Akousma nach dem Ändern der Sprache neu starten.</translation>
     </message>
     <message>
       <source>Using the menu to add a song will...</source>
@@ -1226,7 +1226,7 @@
       <translation>Automatisches Aktualisieren</translation>
     </message>
     <message>
-      <source>Update the collection when Strawberry starts</source>
+      <source>Update the collection when Akousma starts</source>
       <translation>Bibliothek beim Programmstart aktualisieren</translation>
     </message>
     <message>
@@ -1258,9 +1258,9 @@
       <translation>Bevorzugte Dateinamen für Titelbilder (durch Komma getrennt):</translation>
     </message>
     <message>
-      <source>When looking for album art Strawberry will first look for picture files that contain one of these words.
+      <source>When looking for album art Akousma will first look for picture files that contain one of these words.
 If there are no matches then it will use the largest image in the directory.</source>
-      <translation>Auf der Suche nach Titelbildern wird Strawberry zuerst nach Bilddateien suchen, die eines dieser Wörter enthalten.
+      <translation>Auf der Suche nach Titelbildern wird Akousma zuerst nach Bilddateien suchen, die eines dieser Wörter enthalten.
 Falls es keine Treffer gibt, wird das größte Bild aus dem Verzeichnis ausgewählt.</translation>
     </message>
     <message>
@@ -2051,24 +2051,24 @@ Falls es keine Treffer gibt, wird das größte Bild aus dem Verzeichnis ausgewä
       <translation>Gerät verbinden</translation>
     </message>
     <message>
-      <source>This is the first time you have connected this device.  Strawberry will now scan the device to find music files - this may take some time.</source>
-      <translation>Dieses Gerät wurde zum ersten Mal verbunden. Strawberry wird es nun nach Musikdateien durchsuchen – das kann einige Zeit dauern.</translation>
+      <source>This is the first time you have connected this device.  Akousma will now scan the device to find music files - this may take some time.</source>
+      <translation>Dieses Gerät wurde zum ersten Mal verbunden. Akousma wird es nun nach Musikdateien durchsuchen – das kann einige Zeit dauern.</translation>
     </message>
     <message>
       <source>This device will not work properly</source>
       <translation>Dieses Gerät wird nicht ordnungsgemäß funktionieren</translation>
     </message>
     <message>
-      <source>This is an MTP device, but you compiled Strawberry without libmtp support.</source>
-      <translation>Dies ist ein MTP-Gerät, aber Strawberry wurde ohne Unterstützung für libmtp kompiliert.</translation>
+      <source>This is an MTP device, but you compiled Akousma without libmtp support.</source>
+      <translation>Dies ist ein MTP-Gerät, aber Akousma wurde ohne Unterstützung für libmtp kompiliert.</translation>
     </message>
     <message>
       <source>If you continue, this device will work slowly and songs copied to it may not work.</source>
       <translation>Wenn Sie fortfahren, wird das Gerät langsam arbeiten und kopierte Titel könnten nicht abspielbar sein.</translation>
     </message>
     <message>
-      <source>This is an iPod, but you compiled Strawberry without libgpod support.</source>
-      <translation>Dies ist ein iPod, aber Strawberry wurde ohne Unterstützung für libgpod kompiliert.</translation>
+      <source>This is an iPod, but you compiled Akousma without libgpod support.</source>
+      <translation>Dies ist ein iPod, aber Akousma wurde ohne Unterstützung für libgpod kompiliert.</translation>
     </message>
     <message>
       <source>This type of device is not supported: %1</source>
@@ -2114,8 +2114,8 @@ Falls es keine Treffer gibt, wird das größte Bild aus dem Verzeichnis ausgewä
       <translation>Dieses Gerät unterstützt die folgenden Dateiformate:</translation>
     </message>
     <message>
-      <source>Strawberry can automatically convert the music you copy to this device into a format that it can play.</source>
-      <translation>Strawberry kann die Musik, die Sie auf dieses Gerät kopieren, automatisch in ein Format umwandeln, welches das Gerät wiedergeben kann.</translation>
+      <source>Akousma can automatically convert the music you copy to this device into a format that it can play.</source>
+      <translation>Akousma kann die Musik, die Sie auf dieses Gerät kopieren, automatisch in ein Format umwandeln, welches das Gerät wiedergeben kann.</translation>
     </message>
     <message>
       <source>Do not convert any music</source>
@@ -2134,8 +2134,8 @@ Falls es keine Treffer gibt, wird das größte Bild aus dem Verzeichnis ausgewä
       <translation>Bevorzugtes Format</translation>
     </message>
     <message>
-      <source>This device must be connected and opened before Strawberry can see what file formats it supports.</source>
-      <translation>Dieses Gerät muss verbunden und geöffnet sein, bevor Strawberry feststellen kann, welche Dateiformate es unterstützt.</translation>
+      <source>This device must be connected and opened before Akousma can see what file formats it supports.</source>
+      <translation>Dieses Gerät muss verbunden und geöffnet sein, bevor Akousma feststellen kann, welche Dateiformate es unterstützt.</translation>
     </message>
     <message>
       <source>Open device</source>
@@ -2189,8 +2189,8 @@ Falls es keine Treffer gibt, wird das größte Bild aus dem Verzeichnis ausgewä
       <translation>Vom Gerät löschen …</translation>
     </message>
     <message>
-      <source>Forgetting a device will remove it from this list and Strawberry will have to rescan all the songs again next time you connect it.</source>
-      <translation>Das Vergessen eines Geräts wird es aus dieser Liste entfernen und Strawberry wird beim nächsten Verbinden alle Titel erneut erfassen müssen.</translation>
+      <source>Forgetting a device will remove it from this list and Akousma will have to rescan all the songs again next time you connect it.</source>
+      <translation>Das Vergessen eines Geräts wird es aus dieser Liste entfernen und Akousma wird beim nächsten Verbinden alle Titel erneut erfassen müssen.</translation>
     </message>
     <message>
       <source>Delete files</source>
@@ -2768,8 +2768,8 @@ Falls es keine Treffer gibt, wird das größte Bild aus dem Verzeichnis ausgewä
   <context>
     <name>ErrorDialog</name>
     <message>
-      <source>Strawberry Error</source>
-      <translation>Strawberry-Fehler</translation>
+      <source>Akousma Error</source>
+      <translation>Akousma-Fehler</translation>
     </message>
   </context>
   <context>
@@ -3087,8 +3087,8 @@ Falls es keine Treffer gibt, wird das größte Bild aus dem Verzeichnis ausgewä
       <translation>Verwenden Sie X11-Verknüpfungen, sofern verfügbar</translation>
     </message>
     <message>
-      <source>You need to launch System Preferences and allow Strawberry to &quot;&lt;span style=&quot;font-style:italic&quot;&gt;control your computer&lt;/span&gt;&quot; to use global shortcuts in Strawberry.</source>
-      <translation>Sie müssen die Systemeinstellungen öffnen und &quot;&lt;span style=&quot; font-style:italic;&quot;&gt;Zugriff für Hilfsgeräte aktivieren&lt;/span&gt;&quot; in »Bedienhilfen« aktivieren, um Strawberrys Tastenkürzel zu benutzen.</translation>
+      <source>You need to launch System Preferences and allow Akousma to &quot;&lt;span style=&quot;font-style:italic&quot;&gt;control your computer&lt;/span&gt;&quot; to use global shortcuts in Akousma.</source>
+      <translation>Sie müssen die Systemeinstellungen öffnen und &quot;&lt;span style=&quot; font-style:italic;&quot;&gt;Zugriff für Hilfsgeräte aktivieren&lt;/span&gt;&quot; in »Bedienhilfen« aktivieren, um Akousmas Tastenkürzel zu benutzen.</translation>
     </message>
     <message>
       <source>Action</source>
@@ -3418,8 +3418,8 @@ Falls es keine Treffer gibt, wird das größte Bild aus dem Verzeichnis ausgewä
   <context>
     <name>MainWindow</name>
     <message>
-      <source>Strawberry Music Player</source>
-      <translation>Strawberry Musik-Player</translation>
+      <source>Akousma</source>
+      <translation>Akousma</translation>
     </message>
     <message>
       <source>MenuPopupToolButton</source>
@@ -3534,8 +3534,8 @@ Falls es keine Treffer gibt, wird das größte Bild aus dem Verzeichnis ausgewä
       <translation>Strg+P</translation>
     </message>
     <message>
-      <source>&amp;About Strawberry</source>
-      <translation>&amp;Über Strawberry</translation>
+      <source>&amp;About Akousma</source>
+      <translation>&amp;Über Akousma</translation>
     </message>
     <message>
       <source>F1</source>
@@ -3822,12 +3822,12 @@ Falls es keine Treffer gibt, wird das größte Bild aus dem Verzeichnis ausgewä
       <translation>Nach Aktualisierungen suchen …</translation>
     </message>
     <message>
-      <source>Strawberry running under Rosetta</source>
-      <translation>Strawberry läuft unter Rosetta</translation>
+      <source>Akousma running under Rosetta</source>
+      <translation>Akousma läuft unter Rosetta</translation>
     </message>
     <message>
-      <source>You are running Strawberry under Rosetta. Running Strawberry under Rosetta is unsupported and known to have issues. You should download Strawberry for the correct CPU architecture from %1</source>
-      <translation>Sie betreiben Strawberry unter Rosetta. Der Betrieb von Strawberry unter Rosetta wird nicht unterstützt und führt zu Problemen. Bitte laden Sie Strawberry für die korrekte CPU-Architektur von %1 herunter</translation>
+      <source>You are running Akousma under Rosetta. Running Akousma under Rosetta is unsupported and known to have issues. You should download Akousma for the correct CPU architecture from %1</source>
+      <translation>Sie betreiben Akousma unter Rosetta. Der Betrieb von Akousma unter Rosetta wird nicht unterstützt und führt zu Problemen. Bitte laden Sie Akousma für die korrekte CPU-Architektur von %1 herunter</translation>
     </message>
     <message>
       <source>Sponsoring Strawberry</source>
@@ -3918,8 +3918,8 @@ Falls es keine Treffer gibt, wird das größte Bild aus dem Verzeichnis ausgewä
       <translation>Keiner der gewählten Titel war zum Kopieren auf ein Gerät geeignet.</translation>
     </message>
     <message>
-      <source>The version of Strawberry you&apos;ve just updated to requires a full collection rescan because of the new features listed below:</source>
-      <translation>Die Strawberry-Version, auf die Sie gerade aktualisiert haben, erfordert eine komplette Aktualisierung Ihrer Bibliothek, damit die folgenden neuen Funktionen genutzt werden können:</translation>
+      <source>The version of Akousma you&apos;ve just updated to requires a full collection rescan because of the new features listed below:</source>
+      <translation>Die Akousma-Version, auf die Sie gerade aktualisiert haben, erfordert eine komplette Aktualisierung Ihrer Bibliothek, damit die folgenden neuen Funktionen genutzt werden können:</translation>
     </message>
     <message>
       <source>Would you like to run a full rescan right now?</source>
@@ -4082,8 +4082,8 @@ Falls es keine Treffer gibt, wird das größte Bild aus dem Verzeichnis ausgewä
       <translation>Benachrichtigungen</translation>
     </message>
     <message>
-      <source>Strawberry can show a message when the track changes.</source>
-      <translation>Strawberry kann Benachrichtigungen beim Titelwechsel anzeigen</translation>
+      <source>Akousma can show a message when the track changes.</source>
+      <translation>Akousma kann Benachrichtigungen beim Titelwechsel anzeigen</translation>
     </message>
     <message>
       <source>Notification type</source>
@@ -7620,12 +7620,12 @@ Möchten Sie wirklich fortfahren?</translation>
       <translation>Abgebrochen.</translation>
     </message>
     <message>
-      <source>Received a %1 encrypted stream from Tidal, which Strawberry does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</source>
-      <translation type="unfinished">Received a %1 encrypted stream from Tidal, which Strawberry does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</translation>
+      <source>Received a %1 encrypted stream from Tidal, which Akousma does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</source>
+      <translation type="unfinished">Received a %1 encrypted stream from Tidal, which Akousma does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</translation>
     </message>
     <message>
-      <source>Received an encrypted stream from Tidal, which Strawberry does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</source>
-      <translation type="unfinished">Received an encrypted stream from Tidal, which Strawberry does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</translation>
+      <source>Received an encrypted stream from Tidal, which Akousma does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</source>
+      <translation type="unfinished">Received an encrypted stream from Tidal, which Akousma does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</translation>
     </message>
   </context>
   <context>
@@ -7635,8 +7635,8 @@ Möchten Sie wirklich fortfahren?</translation>
       <translation>Schlagwortsammler</translation>
     </message>
     <message>
-      <source>Strawberry was unable to find results for this file</source>
-      <translation>Strawberry konnte keine Ergebnisse für diese Datei finden.</translation>
+      <source>Akousma was unable to find results for this file</source>
+      <translation>Akousma konnte keine Ergebnisse für diese Datei finden.</translation>
     </message>
     <message>
       <source>Select best possible match</source>

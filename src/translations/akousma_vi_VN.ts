@@ -19,8 +19,8 @@
       <translation type="unfinished">About</translation>
     </message>
     <message>
-      <source>About Strawberry</source>
-      <translation type="unfinished">About Strawberry</translation>
+      <source>About Akousma</source>
+      <translation type="unfinished">About Akousma</translation>
     </message>
     <message>
       <source>Version %1</source>
@@ -630,12 +630,12 @@
       <translation type="unfinished">Reset to default</translation>
     </message>
     <message>
-      <source>You might need to restart Strawberry for this setting to fully apply</source>
-      <translation type="unfinished">You might need to restart Strawberry for this setting to fully apply</translation>
+      <source>You might need to restart Akousma for this setting to fully apply</source>
+      <translation type="unfinished">You might need to restart Akousma for this setting to fully apply</translation>
     </message>
     <message>
-      <source>You need to restart Strawberry for this setting to take affect</source>
-      <translation type="unfinished">You need to restart Strawberry for this setting to take affect</translation>
+      <source>You need to restart Akousma for this setting to take affect</source>
+      <translation type="unfinished">You need to restart Akousma for this setting to take affect</translation>
     </message>
     <message>
       <source>System icons</source>
@@ -825,8 +825,8 @@
       <translation>Giản dần khi tạm dừng / tăng dần khi tiếp tục</translation>
     </message>
     <message>
-      <source>You need to restart Strawberry for this setting to take affect</source>
-      <translation type="unfinished">You need to restart Strawberry for this setting to take affect</translation>
+      <source>You need to restart Akousma for this setting to take affect</source>
+      <translation type="unfinished">You need to restart Akousma for this setting to take affect</translation>
     </message>
     <message>
       <source>Map the volume slider to a decibel scale so that perceived loudness changes evenly. Each 1% step equals 0.5 dB, 100% is 0 dB and 0% is silence.</source>
@@ -908,8 +908,8 @@
       <translation>Dùng mặc định hệ thống</translation>
     </message>
     <message>
-      <source>You will need to restart Strawberry if you change the language.</source>
-      <translation>Bạn sẽ cần phải khởi động lại Strawberry nếu thay đổi ngôn ngữ.</translation>
+      <source>You will need to restart Akousma if you change the language.</source>
+      <translation>Bạn sẽ cần phải khởi động lại Akousma nếu thay đổi ngôn ngữ.</translation>
     </message>
     <message>
       <source>Using the menu to add a song will...</source>
@@ -1226,8 +1226,8 @@
       <translation>Tự động cập nhật</translation>
     </message>
     <message>
-      <source>Update the collection when Strawberry starts</source>
-      <translation>Cập nhật bộ sưu tập khi Strawberry bắt đầu</translation>
+      <source>Update the collection when Akousma starts</source>
+      <translation>Cập nhật bộ sưu tập khi Akousma bắt đầu</translation>
     </message>
     <message>
       <source>Monitor the collection for changes</source>
@@ -1258,9 +1258,9 @@
       <translation>Tên tệp ảnh bìa album ưa thích (được phân tách bằng dấu phẩy)</translation>
     </message>
     <message>
-      <source>When looking for album art Strawberry will first look for picture files that contain one of these words.
+      <source>When looking for album art Akousma will first look for picture files that contain one of these words.
 If there are no matches then it will use the largest image in the directory.</source>
-      <translation>Khi tìm ảnh bìa album, Strawberry trước tiên sẽ tìm các tệp hình ảnh có chứa một trong những từ này.
+      <translation>Khi tìm ảnh bìa album, Akousma trước tiên sẽ tìm các tệp hình ảnh có chứa một trong những từ này.
 Nếu không có kết quả trùng khớp thì nó sẽ sử dụng hình ảnh lớn nhất trong thư mục.</translation>
     </message>
     <message>
@@ -2051,24 +2051,24 @@ Nếu không có kết quả trùng khớp thì nó sẽ sử dụng hình ảnh
       <translation>Kết nối thiết bị</translation>
     </message>
     <message>
-      <source>This is the first time you have connected this device.  Strawberry will now scan the device to find music files - this may take some time.</source>
-      <translation>Đây là lần đầu tiên bạn kết nối thiết bị này. Strawberry sẽ quét thiết bị để tìm tệp nhạc - điều này có thể mất một chút thời gian.</translation>
+      <source>This is the first time you have connected this device.  Akousma will now scan the device to find music files - this may take some time.</source>
+      <translation>Đây là lần đầu tiên bạn kết nối thiết bị này. Akousma sẽ quét thiết bị để tìm tệp nhạc - điều này có thể mất một chút thời gian.</translation>
     </message>
     <message>
       <source>This device will not work properly</source>
       <translation>Thiết bị này sẽ không hoạt động đúng cách</translation>
     </message>
     <message>
-      <source>This is an MTP device, but you compiled Strawberry without libmtp support.</source>
-      <translation>Đây là thiết bị MTP, nhưng bạn đã biên dịch Strawberry mà không có hỗ trợ libmtp.</translation>
+      <source>This is an MTP device, but you compiled Akousma without libmtp support.</source>
+      <translation>Đây là thiết bị MTP, nhưng bạn đã biên dịch Akousma mà không có hỗ trợ libmtp.</translation>
     </message>
     <message>
       <source>If you continue, this device will work slowly and songs copied to it may not work.</source>
       <translation>Nếu bạn tiếp tục, thiết bị này sẽ hoạt động chậm và các bài hát được sao chép vào có thể không hoạt động.</translation>
     </message>
     <message>
-      <source>This is an iPod, but you compiled Strawberry without libgpod support.</source>
-      <translation>Đây là iPod, nhưng bạn đã biên dịch Strawberry mà không có hỗ trợ libgpod.</translation>
+      <source>This is an iPod, but you compiled Akousma without libgpod support.</source>
+      <translation>Đây là iPod, nhưng bạn đã biên dịch Akousma mà không có hỗ trợ libgpod.</translation>
     </message>
     <message>
       <source>This type of device is not supported: %1</source>
@@ -2114,8 +2114,8 @@ Nếu không có kết quả trùng khớp thì nó sẽ sử dụng hình ảnh
       <translation>Thiết bị này hỗ trợ các định dạng tệp sau:</translation>
     </message>
     <message>
-      <source>Strawberry can automatically convert the music you copy to this device into a format that it can play.</source>
-      <translation>Strawberry có thể tự động chuyển đổi nhạc bạn sao chép vào thiết bị này sang định dạng mà nó có thể phát.</translation>
+      <source>Akousma can automatically convert the music you copy to this device into a format that it can play.</source>
+      <translation>Akousma có thể tự động chuyển đổi nhạc bạn sao chép vào thiết bị này sang định dạng mà nó có thể phát.</translation>
     </message>
     <message>
       <source>Do not convert any music</source>
@@ -2134,8 +2134,8 @@ Nếu không có kết quả trùng khớp thì nó sẽ sử dụng hình ảnh
       <translation>Định dạng ưa thích</translation>
     </message>
     <message>
-      <source>This device must be connected and opened before Strawberry can see what file formats it supports.</source>
-      <translation>Thiết bị này phải được kết nối và mở trước khi Strawberry có thể thấy định dạng tệp nào nó hỗ trợ.</translation>
+      <source>This device must be connected and opened before Akousma can see what file formats it supports.</source>
+      <translation>Thiết bị này phải được kết nối và mở trước khi Akousma có thể thấy định dạng tệp nào nó hỗ trợ.</translation>
     </message>
     <message>
       <source>Open device</source>
@@ -2189,8 +2189,8 @@ Nếu không có kết quả trùng khớp thì nó sẽ sử dụng hình ảnh
       <translation>Xóa khỏi thiết bị...</translation>
     </message>
     <message>
-      <source>Forgetting a device will remove it from this list and Strawberry will have to rescan all the songs again next time you connect it.</source>
-      <translation>Quên một thiết bị sẽ loại bỏ nó khỏi danh sách này và Strawberry sẽ phải quét lại tất cả các bài hát vào lần tiếp theo bạn kết nối nó.</translation>
+      <source>Forgetting a device will remove it from this list and Akousma will have to rescan all the songs again next time you connect it.</source>
+      <translation>Quên một thiết bị sẽ loại bỏ nó khỏi danh sách này và Akousma sẽ phải quét lại tất cả các bài hát vào lần tiếp theo bạn kết nối nó.</translation>
     </message>
     <message>
       <source>Delete files</source>
@@ -2768,8 +2768,8 @@ Nếu không có kết quả trùng khớp thì nó sẽ sử dụng hình ảnh
   <context>
     <name>ErrorDialog</name>
     <message>
-      <source>Strawberry Error</source>
-      <translation>Lỗi Strawberry</translation>
+      <source>Akousma Error</source>
+      <translation>Lỗi Akousma</translation>
     </message>
   </context>
   <context>
@@ -3087,8 +3087,8 @@ Nếu không có kết quả trùng khớp thì nó sẽ sử dụng hình ảnh
       <translation>Sử dụng phím tắt X11 khi khả dụng</translation>
     </message>
     <message>
-      <source>You need to launch System Preferences and allow Strawberry to &quot;&lt;span style=&quot;font-style:italic&quot;&gt;control your computer&lt;/span&gt;&quot; to use global shortcuts in Strawberry.</source>
-      <translation>Bạn cần mở Tùy chọn Hệ thống và cho phép Strawberry &quot;&lt;span style=&quot;font-style:italic&quot;&gt;điều khiển máy tính của bạn&lt;/span&gt;&quot; để sử dụng phím tắt toàn cục trong Strawberry.</translation>
+      <source>You need to launch System Preferences and allow Akousma to &quot;&lt;span style=&quot;font-style:italic&quot;&gt;control your computer&lt;/span&gt;&quot; to use global shortcuts in Akousma.</source>
+      <translation>Bạn cần mở Tùy chọn Hệ thống và cho phép Akousma &quot;&lt;span style=&quot;font-style:italic&quot;&gt;điều khiển máy tính của bạn&lt;/span&gt;&quot; để sử dụng phím tắt toàn cục trong Akousma.</translation>
     </message>
     <message>
       <source>Action</source>
@@ -3418,8 +3418,8 @@ Nếu không có kết quả trùng khớp thì nó sẽ sử dụng hình ảnh
   <context>
     <name>MainWindow</name>
     <message>
-      <source>Strawberry Music Player</source>
-      <translation>Trình phát nhạc Strawberry</translation>
+      <source>Akousma</source>
+      <translation>Akousma</translation>
     </message>
     <message>
       <source>MenuPopupToolButton</source>
@@ -3534,8 +3534,8 @@ Nếu không có kết quả trùng khớp thì nó sẽ sử dụng hình ảnh
       <translation>Ctrl+P</translation>
     </message>
     <message>
-      <source>&amp;About Strawberry</source>
-      <translation>&amp;Giới thiệu về Strawberry</translation>
+      <source>&amp;About Akousma</source>
+      <translation>&amp;Giới thiệu về Akousma</translation>
     </message>
     <message>
       <source>F1</source>
@@ -3822,12 +3822,12 @@ Nếu không có kết quả trùng khớp thì nó sẽ sử dụng hình ảnh
       <translation>Kiểm tra cập nhật...</translation>
     </message>
     <message>
-      <source>Strawberry running under Rosetta</source>
-      <translation>Strawberry đang chạy dưới Rosetta</translation>
+      <source>Akousma running under Rosetta</source>
+      <translation>Akousma đang chạy dưới Rosetta</translation>
     </message>
     <message>
-      <source>You are running Strawberry under Rosetta. Running Strawberry under Rosetta is unsupported and known to have issues. You should download Strawberry for the correct CPU architecture from %1</source>
-      <translation>Bạn đang chạy Strawberry dưới Rosetta. Việc chạy Strawberry dưới Rosetta không được hỗ trợ và đã biết có vấn đề. Bạn nên tải Strawberry cho kiến trúc CPU phù hợp từ %1</translation>
+      <source>You are running Akousma under Rosetta. Running Akousma under Rosetta is unsupported and known to have issues. You should download Akousma for the correct CPU architecture from %1</source>
+      <translation>Bạn đang chạy Akousma dưới Rosetta. Việc chạy Akousma dưới Rosetta không được hỗ trợ và đã biết có vấn đề. Bạn nên tải Akousma cho kiến trúc CPU phù hợp từ %1</translation>
     </message>
     <message>
       <source>Sponsoring Strawberry</source>
@@ -3918,8 +3918,8 @@ Nếu không có kết quả trùng khớp thì nó sẽ sử dụng hình ảnh
       <translation>Không bài hát nào trong số đã chọn phù hợp để sao chép vào thiết bị</translation>
     </message>
     <message>
-      <source>The version of Strawberry you&apos;ve just updated to requires a full collection rescan because of the new features listed below:</source>
-      <translation>Phiên bản Strawberry vừa cập nhật yêu cầu quét lại toàn bộ bộ sưu tập vì các tính năng mới dưới đây:</translation>
+      <source>The version of Akousma you&apos;ve just updated to requires a full collection rescan because of the new features listed below:</source>
+      <translation>Phiên bản Akousma vừa cập nhật yêu cầu quét lại toàn bộ bộ sưu tập vì các tính năng mới dưới đây:</translation>
     </message>
     <message>
       <source>Would you like to run a full rescan right now?</source>
@@ -4082,8 +4082,8 @@ Nếu không có kết quả trùng khớp thì nó sẽ sử dụng hình ảnh
       <translation>Thông báo</translation>
     </message>
     <message>
-      <source>Strawberry can show a message when the track changes.</source>
-      <translation>Strawberry có thể hiển thị thông báo khi bài hát thay đổi.</translation>
+      <source>Akousma can show a message when the track changes.</source>
+      <translation>Akousma có thể hiển thị thông báo khi bài hát thay đổi.</translation>
     </message>
     <message>
       <source>Notification type</source>
@@ -7615,12 +7615,12 @@ Bạn có chắc chắn muốn tiếp tục không?</translation>
       <translation>Đã hủy.</translation>
     </message>
     <message>
-      <source>Received a %1 encrypted stream from Tidal, which Strawberry does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</source>
-      <translation type="unfinished">Received a %1 encrypted stream from Tidal, which Strawberry does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</translation>
+      <source>Received a %1 encrypted stream from Tidal, which Akousma does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</source>
+      <translation type="unfinished">Received a %1 encrypted stream from Tidal, which Akousma does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</translation>
     </message>
     <message>
-      <source>Received an encrypted stream from Tidal, which Strawberry does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</source>
-      <translation type="unfinished">Received an encrypted stream from Tidal, which Strawberry does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</translation>
+      <source>Received an encrypted stream from Tidal, which Akousma does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</source>
+      <translation type="unfinished">Received an encrypted stream from Tidal, which Akousma does not support. Whether Tidal delivers encrypted streams depends on the client ID in use. Try changing the Client ID in the Tidal settings</translation>
     </message>
   </context>
   <context>
@@ -7630,8 +7630,8 @@ Bạn có chắc chắn muốn tiếp tục không?</translation>
       <translation>Tìm nạp thẻ tag</translation>
     </message>
     <message>
-      <source>Strawberry was unable to find results for this file</source>
-      <translation>Strawberry không thể tìm thấy kết quả cho tệp này</translation>
+      <source>Akousma was unable to find results for this file</source>
+      <translation>Akousma không thể tìm thấy kết quả cho tệp này</translation>
     </message>
     <message>
       <source>Select best possible match</source>

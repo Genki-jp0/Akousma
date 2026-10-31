@@ -17,7 +17,7 @@
    <item>
     <widget class="QLabel" name="label_info">
      <property name="text">
-      <string>Strawberry can show a message when the track changes.</string>
+      <string>Akousma can show a message when the track changes.</string>
      </property>
     </widget>
    </item>
