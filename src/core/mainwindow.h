@@ -238,6 +238,7 @@ class MainWindow : public QMainWindow, public PlatformInterface {
   void AddStreamAccepted();
 
   void PlayingWidgetPositionChanged(const bool above_status_bar);
+  void RestartForSettingsChange();
   void ApplyPlayerLayout(const bool sequence_beside_play_controls, const int icon_size, const int player_controls_height);
 
   void SongSaveComplete(TagReaderReplyPtr reply, const QPersistentModelIndex &idx);

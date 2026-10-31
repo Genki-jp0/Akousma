@@ -110,6 +110,9 @@ class SettingsDialog : public QDialog {
 
   void OpenAtPage(const Page page);
 
+  // Akousma: a page asks to restart Akousma (settings import or reset).
+  void RequestRestart() { Q_EMIT RestartRequested(); }
+
  protected:
   void showEvent(QShowEvent *e) override;
   void closeEvent(QCloseEvent *e) override;
@@ -137,6 +140,7 @@ class SettingsDialog : public QDialog {
 
  Q_SIGNALS:
   void ReloadSettings();
+  void RestartRequested();
   void NotificationPreview(const OSDSettings::Type, const QString&, const QString&);
 
  private Q_SLOTS:

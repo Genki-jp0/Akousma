@@ -522,6 +522,7 @@ set(SOURCES
   src/core/networkproxyfactory.cpp
   src/core/settings.cpp
   src/core/settingsprovider.cpp
+  src/core/settingstransfer.cpp
   src/core/signalchecker.cpp
   src/core/song.cpp
   src/core/songloader.cpp

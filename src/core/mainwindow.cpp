@@ -146,6 +146,7 @@
 #include "playlist/playlistlistcontainer.h"
 #include "playlist/playlistmanager.h"
 #include "playlist/playlistsequence.h"
+#include "core/settingstransfer.h"
 #include "playlist/playlistview.h"
 #include "playlist/playlistfilter.h"
 #include "queue/queue.h"
@@ -658,6 +659,22 @@ MainWindow::MainWindow(Application *app,
   QAction *action_import = new QAction(IconLoader::Load(u"document-download"_s), tr("&Import from Strawberry / Clementine..."), this);
   ui_->menu_tools->insertAction(ui_->action_settings, action_import);
   QObject::connect(action_import, &QAction::triggered, this, &MainWindow::ShowImportDialog);
+
+  // Export, import and reset of all settings (also in Settings > Behavior).
+  QMenu *menu_settings_transfer = new QMenu(tr("All settings"), this);
+  menu_settings_transfer->setIcon(IconLoader::Load(u"configure"_s));
+  QAction *action_export_settings = menu_settings_transfer->addAction(tr("&Export settings..."));
+  QAction *action_import_settings = menu_settings_transfer->addAction(tr("&Import settings..."));
+  menu_settings_transfer->addSeparator();
+  QAction *action_reset_settings = menu_settings_transfer->addAction(tr("&Reset all settings to defaults..."));
+  ui_->menu_tools->insertMenu(ui_->action_settings, menu_settings_transfer);
+  QObject::connect(action_export_settings, &QAction::triggered, this, [this]() { SettingsTransfer::ExportWithDialog(this); });
+  QObject::connect(action_import_settings, &QAction::triggered, this, [this]() {
+    if (SettingsTransfer::ImportWithDialog(this)) RestartForSettingsChange();
+  });
+  QObject::connect(action_reset_settings, &QAction::triggered, this, [this]() {
+    if (SettingsTransfer::ResetWithDialog(this)) RestartForSettingsChange();
+  });
   QObject::connect(ui_->action_toggle_show_sidebar, &QAction::toggled, this, &MainWindow::ToggleSidebar);
   QObject::connect(ui_->action_about_strawberry, &QAction::triggered, this, &MainWindow::ShowAboutDialog);
   QObject::connect(ui_->action_about_qt, &QAction::triggered, qApp, &QApplication::aboutQt);
@@ -3415,6 +3432,7 @@ SettingsDialog *MainWindow::CreateSettingsDialog() {
 
   // Settings
   QObject::connect(settings_dialog, &SettingsDialog::ReloadSettings, this, &MainWindow::ReloadAllSettings);
+  QObject::connect(settings_dialog, &SettingsDialog::RestartRequested, this, &MainWindow::RestartForSettingsChange);
 
   // Allows custom notification preview
   QObject::connect(settings_dialog, &SettingsDialog::NotificationPreview, this, &MainWindow::HandleNotificationPreview);
@@ -3477,6 +3495,15 @@ void MainWindow::ShowImportDialog() {
     PlayerImporter::SetRestartRequested(true);
     Exit();
   }
+
+}
+
+// A settings import or reset is done when Akousma starts again.
+void MainWindow::RestartForSettingsChange() {
+
+  if (settings_dialog_) settings_dialog_->hide();
+  PlayerImporter::SetRestartRequested(true);
+  Exit();
 
 }
 

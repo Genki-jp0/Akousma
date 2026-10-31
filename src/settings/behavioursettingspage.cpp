@@ -33,6 +33,7 @@
 #include <QSettings>
 #include <QSystemTrayIcon>
 #include <QCheckBox>
+#include <QPushButton>
 #include <QRadioButton>
 #include <QSpinBox>
 #include <QComboBox>
@@ -42,7 +43,9 @@
 #include "core/iconloader.h"
 #include "core/settings.h"
 #include "settings/settingspage.h"
+#include "settings/settingsdialog.h"
 #include "behavioursettingspage.h"
+#include "core/settingstransfer.h"
 #include "ui_behavioursettingspage.h"
 
 using namespace Qt::Literals::StringLiterals;
@@ -66,6 +69,15 @@ BehaviourSettingsPage::BehaviourSettingsPage(SettingsDialog *dialog, QWidget *pa
   setWindowIcon(IconLoader::Load(u"akousma"_s, true, 0, 32));
 
   QObject::connect(ui_->checkbox_showtrayicon, &QCheckBox::toggled, this, &BehaviourSettingsPage::ShowTrayIconToggled);
+
+  // Export, import and reset of all settings. Import and reset are done when Akousma starts again.
+  QObject::connect(ui_->button_export_settings, &QPushButton::clicked, this, [this]() { SettingsTransfer::ExportWithDialog(this); });
+  QObject::connect(ui_->button_import_settings, &QPushButton::clicked, this, [this]() {
+    if (SettingsTransfer::ImportWithDialog(this)) this->dialog()->RequestRestart();
+  });
+  QObject::connect(ui_->button_reset_settings, &QPushButton::clicked, this, [this]() {
+    if (SettingsTransfer::ResetWithDialog(this)) this->dialog()->RequestRestart();
+  });
 
 #ifdef Q_OS_MACOS
   ui_->checkbox_showtrayicon->hide();

@@ -44,6 +44,7 @@
 #include <glib.h>
 
 #include <utility>
+#include <iostream>
 #include <memory>
 
 #include <QObject>
@@ -136,6 +137,7 @@
 #include "engine/gststartup.h"
 
 #include "import/playerimporter.h"
+#include "core/settingstransfer.h"
 #include "import/importdialog.h"
 
 using namespace Qt::Literals::StringLiterals;
@@ -175,6 +177,16 @@ int main(int argc, char *argv[]) {
     // Parse commandline options - need to do this before starting the full QApplication, so it works without an X server
     if (!options.Parse()) return 1;
     logging::SetLevels(options.log_levels());
+    if (!options.export_settings().isEmpty()) {
+      // Reading the settings is safe while Akousma runs.
+      const SettingsTransfer::Result result = SettingsTransfer::Export(options.export_settings());
+      if (!result.success) {
+        std::cerr << result.error.toLocal8Bit().constData() << std::endl;
+        return 1;
+      }
+      std::cout << QObject::tr("%1 settings exported to %2, %3 passwords and logins left out.").arg(result.count).arg(options.export_settings()).arg(result.secrets).toLocal8Bit().constData() << std::endl;
+      return 0;
+    }
     ScopedPtr<KDSingleApplication> single_app = make_unique<KDSingleApplication>(QCoreApplication::applicationName().toLower(), KDSingleApplication::Option::IncludeUsernameInSocketName);
     if (options.restarted()) {
       // Akousma started itself again, for example to import from Strawberry or Clementine. Wait until the previous instance has exited.
@@ -191,12 +203,27 @@ int main(int argc, char *argv[]) {
         qLog(Error) << "Akousma is already running, close it to import from" << options.import_from();
         return 1;
       }
+      if (!options.import_settings().isEmpty() || options.reset_settings()) {
+        std::cerr << "Akousma is already running, close it to import or reset the settings." << std::endl;
+        return 1;
+      }
       if (options.is_empty()) {
         qLog(Info) << "Akousma is already running - activating existing window (1)";
       }
       if (!single_app->sendMessage(options.Serialize())) {
         qLog(Error) << "Could not send message to primary instance.";
       }
+      return 0;
+    }
+    if (!options.import_settings().isEmpty() || options.reset_settings()) {
+      // Import or reset the settings and exit. The collection, playlists, covers and saved passwords are not changed.
+      const SettingsTransfer::Result result = options.reset_settings() ? SettingsTransfer::Reset() : SettingsTransfer::Import(options.import_settings());
+      if (!result.success) {
+        std::cerr << result.error.toLocal8Bit().constData() << std::endl;
+        return 1;
+      }
+      std::cout << (options.reset_settings() ? QObject::tr("All settings were reset to the defaults.") : QObject::tr("%1 settings imported from %2.").arg(result.count).arg(options.import_settings())).toLocal8Bit().constData() << std::endl;
+      std::cout << QObject::tr("The previous settings were backed up to %1.").arg(QDir::toNativeSeparators(result.backup_dir)).toLocal8Bit().constData() << std::endl;
       return 0;
     }
     if (options.import_quiet() && !options.import_from().isEmpty()) {
@@ -253,6 +280,9 @@ int main(int argc, char *argv[]) {
   }
 
   QThread::currentThread()->setObjectName(u"Main"_s);
+
+  // A settings reset or import chosen in the running application before it restarted, done before anything reads the settings.
+  SettingsTransfer::RunPendingAction();
 
   // Whether this is the first start of Akousma, checked before anything writes settings.
   const bool first_start = !PlayerImporter::AkousmaHasData();

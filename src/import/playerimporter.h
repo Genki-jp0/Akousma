@@ -123,6 +123,9 @@ class PlayerImporter {
   // Whether a settings key holds a password, a login token or another secret, these are only imported with Item::Passwords.
   static bool IsSecretSettingKey(const QString &key);
 
+  // Copies Akousma's settings (the settings file where there is one, and all values as settings.ini) to backup_dir.
+  static bool BackupSettings(const QString &backup_dir, QString *error);
+
   // The services Akousma keeps passwords for in the credentials manager (the system keyring).
   static QStringList CredentialsServices();
 
@@ -139,7 +142,6 @@ class PlayerImporter {
   static std::optional<Installation> DetectClementine(const QString &name, const QString &settings_file, const QString &config_dir);
   static void AddCoverDirs(Installation *installation, const QStringList &dir_names);
 
-  static bool BackupSettings(const QString &backup_dir, QString *error);
   static bool BackupDatabase(const QString &backup_dir, QString *error);
 
   static bool ImportStrawberrySettings(const Installation &installation, const bool passwords, Result *result);

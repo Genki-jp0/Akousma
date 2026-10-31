@@ -99,7 +99,12 @@ constexpr char kHelpText[] =
     "      --import-from <player>  %37\n"
     "      --import-items <items>  %38\n"
     "      --import-quiet          %39\n"
-    "      --import-passwords      %40\n";
+    "      --import-passwords      %40\n"
+    "\n"
+    "%41:\n"
+    "      --export-settings <file>  %42\n"
+    "      --import-settings <file>  %43\n"
+    "      --reset-settings          %44\n";
 
 constexpr char kVersionText[] = "Akousma %1\nBased on Strawberry %2 (%3)";
 
@@ -124,6 +129,7 @@ CommandlineOptions::CommandlineOptions(int argc, char **argv)
       log_levels_(QLatin1String(logging::kDefaultLogLevels)),
       import_quiet_(false),
       import_passwords_(false),
+      reset_settings_(false),
       restarted_(false) {
 
 #ifdef Q_OS_WIN32
@@ -198,6 +204,9 @@ bool CommandlineOptions::Parse() {
       { OPTSTR("import-items"), required_argument, nullptr, LongOptions::ImportItems },
       { OPTSTR("import-quiet"), no_argument, nullptr, LongOptions::ImportQuiet },
       { OPTSTR("import-passwords"), no_argument, nullptr, LongOptions::ImportPasswords },
+      { OPTSTR("export-settings"), required_argument, nullptr, LongOptions::ExportSettings },
+      { OPTSTR("import-settings"), required_argument, nullptr, LongOptions::ImportSettings },
+      { OPTSTR("reset-settings"), no_argument, nullptr, LongOptions::ResetSettings },
       { OPTSTR("restarted"), no_argument, nullptr, LongOptions::Restarted },
       { nullptr, 0, nullptr, 0 }
   };
@@ -254,7 +263,11 @@ bool CommandlineOptions::Parse() {
                      QObject::tr("Import from strawberry, clementine or auto before starting, Akousma must not be running"),
                      QObject::tr("Comma separated list of settings, collection, covers or all (the default)"),
                      QObject::tr("Import without asking and exit, for installers"),
-                     QObject::tr("Also import saved passwords and logins (off by default)")
+                     QObject::tr("Also import saved passwords and logins (off by default)"),
+                     QObject::tr("Settings options"),
+                     QObject::tr("Export the settings to a file, without passwords and logins, and exit"),
+                     QObject::tr("Back up the settings, replace them with an exported file and exit, Akousma must not be running"),
+                     QObject::tr("Back up the settings, reset them to the defaults and exit, Akousma must not be running")
                      );
 
         std::cout << translated_help_text.toLocal8Bit().constData();
@@ -368,6 +381,18 @@ bool CommandlineOptions::Parse() {
 
       case LongOptions::ImportPasswords:
         import_passwords_ = true;
+        break;
+
+      case LongOptions::ExportSettings:
+        export_settings_ = OptArgToString(optarg);
+        break;
+
+      case LongOptions::ImportSettings:
+        import_settings_ = OptArgToString(optarg);
+        break;
+
+      case LongOptions::ResetSettings:
+        reset_settings_ = true;
         break;
 
       case LongOptions::Restarted:

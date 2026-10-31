@@ -394,6 +394,63 @@
     </widget>
    </item>
    <item>
+    <widget class="QGroupBox" name="groupbox_settings_transfer">
+     <property name="title">
+      <string>All settings</string>
+     </property>
+     <layout class="QVBoxLayout" name="layout_settings_transfer">
+      <item>
+       <layout class="QHBoxLayout" name="layout_settings_transfer_buttons">
+        <item>
+         <widget class="QPushButton" name="button_export_settings">
+          <property name="text">
+           <string>Export settings...</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="button_import_settings">
+          <property name="text">
+           <string>Import settings...</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="button_reset_settings">
+          <property name="text">
+           <string>Reset all settings to defaults...</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="spacer_settings_transfer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_settings_transfer">
+        <property name="text">
+         <string>Export saves all settings to a file, without passwords and logins. Import and reset back up the current settings first and restart Akousma; the collection, playlists, album covers and saved passwords are not changed.</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
     <spacer name="spacer_bottom">
      <property name="orientation">
       <enum>Qt::Vertical</enum>

@@ -89,6 +89,10 @@ class CommandlineOptions {
   QString import_items() const { return import_items_; }
   bool import_quiet() const { return import_quiet_; }
   bool import_passwords() const { return import_passwords_; }
+  // Settings export, import and reset from the command line. Import and reset need Akousma to be closed.
+  QString export_settings() const { return export_settings_; }
+  QString import_settings() const { return import_settings_; }
+  bool reset_settings() const { return reset_settings_; }
   // Started again by Akousma itself: wait for the previous instance to exit.
   bool restarted() const { return restarted_; }
 
@@ -114,6 +118,9 @@ class CommandlineOptions {
     ImportItems,
     ImportQuiet,
     ImportPasswords,
+    ExportSettings,
+    ImportSettings,
+    ResetSettings,
     Restarted,
   };
 
@@ -157,6 +164,9 @@ class CommandlineOptions {
   QString import_items_;
   bool import_quiet_;
   bool import_passwords_;
+  QString export_settings_;
+  QString import_settings_;
+  bool reset_settings_;
   bool restarted_;
 };
 
