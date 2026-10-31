@@ -35,6 +35,8 @@
 #include "includes/shared_ptr.h"
 #include "settingspage.h"
 #include "constants/appearancesettings.h"
+#include "widgets/fancytabwidget.h"
+#include "tabbarthemes.h"
 
 class QWidget;
 class QPushButton;
@@ -70,6 +72,11 @@ class AppearanceSettingsPage : public SettingsPage {
   void TabBarSelectBackgroundImage();
   void UpdateTabBarBackgroundPreviews();
   void PlayerLayoutChosen();
+  void TabBarThemeChosen();
+  void TabBarThemeSave();
+  void TabBarThemeRename();
+  void TabBarThemeDelete();
+  void UpdateTabBarThemeButtons();
   void PlaylistPlayingSongColorSystem(const bool checked);
   void PlaylistPlayingSongSelectColor();
 
@@ -92,6 +99,11 @@ class AppearanceSettingsPage : public SettingsPage {
   void ApplyCustomColors();
   void SetTabBarBackground(const int background);
   void UpdatePlayerLayoutControls();
+  int CurrentTabBarTheme() const;
+  int CurrentTabBarBackground() const;
+  void UpdateTabBarThemeItems();
+  QString AskTabBarThemeName(const QString &title, const QString &initial_name, const qsizetype except_index, bool *overwrite);
+  static FancyTabWidget::BackgroundOptions ThemeBackgroundOptions(const TabBarThemes::Theme &theme);
   bool PlayerLayoutMatches(const AppearanceSettings::PlayerLayoutValues &values) const;
   // Human-readable label for a palette color role.
   static QString ColorRoleLabel(const QPalette::ColorRole role);
@@ -107,6 +119,7 @@ class AppearanceSettingsPage : public SettingsPage {
   QMap<QPalette::ColorRole, QColor> current_colors_;
   QMap<QPalette::ColorRole, QPointer<QPushButton>> color_selectors_;
   bool original_small_playing_cover_ = true;
+  QList<TabBarThemes::Theme> tabbar_themes_;
   QColor current_tabbar_bg_color_;
   QColor original_tabbar_bg_color_;
   QColor current_tabbar_gradient_start_color_;

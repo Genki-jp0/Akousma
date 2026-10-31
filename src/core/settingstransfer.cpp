@@ -37,6 +37,7 @@
 #include "core/settings.h"
 #include "import/playerimporter.h"
 #include "constants/appearancesettings.h"
+#include "settings/tabbarthemes.h"
 
 using namespace Qt::Literals::StringLiterals;
 
@@ -61,6 +62,19 @@ constexpr char kImportSettingsGroup[] = "Import/";
 
 // The user's smart playlists are kept by a reset, like the playlists in the collection database.
 constexpr char kSmartPlaylistsSettingsGroup[] = "SerializedSmartPlaylists/";
+
+// The user's saved sidebar themes: kept by a reset; an export also carries their images.
+bool IsTabBarThemeKey(const QString &key) {
+  return key.startsWith(QLatin1String(TabBarThemes::kSettingsGroup) + u'/');
+}
+
+bool IsTabBarThemeImageKey(const QString &key) {
+  return IsTabBarThemeKey(key) && key.endsWith(u'/' + QLatin1String(TabBarThemes::kImageKey));
+}
+
+bool IsTabBarThemeImageDataKey(const QString &key) {
+  return IsTabBarThemeKey(key) && key.endsWith(u'/' + QLatin1String(TabBarThemes::kImageDataKey));
+}
 
 bool IsInstallationState(const QString &key) {
   return key.startsWith(QLatin1String(kImportSettingsGroup));
@@ -134,6 +148,14 @@ SettingsTransfer::Result SettingsTransfer::Export(const QString &filename) {
     }
     out.setValue(key, s.value(key));
     ++result.count;
+    // The image of a saved sidebar theme goes into the file too, so the theme works on another computer.
+    if (IsTabBarThemeImageKey(key)) {
+      QFile image_file(s.value(key).toString());
+      if (!image_file.fileName().isEmpty() && image_file.open(QIODevice::ReadOnly)) {
+        out.setValue(key.left(key.length() - static_cast<qsizetype>(qstrlen(TabBarThemes::kImageKey))) + QLatin1String(TabBarThemes::kImageDataKey), image_file.readAll());
+        image_file.close();
+      }
+    }
   }
   out.sync();
 
@@ -200,8 +222,13 @@ SettingsTransfer::Result SettingsTransfer::Import(const QString &filename) {
 
   QSettings in(filename, QSettings::IniFormat);
   const QStringList import_keys = in.allKeys();
+  QStringList theme_image_data_keys;
   for (const QString &key : import_keys) {
     if (key.startsWith(QLatin1String(kExportGroup) + u'/') || KeepOnReset(key)) continue;
+    if (IsTabBarThemeImageDataKey(key)) {
+      theme_image_data_keys << key;
+      continue;
+    }
     // The album cover sidebar background was removed, an older export that has it gets the plain gradient.
     if (key == QLatin1String(AppearanceSettings::kSettingsGroup) + u'/' + QLatin1String(AppearanceSettings::kTabBarBackground)) {
       s.setValue(key, static_cast<int>(AppearanceSettings::TabBarBackgroundFromSetting(in.value(key).toInt())));
@@ -210,6 +237,30 @@ SettingsTransfer::Result SettingsTransfer::Import(const QString &filename) {
     }
     s.setValue(key, in.value(key));
     ++result.count;
+  }
+
+  // The images of the saved sidebar themes: written to the theme image folder, the themes point to them there.
+  for (const QString &data_key : std::as_const(theme_image_data_keys)) {
+    const QString image_key = data_key.left(data_key.length() - static_cast<qsizetype>(qstrlen(TabBarThemes::kImageDataKey))) + QLatin1String(TabBarThemes::kImageKey);
+    const QString exported_image = in.value(image_key).toString();
+    const QString filename_only = QFileInfo(exported_image).fileName().isEmpty() ? u"theme.img"_s : QFileInfo(exported_image).fileName();
+    QString image = TabBarThemes::ImageDir() + u'/' + filename_only;
+    if (QFileInfo::exists(image)) {
+      // The same file from this computer, or another one with the same name: keep both.
+      QFile existing(image);
+      if (existing.open(QIODevice::ReadOnly) && existing.readAll() == in.value(data_key).toByteArray()) {
+        s.setValue(image_key, image);
+        continue;
+      }
+      image = TabBarThemes::ImageDir() + u'/' + QDateTime::currentDateTime().toString(u"yyyyMMdd-HHmmss-"_s) + filename_only;
+    }
+    QDir().mkpath(TabBarThemes::ImageDir());
+    QFile image_file(image);
+    if (image_file.open(QIODevice::WriteOnly)) {
+      image_file.write(in.value(data_key).toByteArray());
+      image_file.close();
+      s.setValue(image_key, image);
+    }
   }
   s.sync();
 
@@ -234,7 +285,7 @@ SettingsTransfer::Result SettingsTransfer::Reset() {
   Settings s;
   const QStringList keys = s.allKeys();
   for (const QString &key : keys) {
-    if (KeepOnReset(key) || key.startsWith(QLatin1String(kSmartPlaylistsSettingsGroup))) {
+    if (KeepOnReset(key) || key.startsWith(QLatin1String(kSmartPlaylistsSettingsGroup)) || IsTabBarThemeKey(key)) {
       if (PlayerImporter::IsSecretSettingKey(key)) ++result.secrets;
       continue;
     }
@@ -365,7 +416,7 @@ bool SettingsTransfer::ResetWithDialog(QWidget *parent) {
   const QString title = tr("Reset all settings");
   QMessageBox box(QMessageBox::Warning, title, tr("Reset all settings to the defaults?"), QMessageBox::Yes | QMessageBox::No, parent);
   box.setInformativeText(tr("All settings, including the layout, are set back to Akousma's defaults. The current settings are backed up first.") + u"\n\n"_s +
-                         tr("The collection, playlists, smart playlists, album covers and saved passwords and logins are not changed."));
+                         tr("The collection, playlists, smart playlists, album covers, your saved sidebar themes and saved passwords and logins are not changed."));
   box.setDefaultButton(QMessageBox::No);
   QCheckBox *checkbox_export = new QCheckBox(tr("Export my current settings first"), &box);
   checkbox_export->setChecked(true);

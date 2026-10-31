@@ -47,6 +47,8 @@
 #include <QComboBox>
 #include <QSpinBox>
 #include <QSettings>
+#include <QMessageBox>
+#include <QInputDialog>
 #include <QSize>
 #include <QPair>
 #include <QList>
@@ -64,6 +66,7 @@
 #include "core/settings.h"
 #include "core/appearance.h"
 #include "widgets/fancytabwidget.h"
+#include "tabbarthemes.h"
 #include "settingspage.h"
 #include "settingsdialog.h"
 #include "ui_appearancesettingspage.h"
@@ -83,6 +86,51 @@ constexpr int kTabBarPreviewHeight = 48;
 // Where PlayingWidget keeps its album cover mode (0 small, 1 large).
 constexpr char kPlayingWidgetSettingsGroup[] = "PlayingWidget";
 constexpr char kPlayingWidgetMode[] = "mode";
+// Item data of the user's themes in the Tabbar background dropdown, their name is in kTabBarThemeNameRole.
+constexpr int kTabBarThemeItem = -1;
+constexpr int kTabBarThemeNameRole = Qt::UserRole + 1;
+constexpr int kTabBarBadgeSize = 16;
+
+// A checkerboard like a transparency grid, the preview of the custom image before an image is chosen.
+void DrawCheckerboard(QPainter *p, const QRect &rect) {
+  constexpr int kSquare = 6;
+  p->fillRect(rect, QColor(204, 204, 204));
+  for (int y = rect.top(); y < rect.bottom(); y += kSquare) {
+    for (int x = rect.left() + (((y - rect.top()) / kSquare) % 2) * kSquare; x < rect.right(); x += kSquare * 2) {
+      p->fillRect(QRect(x, y, kSquare, kSquare), QColor(240, 240, 240));
+    }
+  }
+}
+
+// The badge of the custom image preview: the theme's edit icon, or a pencil drawn here, on a round background.
+void DrawEditBadge(QPainter *p, const QRect &rect) {
+
+  p->save();
+  p->setRenderHint(QPainter::Antialiasing);
+  p->setPen(Qt::NoPen);
+  p->setBrush(QColor(255, 255, 255, 230));
+  p->drawEllipse(rect.adjusted(-2, -2, 2, 2));
+  if (QIcon::hasThemeIcon(u"document-edit"_s)) {
+    QIcon::fromTheme(u"document-edit"_s).paint(p, rect.adjusted(1, 1, -1, -1));
+  }
+  else {
+    // A pencil from the lower left to the upper right.
+    p->translate(rect.center());
+    p->rotate(-45);
+    const qreal length = rect.width() * 0.8;
+    const qreal width = rect.width() * 0.28;
+    p->setBrush(QColor(230, 160, 40));
+    p->drawRect(QRectF(-length / 2 + width, -width / 2, length - width * 1.4, width));
+    p->setBrush(QColor(220, 90, 90));
+    p->drawRect(QRectF(length / 2 - width * 0.4, -width / 2, width * 0.5, width));
+    p->setBrush(QColor(60, 60, 60));
+    const QPointF tip[3] = { QPointF(-length / 2, 0), QPointF(-length / 2 + width, -width / 2), QPointF(-length / 2 + width, width / 2) };
+    p->drawPolygon(tip, 3);
+  }
+  p->restore();
+
+}
+
 }  // namespace
 
 AppearanceSettingsPage::AppearanceSettingsPage(SettingsDialog *dialog, SharedPtr<Appearance> appearance, QWidget *parent)
@@ -158,6 +206,12 @@ AppearanceSettingsPage::AppearanceSettingsPage(SettingsDialog *dialog, SharedPtr
   ui_->tabbar_background->addItem(tr("Default background (strawberry graphics)"), static_cast<int>(TabBarBackground::Strawberry));
   ui_->tabbar_background->addItem(tr("Custom image"), static_cast<int>(TabBarBackground::CustomImage));
   QObject::connect(ui_->tabbar_background, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &AppearanceSettingsPage::TabBarBackgroundChanged);
+  // Choosing one of the user's themes sets the options on this page to the theme's.
+  QObject::connect(ui_->tabbar_background, QOverload<int>::of(&QComboBox::activated), this, &AppearanceSettingsPage::TabBarThemeChosen);
+  QObject::connect(ui_->button_tabbar_theme_save, &QPushButton::clicked, this, &AppearanceSettingsPage::TabBarThemeSave);
+  QObject::connect(ui_->button_tabbar_theme_rename, &QPushButton::clicked, this, &AppearanceSettingsPage::TabBarThemeRename);
+  QObject::connect(ui_->button_tabbar_theme_delete, &QPushButton::clicked, this, &AppearanceSettingsPage::TabBarThemeDelete);
+  QObject::connect(ui_->tabbar_custom_color, &QRadioButton::toggled, this, &AppearanceSettingsPage::UpdateTabBarThemeButtons);
   // The previews follow the colors and options chosen on this page.
   QObject::connect(ui_->tabbar_system_color, &QRadioButton::toggled, this, &AppearanceSettingsPage::UpdateTabBarBackgroundPreviews);
   QObject::connect(ui_->tabbar_gradient, &QCheckBox::toggled, this, &AppearanceSettingsPage::UpdateTabBarBackgroundPreviews);
@@ -271,7 +325,13 @@ void AppearanceSettingsPage::Load() {
   TabBarSystemColor(ui_->tabbar_system_color->isChecked());
 
   // Tabbar background
+  tabbar_themes_ = TabBarThemes::Load();
+  UpdateTabBarThemeItems();
   SetTabBarBackground(s.value(kTabBarBackground, static_cast<int>(kDefaultTabBarBackground)).toInt());
+  {
+    const int theme_index = ui_->tabbar_background->findData(s.value(kTabBarTheme).toString(), kTabBarThemeNameRole, Qt::MatchFixedString);
+    if (theme_index >= 0) ui_->tabbar_background->setCurrentIndex(theme_index);
+  }
   ui_->tabbar_gradient_custom_colors->setChecked(s.value(kTabBarGradientCustomColors, kDefaultTabBarGradientCustomColors).toBool());
   current_tabbar_gradient_start_color_ = s.value(kTabBarGradientStartColor, current_tabbar_bg_color_.lighter(117)).value<QColor>();
   current_tabbar_gradient_end_color_ = s.value(kTabBarGradientEndColor, StyleHelper::shadowColor(false).darker(109)).value<QColor>();
@@ -447,7 +507,9 @@ void AppearanceSettingsPage::Save() {
   s.setValue(kTabBarColor, current_tabbar_bg_color_);
 
   // Tabbar background
-  s.setValue(kTabBarBackground, ui_->tabbar_background->currentData().toInt());
+  s.setValue(kTabBarBackground, CurrentTabBarBackground());
+  if (CurrentTabBarTheme() >= 0) s.setValue(kTabBarTheme, tabbar_themes_[CurrentTabBarTheme()].name);
+  else s.remove(kTabBarTheme);
   s.setValue(kTabBarGradientCustomColors, ui_->tabbar_gradient_custom_colors->isChecked());
   s.setValue(kTabBarGradientStartColor, current_tabbar_gradient_start_color_);
   s.setValue(kTabBarGradientEndColor, current_tabbar_gradient_end_color_);
@@ -795,8 +857,9 @@ void AppearanceSettingsPage::TabBarSystemColor(const bool checked) {
 
 void AppearanceSettingsPage::TabBarBackgroundChanged() {
 
-  const TabBarBackground background = static_cast<TabBarBackground>(ui_->tabbar_background->currentData().toInt());
+  const TabBarBackground background = static_cast<TabBarBackground>(CurrentTabBarBackground());
   const bool custom_image = background == TabBarBackground::CustomImage;
+  UpdateTabBarThemeButtons();
   ui_->select_tabbar_gradient_start_color->setEnabled(ui_->tabbar_gradient_custom_colors->isChecked());
   ui_->select_tabbar_gradient_end_color->setEnabled(ui_->tabbar_gradient_custom_colors->isChecked());
   ui_->tabbar_background_image->setEnabled(custom_image);
@@ -905,19 +968,33 @@ void AppearanceSettingsPage::UpdateTabBarBackgroundPreviews() {
   font.setBold(true);
   font.setPointSizeF(font.pointSizeF() * 0.85);
 
+  const FancyTabWidget::BackgroundOptions page_options = options;
   for (int i = 0; i < ui_->tabbar_background->count(); ++i) {
-    options.mode = ui_->tabbar_background->itemData(i).toInt();
-    options.graphics = FancyTabWidget::BackgroundGraphics(options.mode);
-    options.image = QPixmap();
-    switch (static_cast<TabBarBackground>(options.mode)) {
-      case TabBarBackground::CustomImage:
+    const QVariant item_data = ui_->tabbar_background->itemData(i);
+    if (!item_data.isValid()) continue;  // Separator
+    bool custom_badge = false;
+    bool checkerboard = false;
+    options = page_options;
+    if (item_data.toInt() == kTabBarThemeItem) {
+      // A saved theme: its own look, without the badge.
+      const qsizetype theme_index = TabBarThemes::IndexOf(tabbar_themes_, ui_->tabbar_background->itemData(i, kTabBarThemeNameRole).toString());
+      if (theme_index < 0) continue;
+      options = ThemeBackgroundOptions(tabbar_themes_[theme_index]);
+    }
+    else {
+      options.mode = item_data.toInt();
+      options.graphics = FancyTabWidget::BackgroundGraphics(options.mode);
+      options.image = QPixmap();
+      if (static_cast<TabBarBackground>(options.mode) == TabBarBackground::CustomImage) {
+        // Custom is always recognisable: the chosen image, or a checkerboard before one is chosen, with an edit badge.
+        custom_badge = true;
         if (!ui_->tabbar_background_image->text().isEmpty()) options.image = QPixmap(ui_->tabbar_background_image->text());
-        break;
-      default:
-        break;
+        checkerboard = options.image.isNull();
+      }
     }
     QPixmap pixmap = FancyTabWidget::RenderBackground(preview_size, options);
     QPainter p(&pixmap);
+    if (checkerboard) DrawCheckerboard(&p, pixmap.rect());
     p.setFont(font);
     for (int t = 0; t < tabs.count(); ++t) {
       const QRect tab_rect(t * tab_width, 0, tab_width, kTabBarPreviewHeight);
@@ -926,12 +1003,256 @@ void AppearanceSettingsPage::UpdateTabBarBackgroundPreviews() {
       // Drop shadow and text, as the sidebar draws them.
       p.setPen(QColor(0, 0, 0, 110));
       p.drawText(text_rect.translated(0, 1), Qt::AlignHCenter | Qt::AlignBottom, tabs[t].second);
-      p.setPen(StyleHelper::panelTextColor());
+      p.setPen(checkerboard ? QColor(60, 60, 60) : StyleHelper::panelTextColor());
       p.drawText(text_rect, Qt::AlignHCenter | Qt::AlignBottom, tabs[t].second);
+    }
+    if (custom_badge) {
+      DrawEditBadge(&p, QRect(pixmap.width() - kTabBarBadgeSize - 4, 4, kTabBarBadgeSize, kTabBarBadgeSize));
     }
     p.end();
     ui_->tabbar_background->setItemData(i, pixmap, Qt::DecorationRole);
   }
+
+}
+
+int AppearanceSettingsPage::CurrentTabBarTheme() const {
+
+  if (ui_->tabbar_background->currentData().toInt() != kTabBarThemeItem) return -1;
+  return static_cast<int>(TabBarThemes::IndexOf(tabbar_themes_, ui_->tabbar_background->currentData(kTabBarThemeNameRole).toString()));
+
+}
+
+// The background drawn for the current dropdown entry, for a saved theme the background it is based on.
+int AppearanceSettingsPage::CurrentTabBarBackground() const {
+
+  const int theme_index = CurrentTabBarTheme();
+  if (theme_index >= 0) return tabbar_themes_[theme_index].background;
+  const int item_data = ui_->tabbar_background->currentData().toInt();
+  return item_data == kTabBarThemeItem ? static_cast<int>(kDefaultTabBarBackground) : item_data;
+
+}
+
+// The user's themes after the built-in backgrounds, behind a separator.
+void AppearanceSettingsPage::UpdateTabBarThemeItems() {
+
+  const QString current_theme = CurrentTabBarTheme() >= 0 ? tabbar_themes_[CurrentTabBarTheme()].name : QString();
+  const int current_background = ui_->tabbar_background->currentData().toInt();
+
+  ui_->tabbar_background->blockSignals(true);
+  while (ui_->tabbar_background->count() > 0) {
+    const QVariant item_data = ui_->tabbar_background->itemData(ui_->tabbar_background->count() - 1);
+    if (item_data.isValid() && item_data.toInt() != kTabBarThemeItem) break;
+    ui_->tabbar_background->removeItem(ui_->tabbar_background->count() - 1);
+  }
+  if (!tabbar_themes_.isEmpty()) {
+    ui_->tabbar_background->insertSeparator(ui_->tabbar_background->count());
+    for (const TabBarThemes::Theme &theme : std::as_const(tabbar_themes_)) {
+      ui_->tabbar_background->addItem(theme.name, kTabBarThemeItem);
+      ui_->tabbar_background->setItemData(ui_->tabbar_background->count() - 1, theme.name, kTabBarThemeNameRole);
+    }
+  }
+  int idx = current_theme.isEmpty() ? -1 : ui_->tabbar_background->findData(current_theme, kTabBarThemeNameRole, Qt::MatchFixedString);
+  if (idx < 0 && current_background != kTabBarThemeItem) idx = ui_->tabbar_background->findData(current_background);
+  if (idx < 0) idx = ui_->tabbar_background->findData(static_cast<int>(kDefaultTabBarBackground));
+  ui_->tabbar_background->setCurrentIndex(idx);
+  ui_->tabbar_background->blockSignals(false);
+
+  UpdateTabBarBackgroundPreviews();
+  TabBarBackgroundChanged();
+
+}
+
+void AppearanceSettingsPage::UpdateTabBarThemeButtons() {
+
+  // Saving makes sense for what the built-in backgrounds don't have: a custom image, a custom color or custom gradient colors, or a theme.
+  const bool theme = CurrentTabBarTheme() >= 0;
+  const bool custom = theme || CurrentTabBarBackground() == static_cast<int>(TabBarBackground::CustomImage) || ui_->tabbar_custom_color->isChecked() || ui_->tabbar_gradient_custom_colors->isChecked();
+  ui_->button_tabbar_theme_save->setEnabled(custom);
+  ui_->button_tabbar_theme_rename->setEnabled(theme);
+  ui_->button_tabbar_theme_delete->setEnabled(theme);
+
+}
+
+FancyTabWidget::BackgroundOptions AppearanceSettingsPage::ThemeBackgroundOptions(const TabBarThemes::Theme &theme) {
+
+  FancyTabWidget::BackgroundOptions options;
+  options.mode = theme.background;
+  options.system_color = theme.system_color;
+  options.color = theme.system_color || !theme.color.isValid() ? FancyTabWidget::DefaultTabbarBgColor() : theme.color;
+  options.gradient = theme.gradient;
+  options.gradient_custom_colors = theme.gradient_custom_colors;
+  options.gradient_start_color = theme.gradient_start_color;
+  options.gradient_end_color = theme.gradient_end_color;
+  options.gradient_direction = theme.gradient_direction;
+  options.graphics = FancyTabWidget::BackgroundGraphics(theme.background);
+  if (theme.background == static_cast<int>(TabBarBackground::CustomImage) && !theme.image.isEmpty()) options.image = QPixmap(theme.image);
+  options.image_position = theme.image_position;
+  options.image_max_size = theme.image_max_size;
+  options.image_stretch = theme.image_stretch;
+  options.image_keep_aspect_ratio = theme.image_keep_aspect_ratio;
+  options.image_do_not_cut = theme.image_do_not_cut;
+  options.image_tile = theme.image_tile;
+  options.image_opacity = theme.image_opacity;
+  options.image_tint = theme.image_tint;
+  return options;
+
+}
+
+// A saved theme was chosen: the options on this page become the theme's, saving the page applies them.
+void AppearanceSettingsPage::TabBarThemeChosen() {
+
+  const int theme_index = CurrentTabBarTheme();
+  if (theme_index < 0) return;
+  const TabBarThemes::Theme &theme = tabbar_themes_[theme_index];
+
+  ui_->tabbar_system_color->setChecked(theme.system_color);
+  ui_->tabbar_custom_color->setChecked(!theme.system_color);
+  if (!theme.system_color && theme.color.isValid()) {
+    current_tabbar_bg_color_ = theme.color;
+    UpdateColorSelectorColor(ui_->select_tabbar_color, current_tabbar_bg_color_);
+  }
+  ui_->tabbar_gradient->setChecked(theme.gradient);
+  ui_->tabbar_gradient_custom_colors->setChecked(theme.gradient_custom_colors);
+  if (theme.gradient_start_color.isValid()) current_tabbar_gradient_start_color_ = theme.gradient_start_color;
+  if (theme.gradient_end_color.isValid()) current_tabbar_gradient_end_color_ = theme.gradient_end_color;
+  UpdateColorSelectorColor(ui_->select_tabbar_gradient_start_color, current_tabbar_gradient_start_color_);
+  UpdateColorSelectorColor(ui_->select_tabbar_gradient_end_color, current_tabbar_gradient_end_color_);
+  ui_->tabbar_gradient_direction->setCurrentIndex(qBound(0, theme.gradient_direction, ui_->tabbar_gradient_direction->count() - 1));
+  ui_->tabbar_background_image->setText(theme.image);
+  ui_->tabbar_background_image_position->setCurrentIndex(qBound(0, theme.image_position - 1, ui_->tabbar_background_image_position->count() - 1));
+  ui_->tabbar_background_image_maxsize->setValue(theme.image_max_size);
+  ui_->tabbar_background_image_stretch->setChecked(theme.image_stretch);
+  ui_->tabbar_background_image_keep_aspect_ratio->setChecked(theme.image_keep_aspect_ratio);
+  ui_->tabbar_background_image_do_not_cut->setChecked(theme.image_do_not_cut);
+  ui_->tabbar_background_image_tile->setChecked(theme.image_tile);
+  ui_->tabbar_background_image_blur->setValue(theme.image_blur_radius);
+  ui_->tabbar_background_image_opacity->setValue(theme.image_opacity);
+  ui_->tabbar_background_image_tint->setChecked(theme.image_tint);
+
+  TabBarBackgroundChanged();
+  UpdateTabBarBackgroundPreviews();
+  set_changed();
+
+}
+
+// Asks for a theme name: not empty, not the name of a built-in background or of another theme than except_index. Empty when cancelled.
+QString AppearanceSettingsPage::AskTabBarThemeName(const QString &title, const QString &initial_name, const qsizetype except_index, bool *overwrite) {
+
+  if (overwrite) *overwrite = false;
+  QString name = initial_name;
+  Q_FOREVER {
+    bool ok = false;
+    name = QInputDialog::getText(this, title, tr("Theme name:"), QLineEdit::Normal, name, &ok).trimmed();
+    if (!ok) return QString();
+    if (name.isEmpty()) {
+      QMessageBox::warning(this, title, tr("The theme needs a name."));
+      continue;
+    }
+    bool built_in = TabBarThemes::IsBuiltInName(name);
+    for (int i = 0; i < ui_->tabbar_background->count() && !built_in; ++i) {
+      const QVariant item_data = ui_->tabbar_background->itemData(i);
+      if (item_data.isValid() && item_data.toInt() != kTabBarThemeItem && ui_->tabbar_background->itemText(i).compare(name, Qt::CaseInsensitive) == 0) built_in = true;
+    }
+    if (built_in) {
+      QMessageBox::warning(this, title, tr("\"%1\" is the name of a built-in background, choose another name.").arg(name));
+      continue;
+    }
+    const qsizetype existing = TabBarThemes::IndexOf(tabbar_themes_, name);
+    if (existing >= 0 && existing != except_index) {
+      if (!overwrite) {
+        QMessageBox::warning(this, title, tr("There is a theme called \"%1\" already, choose another name.").arg(name));
+        continue;
+      }
+      if (QMessageBox::question(this, title, tr("There is a theme called \"%1\" already. Replace it?").arg(name), QMessageBox::Yes | QMessageBox::No, QMessageBox::No) != QMessageBox::Yes) continue;
+      *overwrite = true;
+    }
+    return name;
+  }
+
+}
+
+void AppearanceSettingsPage::TabBarThemeSave() {
+
+  const QString title = tr("Save sidebar theme");
+  const int current_theme = CurrentTabBarTheme();
+  bool overwrite = false;
+  const QString name = AskTabBarThemeName(title, current_theme >= 0 ? tabbar_themes_[current_theme].name : QString(), -1, &overwrite);
+  if (name.isEmpty()) return;
+
+  TabBarThemes::Theme theme;
+  theme.name = name;
+  theme.background = CurrentTabBarBackground();
+  theme.system_color = ui_->tabbar_system_color->isChecked();
+  theme.color = current_tabbar_bg_color_;
+  theme.gradient = ui_->tabbar_gradient->isChecked();
+  theme.gradient_custom_colors = ui_->tabbar_gradient_custom_colors->isChecked();
+  theme.gradient_start_color = current_tabbar_gradient_start_color_;
+  theme.gradient_end_color = current_tabbar_gradient_end_color_;
+  theme.gradient_direction = ui_->tabbar_gradient_direction->currentIndex();
+  theme.image_position = ui_->tabbar_background_image_position->currentIndex() + 1;
+  theme.image_max_size = ui_->tabbar_background_image_maxsize->value();
+  theme.image_stretch = ui_->tabbar_background_image_stretch->isChecked();
+  theme.image_keep_aspect_ratio = ui_->tabbar_background_image_keep_aspect_ratio->isChecked();
+  theme.image_do_not_cut = ui_->tabbar_background_image_do_not_cut->isChecked();
+  theme.image_tile = ui_->tabbar_background_image_tile->isChecked();
+  theme.image_blur_radius = ui_->tabbar_background_image_blur->value();
+  theme.image_opacity = ui_->tabbar_background_image_opacity->value();
+  theme.image_tint = ui_->tabbar_background_image_tint->isChecked();
+  // A copy of the image, so the theme keeps working when the original is moved.
+  if (theme.background == static_cast<int>(TabBarBackground::CustomImage)) {
+    theme.image = TabBarThemes::CopyImage(name, ui_->tabbar_background_image->text());
+  }
+
+  const qsizetype existing = TabBarThemes::IndexOf(tabbar_themes_, name);
+  if (existing >= 0) {
+    if (tabbar_themes_[existing].image != theme.image) TabBarThemes::RemoveImage(tabbar_themes_[existing].image);
+    tabbar_themes_[existing] = theme;
+  }
+  else {
+    tabbar_themes_ << theme;
+  }
+  Q_UNUSED(overwrite);
+  TabBarThemes::Save(tabbar_themes_);
+
+  UpdateTabBarThemeItems();
+  ui_->tabbar_background->setCurrentIndex(ui_->tabbar_background->findData(name, kTabBarThemeNameRole, Qt::MatchFixedString));
+  TabBarThemeChosen();
+
+}
+
+void AppearanceSettingsPage::TabBarThemeRename() {
+
+  const int theme_index = CurrentTabBarTheme();
+  if (theme_index < 0) return;
+
+  const QString name = AskTabBarThemeName(tr("Rename sidebar theme"), tabbar_themes_[theme_index].name, theme_index, nullptr);
+  if (name.isEmpty() || name == tabbar_themes_[theme_index].name) return;
+
+  tabbar_themes_[theme_index].name = name;
+  TabBarThemes::Save(tabbar_themes_);
+  UpdateTabBarThemeItems();
+  ui_->tabbar_background->setCurrentIndex(ui_->tabbar_background->findData(name, kTabBarThemeNameRole, Qt::MatchFixedString));
+  set_changed();
+
+}
+
+void AppearanceSettingsPage::TabBarThemeDelete() {
+
+  const int theme_index = CurrentTabBarTheme();
+  if (theme_index < 0) return;
+
+  const TabBarThemes::Theme theme = tabbar_themes_[theme_index];
+  if (QMessageBox::question(this, tr("Delete sidebar theme"), tr("Delete the sidebar theme \"%1\"?").arg(theme.name), QMessageBox::Yes | QMessageBox::No, QMessageBox::No) != QMessageBox::Yes) return;
+
+  TabBarThemes::RemoveImage(theme.image);
+  tabbar_themes_.removeAt(theme_index);
+  TabBarThemes::Save(tabbar_themes_);
+
+  // The look stays, as the background the theme was based on; a removed image copy is replaced by the plain gradient.
+  ui_->tabbar_background->setCurrentIndex(ui_->tabbar_background->findData(theme.background == static_cast<int>(TabBarBackground::CustomImage) ? static_cast<int>(TabBarBackground::Gradient) : theme.background));
+  if (theme.background == static_cast<int>(TabBarBackground::CustomImage)) ui_->tabbar_background_image->clear();
+  UpdateTabBarThemeItems();
+  set_changed();
 
 }
 

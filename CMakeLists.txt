@@ -804,6 +804,7 @@ set(SOURCES
   src/settings/networkproxysettingspage.cpp
   src/settings/radiosettingspage.cpp
   src/settings/appearancesettingspage.cpp
+  src/settings/tabbarthemes.cpp
   src/settings/contextsettingspage.cpp
   src/settings/notificationssettingspage.cpp
   src/settings/transcodersettingspage.cpp

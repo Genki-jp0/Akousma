@@ -105,6 +105,8 @@ enum class TabBarGradientDirection {
 };
 
 constexpr char kTabBarBackground[] = "tab_background";
+// The name of the user's sidebar theme chosen in the dropdown (settings/tabbarthemes.h), empty for a built-in background.
+constexpr char kTabBarTheme[] = "tab_theme";
 constexpr char kTabBarGradientCustomColors[] = "tab_gradient_custom_colors";
 constexpr char kTabBarGradientStartColor[] = "tab_gradient_start_color";
 constexpr char kTabBarGradientEndColor[] = "tab_gradient_end_color";

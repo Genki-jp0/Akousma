@@ -33,6 +33,8 @@
 
 #include "core/settings.h"
 #include "core/settingstransfer.h"
+#include "settings/tabbarthemes.h"
+#include <QImage>
 
 using namespace Qt::Literals::StringLiterals;
 
@@ -185,5 +187,62 @@ TEST_F(SettingsTransferTest, ImportMapsRemovedAlbumCoverBackground) {
   }
   ASSERT_TRUE(SettingsTransfer::Import(filename).success);
   EXPECT_EQ(1, Settings().value(u"Appearance/tab_background"_s).toInt());
+
+}
+
+// Saved sidebar themes: stored by name, with a copy of the image; kept by a reset; exported with the image and imported again.
+TEST_F(SettingsTransferTest, TabBarThemes) {
+
+  EXPECT_TRUE(TabBarThemes::IsBuiltInName(u" plain gradient "_s));
+  EXPECT_TRUE(TabBarThemes::IsBuiltInName(u"Custom image"_s));
+  EXPECT_FALSE(TabBarThemes::IsBuiltInName(u"Night"_s));
+
+  const QString original = dir_.filePath(u"night.png"_s);
+  QImage image(20, 40, QImage::Format_RGB32);
+  image.fill(QColor(10, 20, 200));
+  ASSERT_TRUE(image.save(original));
+
+  TabBarThemes::Theme theme;
+  theme.name = u"Night"_s;
+  theme.background = 2;
+  theme.system_color = false;
+  theme.color = QColor(1, 2, 3);
+  theme.image = TabBarThemes::CopyImage(theme.name, original);
+  ASSERT_NE(original, theme.image);
+  EXPECT_TRUE(theme.image.startsWith(TabBarThemes::ImageDir()));
+  EXPECT_TRUE(QFileInfo::exists(theme.image));
+  TabBarThemes::Theme theme2;
+  theme2.name = u"Day"_s;
+  TabBarThemes::Save(QList<TabBarThemes::Theme>() << theme << theme2);
+
+  QList<TabBarThemes::Theme> themes = TabBarThemes::Load();
+  ASSERT_EQ(2, themes.count());
+  EXPECT_EQ(0, TabBarThemes::IndexOf(themes, u"night"_s));
+  EXPECT_EQ(1, TabBarThemes::IndexOf(themes, u"Day"_s));
+  EXPECT_EQ(-1, TabBarThemes::IndexOf(themes, u"Dusk"_s));
+  EXPECT_EQ(QColor(1, 2, 3), themes[0].color);
+  EXPECT_EQ(2, themes[0].background);
+
+  // Kept by a reset.
+  ASSERT_TRUE(SettingsTransfer::Reset().success);
+  EXPECT_EQ(2, TabBarThemes::Load().count());
+
+  // The export carries the image, the import writes it back when the copy is gone.
+  const QString filename = dir_.filePath(u"themes.ini"_s);
+  ASSERT_TRUE(SettingsTransfer::Export(filename).success);
+  QSettings exported(filename, QSettings::IniFormat);
+  EXPECT_FALSE(exported.value(u"TabBarThemes/themes/1/image_data"_s).toByteArray().isEmpty());
+  TabBarThemes::RemoveImage(themes[0].image);
+  EXPECT_FALSE(QFileInfo::exists(themes[0].image));
+  TabBarThemes::Save(QList<TabBarThemes::Theme>());
+  ASSERT_TRUE(SettingsTransfer::Import(filename).success);
+  themes = TabBarThemes::Load();
+  ASSERT_EQ(2, themes.count());
+  EXPECT_TRUE(QFileInfo::exists(themes[0].image));
+  EXPECT_EQ(QColor(10, 20, 200), QImage(themes[0].image).pixelColor(5, 5));
+  EXPECT_FALSE(Settings().contains(u"TabBarThemes/themes/1/image_data"_s));
+
+  TabBarThemes::RemoveImage(themes[0].image);
+  TabBarThemes::Save(QList<TabBarThemes::Theme>());
 
 }
