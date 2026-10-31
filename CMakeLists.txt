@@ -1879,7 +1879,7 @@ target_link_libraries(akousma PUBLIC strawberry_lib)
 
 # Bundled icon sets (Settings > Appearance > Icon set), made by dist/scripts/extract-iconsets.py. Each one is a separate
 # iconsets/<id>.rcc, loaded at runtime from next to the program (Windows, the build folder) or from share/akousma/iconsets.
-set(AKOUSMA_ICONSETS adwaita breeze breeze-dark clementine elementary oxygen papirus papirus-dark tango)
+set(AKOUSMA_ICONSETS adwaita breeze breeze-dark elementary oxygen papirus papirus-dark tango)
 set(AKOUSMA_ICONSET_FILES)
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/iconsets")
 foreach(iconset ${AKOUSMA_ICONSETS})

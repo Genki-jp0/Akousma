@@ -86,6 +86,11 @@ QList<int> IconSizes(const int fixed_size) {
   return QList<int>() << 22 << 32 << 48 << 64 << 128;
 }
 
+// Bundled sets that were removed: a setting naming one means the built-in set, a leftover .rcc file is not offered.
+bool IsRemovedIconSet(const QString &id) {
+  return id == "clementine"_L1;  // Same icons as the built-in set.
+}
+
 QString IconSetRoot(const QString &id) {
   return u":/iconsets/"_s + id;
 }
@@ -235,7 +240,7 @@ QString IconLoader::IconSetFromSettings() {
 #endif
   s.endGroup();
 
-  if (id.isEmpty()) id = QLatin1String(kIconSetBuiltIn);
+  if (id.isEmpty() || IsRemovedIconSet(id)) id = QLatin1String(kIconSetBuiltIn);
   return id;
 
 }
@@ -265,6 +270,13 @@ void IconLoader::Init() {
   }
 
   icon_set_ = IconSetFromSettings();
+  {
+    // A removed set in the settings (e.g. from an older export) is written back as the built-in set.
+    Settings s;
+    s.beginGroup(AppearanceSettings::kSettingsGroup);
+    if (IsRemovedIconSet(s.value(AppearanceSettings::kIconSet).toString())) s.setValue(AppearanceSettings::kIconSet, icon_set_);
+    s.endGroup();
+  }
   active_set_ = IconSet();
   active_set_.id = QLatin1String(kIconSetBuiltIn);
   system_icons_ = false;
@@ -479,7 +491,7 @@ QList<IconLoader::IconSet> IconLoader::IconSets() {
       iconset.id = fileinfo.completeBaseName().toLower();
       iconset.type = IconSetType::Bundled;
       iconset.path = fileinfo.absoluteFilePath();
-      if (ids.contains(iconset.id) || iconset.id == QLatin1String(kIconSetBuiltIn) || iconset.id == QLatin1String(kIconSetSystem)) continue;
+      if (ids.contains(iconset.id) || iconset.id == QLatin1String(kIconSetBuiltIn) || iconset.id == QLatin1String(kIconSetSystem) || IsRemovedIconSet(iconset.id)) continue;
       if (!RegisterIconSet(iconset)) continue;
       const QMap<QString, QString> ini = ReadIniFile(IconSetRoot(iconset.id) + u"/iconset.ini"_s);
       iconset.name = ini.value(u"IconSet/name"_s, iconset.id);

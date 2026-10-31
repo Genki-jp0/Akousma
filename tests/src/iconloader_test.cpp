@@ -137,6 +137,12 @@ TEST_F(IconLoaderTest, DefaultAndMigration) {
   }
   EXPECT_EQ(u"akousma"_s, IconLoader::IconSetFromSettings());
 
+  // The removed Clementine set means the built-in set, and is written back as that.
+  SetIconSet(u"clementine"_s);
+  EXPECT_EQ(u"akousma"_s, IconLoader::CurrentIconSet());
+  EXPECT_EQ(u"akousma"_s, Settings().value(u"Appearance/icon_set"_s).toString());
+  EXPECT_FALSE(IconLoader::FindIconSet(u"clementine"_s).type == IconLoader::IconSetType::Bundled);
+
   // A set that isn't there: the built-in icons.
   SetIconSet(u"theme:Missing"_s);
   EXPECT_EQ(u"akousma"_s, IconLoader::CurrentIconSet());

@@ -9,7 +9,7 @@
 
 akousma: =
 akousma-grey: =
-albums: media-optical-audio media-optical x-clementine-album
+albums: media-optical-audio media-optical
 alsa: =
 application-exit: application-exit system-log-out
 applications-internet: applications-internet network-workgroup web-browser internet-web-browser

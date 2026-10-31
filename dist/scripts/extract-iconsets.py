@@ -25,10 +25,9 @@ are left out; Akousma then uses its built-in icon for them.  Qt scales the icons
 when they are shown, and SVG icons need the Qt SVG module.
 
 On Debian/Ubuntu the themes come from adwaita-icon-theme, breeze-icon-theme,
-papirus-icon-theme, tango-icon-theme, oxygen-icon-theme and elementary-icon-theme;
-Clementine's icons come from a Clementine source checkout (--clementine).
+papirus-icon-theme, tango-icon-theme, oxygen-icon-theme and elementary-icon-theme.
 
-Usage: dist/scripts/extract-iconsets.py [--clementine /path/to/Clementine] [--only id,id]
+Usage: dist/scripts/extract-iconsets.py [--only id,id]
 Writes data/iconsets/<id>/, data/iconsets/<id>.qrc and data/iconsets/SOURCES.txt.
 """
 
@@ -83,12 +82,6 @@ SETS = [
     'id': 'elementary', 'name': 'elementary', 'dir': '/usr/share/icons/elementary', 'package': 'elementary-icon-theme',
     'licence': 'GPL-3+', 'copyright': 'elementary, Inc. and contributors',
     'source': 'https://github.com/elementary/icons',
-  },
-  {
-    'id': 'clementine', 'name': 'Clementine', 'dir': None, 'package': None,
-    'licence': 'GPL-3+ (cast, computer, speaker and tv: Apache-2.0, Material Symbols by Google)',
-    'copyright': 'The Clementine authors',
-    'source': 'https://github.com/clementine-player/Clementine (data/icons)',
   },
 ]
 
@@ -258,7 +251,6 @@ def package_version(package):
 
 def main():
   parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-  parser.add_argument('--clementine', help='Clementine source checkout, for the Clementine icon set')
   parser.add_argument('--only', help='Comma separated set ids to rebuild')
   args = parser.parse_args()
 
@@ -271,15 +263,7 @@ def main():
   for iconset in SETS:
     if only and iconset['id'] not in only:
       continue
-    if iconset['id'] == 'clementine':
-      if not args.clementine:
-        print('Skipping clementine: no --clementine checkout given', file=sys.stderr)
-        continue
-      iconset = dict(iconset, dir=os.path.join(args.clementine, 'data', 'icons'))
-      version = subprocess.run(['git', '-C', args.clementine, 'log', '-1', '--format=%h'], capture_output=True, text=True).stdout.strip() or 'unknown'
-      version = 'git ' + version
-    else:
-      version = package_version(iconset['package'])
+    version = package_version(iconset['package'])
     if not os.path.isdir(iconset['dir']):
       print(f'Skipping {iconset["id"]}: {iconset["dir"]} not found', file=sys.stderr)
       continue

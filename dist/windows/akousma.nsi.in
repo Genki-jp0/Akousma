@@ -686,7 +686,8 @@ Section "Icon sets" iconsets
   File "/oname=adwaita.rcc" "iconsets\adwaita.rcc"
   File "/oname=breeze.rcc" "iconsets\breeze.rcc"
   File "/oname=breeze-dark.rcc" "iconsets\breeze-dark.rcc"
-  File "/oname=clementine.rcc" "iconsets\clementine.rcc"
+  ; Removed set, from an earlier version.
+  Delete "$INSTDIR\iconsets\clementine.rcc"
   File "/oname=elementary.rcc" "iconsets\elementary.rcc"
   File "/oname=oxygen.rcc" "iconsets\oxygen.rcc"
   File "/oname=papirus.rcc" "iconsets\papirus.rcc"

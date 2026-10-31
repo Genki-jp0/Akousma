@@ -68,14 +68,6 @@ License: GPL-3+
 Comment: Icons of the elementary icon theme 7.3.1 (https://github.com/elementary/icons), unchanged,
  renamed to Akousma's icon names.
 
-Files: data/iconsets/clementine/*
-Copyright: 2010-2024, The Clementine authors
-License: GPL-3+
-Comment: Icons of Clementine (data/icons in https://github.com/clementine-player/Clementine at
- 3bc72a3), unchanged, renamed to Akousma's icon names. Clementine's cast, cast-connected,
- computer, speaker, speaker-group and tv icons are Google's Material Symbols under Apache-2.0;
- of these the set has speaker.
-
 Files: src/utilities/timeconstants.h
        src/core/logging.cpp
        src/core/logging.h

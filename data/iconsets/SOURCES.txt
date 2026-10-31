@@ -70,11 +70,3 @@ elementary (elementary)
   Coverage:  73 of 81 icons, 3150 KiB of icon files
   Built-in:  edit-rename, equalizer, jack, radio, tools-wizard, view-choose, view-media-lyrics, view-media-visualization
 
-Clementine (clementine)
-  Version:   git 3bc72a3
-  Source:    https://github.com/clementine-player/Clementine (data/icons)
-  Copyright: The Clementine authors
-  Licence:   GPL-3+ (cast, computer, speaker and tv: Apache-2.0, Material Symbols by Google)
-  Coverage:  67 of 81 icons, 275 KiB of icon files
-  Built-in:  bluetooth, device-usb-drive, dialog-error, dialog-information, dialog-password, jack, library-music, love, media-seek-backward, media-seek-forward, object-locked, object-unlocked, radio, zoom-out
-
