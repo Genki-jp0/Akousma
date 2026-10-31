@@ -213,6 +213,46 @@ TEST_F(SettingsTransferTest, ImportMapsRemovedAlbumCoverBackground) {
 
 }
 
+// The dropdown's built-in names, new and old, can't be theme names; saved themes with one of them are renamed when loaded.
+TEST_F(SettingsTransferTest, TabBarThemesWithBuiltInNames) {
+
+  const QStringList built_in_names = QStringList() << u"Gradient"_s << u"Clementine"_s << u"Strawberry"_s << u"Custom"_s << u"custom image"_s
+                                                  << u"Plain gradient, no graphics"_s << u"Clementine background"_s << u"Default background (strawberry graphics)"_s;
+  for (const QString &name : built_in_names) {
+    EXPECT_TRUE(TabBarThemes::IsBuiltInName(name)) << name.toStdString();
+  }
+
+  QList<TabBarThemes::Theme> saved;
+  const QStringList names = QStringList() << u"Gradient"_s << u"strawberry"_s << u"Strawberry (2)"_s << u"Night"_s;
+  for (const QString &name : names) {
+    TabBarThemes::Theme theme;
+    theme.name = name;
+    saved << theme;
+  }
+  TabBarThemes::Save(saved);
+  {
+    Settings s;
+    s.setValue(u"Appearance/tab_theme"_s, u"Strawberry"_s);
+    s.sync();
+  }
+
+  QList<TabBarThemes::Theme> themes = TabBarThemes::Load();
+  ASSERT_EQ(4, themes.count());
+  EXPECT_EQ(u"Gradient (2)"_s, themes[0].name);
+  EXPECT_EQ(u"strawberry (3)"_s, themes[1].name);
+  EXPECT_EQ(u"Strawberry (2)"_s, themes[2].name);
+  EXPECT_EQ(u"Night"_s, themes[3].name);
+  EXPECT_EQ(u"strawberry (3)"_s, Settings().value(u"Appearance/tab_theme"_s).toString());
+
+  // Stored renamed: loading again changes nothing.
+  themes = TabBarThemes::Load();
+  EXPECT_EQ(u"Gradient (2)"_s, themes[0].name);
+  EXPECT_EQ(u"strawberry (3)"_s, themes[1].name);
+
+  TabBarThemes::Save(QList<TabBarThemes::Theme>());
+
+}
+
 // Saved sidebar themes: stored by name, with a copy of the image; kept by a reset; exported with the image and imported again.
 TEST_F(SettingsTransferTest, TabBarThemes) {
 

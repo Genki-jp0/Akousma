@@ -188,10 +188,10 @@ AppearanceSettingsPage::AppearanceSettingsPage(SettingsDialog *dialog, SharedPtr
 
   // Tabbar background: a dropdown with a preview of each background, like the moodbar styles.
   ui_->tabbar_background->setIconSize(QSize(kTabBarPreviewWidth, kTabBarPreviewHeight));
-  ui_->tabbar_background->addItem(tr("Plain gradient, no graphics"), static_cast<int>(TabBarBackground::Gradient));
-  ui_->tabbar_background->addItem(tr("Clementine background"), static_cast<int>(TabBarBackground::Clementine));
-  ui_->tabbar_background->addItem(tr("Default background (strawberry graphics)"), static_cast<int>(TabBarBackground::Strawberry));
-  ui_->tabbar_background->addItem(tr("Custom image"), static_cast<int>(TabBarBackground::CustomImage));
+  ui_->tabbar_background->addItem(tr("Gradient"), static_cast<int>(TabBarBackground::Gradient));
+  ui_->tabbar_background->addItem(tr("Clementine"), static_cast<int>(TabBarBackground::Clementine));
+  ui_->tabbar_background->addItem(tr("Strawberry"), static_cast<int>(TabBarBackground::Strawberry));
+  ui_->tabbar_background->addItem(tr("Custom"), static_cast<int>(TabBarBackground::CustomImage));
   QObject::connect(ui_->tabbar_background, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &AppearanceSettingsPage::TabBarBackgroundChanged);
   // Choosing one of the user's themes sets the options on this page to the theme's.
   QObject::connect(ui_->tabbar_background, QOverload<int>::of(&QComboBox::activated), this, &AppearanceSettingsPage::TabBarThemeChosen);

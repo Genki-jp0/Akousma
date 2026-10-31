@@ -69,6 +69,25 @@ QList<Theme> Load() {
   s.endArray();
   s.endGroup();
 
+  // A theme saved under a name the dropdown now uses for a built-in background ("Gradient", "Clementine", "Strawberry",
+  // "Custom") is renamed to "<name> (2)" (or the next free number), here and in the setting naming the chosen theme.
+  bool renamed = false;
+  for (Theme &theme : themes) {
+    if (!IsBuiltInName(theme.name)) continue;
+    QString new_name;
+    for (int n = 2; new_name.isEmpty() || IndexOf(themes, new_name) >= 0; ++n) {
+      new_name = theme.name + u" ("_s + QString::number(n) + u')';
+    }
+    s.beginGroup(AppearanceSettings::kSettingsGroup);
+    if (s.value(AppearanceSettings::kTabBarTheme).toString().compare(theme.name, Qt::CaseInsensitive) == 0) {
+      s.setValue(AppearanceSettings::kTabBarTheme, new_name);
+    }
+    s.endGroup();
+    theme.name = new_name;
+    renamed = true;
+  }
+  if (renamed) Save(themes);
+
   return themes;
 
 }
