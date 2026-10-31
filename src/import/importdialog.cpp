@@ -25,12 +25,14 @@
 #include <QComboBox>
 #include <QDialogButtonBox>
 #include <QDir>
+#include <QFont>
 #include <QGroupBox>
 #include <QIcon>
 #include <QGuiApplication>
 #include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QStyle>
 #include <QVBoxLayout>
 
 #include "core/iconloader.h"
@@ -49,6 +51,8 @@ ImportDialog::ImportDialog(const Mode mode, QWidget *parent)
       checkbox_settings_(new QCheckBox(tr("&Settings"), this)),
       checkbox_collection_(new QCheckBox(tr("&Collection (songs, play counts, ratings and playlists)"), this)),
       checkbox_covers_(new QCheckBox(tr("&Album covers cache"), this)),
+      checkbox_passwords_(new QCheckBox(tr("Saved &passwords and logins"), this)),
+      label_passwords_(new QLabel(tr("Copies service passwords and login tokens to Akousma's keyring. Off: log in again yourself."), this)),
       label_warning_(new QLabel(this)),
       buttonbox_(new QDialogButtonBox(this)),
       button_import_(nullptr),
@@ -85,6 +89,14 @@ ImportDialog::ImportDialog(const Mode mode, QWidget *parent)
   layout_items->addWidget(checkbox_settings_);
   layout_items->addWidget(checkbox_collection_);
   layout_items->addWidget(checkbox_covers_);
+  layout_items->addWidget(checkbox_passwords_);
+  // Indented below its checkbox, like a description.
+  label_passwords_->setWordWrap(true);
+  label_passwords_->setContentsMargins(checkbox_passwords_->style()->pixelMetric(QStyle::PM_IndicatorWidth) + checkbox_passwords_->style()->pixelMetric(QStyle::PM_CheckBoxLabelSpacing), 0, 0, 0);
+  QFont font_passwords = label_passwords_->font();
+  font_passwords.setPointSizeF(font_passwords.pointSizeF() * 0.9);
+  label_passwords_->setFont(font_passwords);
+  layout_items->addWidget(label_passwords_);
   layout->addWidget(groupbox_items);
 
   label_warning_->setWordWrap(true);
@@ -127,6 +139,7 @@ ImportDialog::ImportDialog(const Mode mode, QWidget *parent)
   QObject::connect(checkbox_settings_, &QCheckBox::toggled, this, &ImportDialog::ItemToggled);
   QObject::connect(checkbox_collection_, &QCheckBox::toggled, this, &ImportDialog::ItemToggled);
   QObject::connect(checkbox_covers_, &QCheckBox::toggled, this, &ImportDialog::ItemToggled);
+  QObject::connect(checkbox_passwords_, &QCheckBox::toggled, this, &ImportDialog::ItemToggled);
   QObject::connect(button_import_, &QPushButton::clicked, this, &ImportDialog::ImportClicked);
   QObject::connect(buttonbox_, &QDialogButtonBox::rejected, this, &ImportDialog::reject);
 
@@ -158,6 +171,7 @@ void ImportDialog::SelectItems(const PlayerImporter::Items items) {
   checkbox_settings_->setChecked(checkbox_settings_->isEnabled() && items & PlayerImporter::Item::Settings);
   checkbox_collection_->setChecked(checkbox_collection_->isEnabled() && items & PlayerImporter::Item::Collection);
   checkbox_covers_->setChecked(checkbox_covers_->isEnabled() && items & PlayerImporter::Item::Covers);
+  checkbox_passwords_->setChecked(checkbox_passwords_->isEnabled() && items & PlayerImporter::Item::Passwords);
 
 }
 
@@ -167,6 +181,7 @@ PlayerImporter::Items ImportDialog::SelectedItems() const {
   if (checkbox_settings_->isEnabled() && checkbox_settings_->isChecked()) items |= PlayerImporter::Item::Settings;
   if (checkbox_collection_->isEnabled() && checkbox_collection_->isChecked()) items |= PlayerImporter::Item::Collection;
   if (checkbox_covers_->isEnabled() && checkbox_covers_->isChecked()) items |= PlayerImporter::Item::Covers;
+  if (checkbox_passwords_->isEnabled() && checkbox_passwords_->isChecked()) items |= PlayerImporter::Item::Passwords;
   return items;
 
 }
@@ -192,8 +207,11 @@ void ImportDialog::SourceChanged(const int index) {
   checkbox_settings_->setEnabled(installation->has_settings);
   checkbox_collection_->setEnabled(installation->has_database());
   checkbox_covers_->setEnabled(installation->has_covers());
+  checkbox_passwords_->setEnabled(installation->available_items() & PlayerImporter::Item::Passwords);
+  label_passwords_->setEnabled(checkbox_passwords_->isEnabled());
   checkbox_collection_->setText(installation->player == PlayerImporter::Player::Clementine ? tr("&Library (songs, play counts, ratings and playlists)") : tr("&Collection (songs, play counts, ratings and playlists)"));
-  SelectItems(PlayerImporter::Item::All);
+  // Passwords are only imported when the user asks for them.
+  SelectItems(PlayerImporter::Item::All | (checkbox_passwords_->isChecked() ? PlayerImporter::Items(PlayerImporter::Item::Passwords) : PlayerImporter::Items()));
 
   ItemToggled();
 
@@ -248,11 +266,24 @@ void ImportDialog::ShowResult(QWidget *parent, const PlayerImporter::Installatio
     text = tr("The import from %1 did not finish.").arg(installation.name);
   }
 
-  QStringList details = result.errors;
-  details << result.messages;
+  // Sections: errors, what was imported, what was skipped, what was dropped from smart playlists.
+  QString details;
+  const auto add_section = [&details](const QString &title, const QStringList &lines) {
+    if (lines.isEmpty()) return;
+    details += u"<p><b>"_s + title.toHtmlEscaped() + u"</b></p><ul style=\"margin-left: 12px; -qt-list-indent: 0;\">"_s;
+    for (const QString &line : lines) {
+      details += u"<li>"_s + line.toHtmlEscaped() + u"</li>"_s;
+    }
+    details += u"</ul>"_s;
+  };
+  add_section(tr("Errors"), result.errors);
+  add_section(tr("Imported"), result.messages);
+  add_section(tr("Skipped"), result.skipped);
+  add_section(tr("Dropped from smart playlists"), result.dropped);
 
   QMessageBox box(result.success ? QMessageBox::Information : QMessageBox::Warning, tr("Import from Strawberry / Clementine"), text, QMessageBox::Ok, parent);
-  box.setInformativeText(details.join(u"\n\n"_s));
+  box.setTextFormat(Qt::PlainText);
+  box.setInformativeText(details);
   box.exec();
 
 }
@@ -277,11 +308,14 @@ bool ImportDialog::ImportAtStartup(const CommandlineOptions &options, const bool
       const std::optional<PlayerImporter::Player> player = PlayerImporter::PlayerFromString(options.import_from());
       if (player.has_value()) dialog.SelectPlayer(player.value());
     }
+    PlayerImporter::Items requested_items = PlayerImporter::Item::All;
     if (!options.import_items().isEmpty()) {
       bool ok = false;
-      const PlayerImporter::Items requested_items = PlayerImporter::ItemsFromString(options.import_items(), &ok);
-      if (ok) dialog.SelectItems(requested_items);
+      requested_items = PlayerImporter::ItemsFromString(options.import_items(), &ok);
+      if (!ok) requested_items = PlayerImporter::Item::All;
     }
+    if (options.import_passwords()) requested_items |= PlayerImporter::Item::Passwords;
+    dialog.SelectItems(requested_items);
     dialog.exec();
     PlayerImporter::SetFirstRunPromptDone();
     return dialog.imported() & PlayerImporter::Item::Settings;

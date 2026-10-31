@@ -81,6 +81,8 @@ class ImportDialog : public QDialog {
   QCheckBox *checkbox_settings_;
   QCheckBox *checkbox_collection_;
   QCheckBox *checkbox_covers_;
+  QCheckBox *checkbox_passwords_;
+  QLabel *label_passwords_;
   QLabel *label_warning_;
   QDialogButtonBox *buttonbox_;
   QPushButton *button_import_;

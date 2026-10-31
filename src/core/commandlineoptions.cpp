@@ -98,7 +98,8 @@ constexpr char kHelpText[] =
     "%36:\n"
     "      --import-from <player>  %37\n"
     "      --import-items <items>  %38\n"
-    "      --import-quiet          %39\n";
+    "      --import-quiet          %39\n"
+    "      --import-passwords      %40\n";
 
 constexpr char kVersionText[] = "Akousma %1 (based on Strawberry)";
 
@@ -122,6 +123,7 @@ CommandlineOptions::CommandlineOptions(int argc, char **argv)
       toggle_pretty_osd_(false),
       log_levels_(QLatin1String(logging::kDefaultLogLevels)),
       import_quiet_(false),
+      import_passwords_(false),
       restarted_(false) {
 
 #ifdef Q_OS_WIN32
@@ -195,6 +197,7 @@ bool CommandlineOptions::Parse() {
       { OPTSTR("import-from"), required_argument, nullptr, LongOptions::ImportFrom },
       { OPTSTR("import-items"), required_argument, nullptr, LongOptions::ImportItems },
       { OPTSTR("import-quiet"), no_argument, nullptr, LongOptions::ImportQuiet },
+      { OPTSTR("import-passwords"), no_argument, nullptr, LongOptions::ImportPasswords },
       { OPTSTR("restarted"), no_argument, nullptr, LongOptions::Restarted },
       { nullptr, 0, nullptr, 0 }
   };
@@ -250,7 +253,8 @@ bool CommandlineOptions::Parse() {
                      QObject::tr("Import options"),
                      QObject::tr("Import from strawberry, clementine or auto before starting, Akousma must not be running"),
                      QObject::tr("Comma separated list of settings, collection, covers or all (the default)"),
-                     QObject::tr("Import without asking and exit, for installers")
+                     QObject::tr("Import without asking and exit, for installers"),
+                     QObject::tr("Also import saved passwords and logins (off by default)")
                      );
 
         std::cout << translated_help_text.toLocal8Bit().constData();
@@ -360,6 +364,10 @@ bool CommandlineOptions::Parse() {
 
       case LongOptions::ImportQuiet:
         import_quiet_ = true;
+        break;
+
+      case LongOptions::ImportPasswords:
+        import_passwords_ = true;
         break;
 
       case LongOptions::Restarted:

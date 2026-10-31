@@ -88,6 +88,7 @@ class CommandlineOptions {
   QString import_from() const { return import_from_; }
   QString import_items() const { return import_items_; }
   bool import_quiet() const { return import_quiet_; }
+  bool import_passwords() const { return import_passwords_; }
   // Started again by Akousma itself: wait for the previous instance to exit.
   bool restarted() const { return restarted_; }
 
@@ -112,6 +113,7 @@ class CommandlineOptions {
     ImportFrom,
     ImportItems,
     ImportQuiet,
+    ImportPasswords,
     Restarted,
   };
 
@@ -154,6 +156,7 @@ class CommandlineOptions {
   QString import_from_;
   QString import_items_;
   bool import_quiet_;
+  bool import_passwords_;
   bool restarted_;
 };
 

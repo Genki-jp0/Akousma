@@ -205,7 +205,7 @@ int main(int argc, char *argv[]) {
 #if defined(HAVE_TRANSLATIONS) && !defined(INSTALL_TRANSLATIONS)
       Q_INIT_RESOURCE(translations);
 #endif
-      return PlayerImporter::ImportQuiet(options.import_from(), options.import_items());
+      return PlayerImporter::ImportQuiet(options.import_from(), options.import_items(), options.import_passwords());
     }
   }
 

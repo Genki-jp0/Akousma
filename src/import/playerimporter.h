@@ -49,6 +49,8 @@ class PlayerImporter {
     Settings = 0x1,
     Collection = 0x2,
     Covers = 0x4,
+    // Saved passwords and login tokens, only imported when asked for: not part of All.
+    Passwords = 0x8,
     All = Settings | Collection | Covers
   };
   Q_DECLARE_FLAGS(Items, Item)
@@ -74,10 +76,13 @@ class PlayerImporter {
     Items available_items() const;
   };
 
+  // The summary shown to the user. Messages never contain passwords or tokens.
   struct Result {
     bool success = true;
     Items imported;
-    QStringList messages;
+    QStringList messages;  // What was imported.
+    QStringList skipped;   // What was left out, and why.
+    QStringList dropped;   // Parts of smart playlists that were converted without them.
     QStringList errors;
     QString backup_dir;
   };
@@ -90,7 +95,7 @@ class PlayerImporter {
   static std::optional<Player> PlayerFromString(const QString &name);
   static QString PlayerToString(const Player player);
 
-  // Parses a comma separated list of "settings", "collection", "covers" or "all".
+  // Parses a comma separated list of "settings", "collection", "covers", "passwords" or "all" (all but passwords).
   static Items ItemsFromString(const QString &items, bool *ok = nullptr);
   static QString ItemsToString(const Items items);
 
@@ -113,7 +118,13 @@ class PlayerImporter {
 
   // Runs the import for --import-from with --import-quiet: no user interface, the result is written to the log.
   // Returns the exit code for the process.
-  static int ImportQuiet(const QString &player_option, const QString &items_option);
+  static int ImportQuiet(const QString &player_option, const QString &items_option, const bool passwords);
+
+  // Whether a settings key holds a password, a login token or another secret, these are only imported with Item::Passwords.
+  static bool IsSecretSettingKey(const QString &key);
+
+  // The services Akousma keeps passwords for in the credentials manager (the system keyring).
+  static QStringList CredentialsServices();
 
   // The first start prompt is shown once.
   static bool FirstRunPromptDone();
@@ -131,11 +142,19 @@ class PlayerImporter {
   static bool BackupSettings(const QString &backup_dir, QString *error);
   static bool BackupDatabase(const QString &backup_dir, QString *error);
 
-  static bool ImportStrawberrySettings(const Installation &installation, Result *result);
-  static bool ImportClementineSettings(const Installation &installation, Result *result);
+  static bool ImportStrawberrySettings(const Installation &installation, const bool passwords, Result *result);
+  static bool ImportClementineSettings(const Installation &installation, const bool passwords, Result *result);
+  static void ListClementineOnlyServices(const Installation &installation, Result *result);
+  static void ConvertClementineDynamicPlaylists(QSqlDatabase &db, Result *result, QStringList *errors);
+  static void ConvertClementineSubsonicItems(QSqlDatabase &db, Result *result, QStringList *errors);
   static bool ImportStrawberryDatabase(const Installation &installation, const bool covers, Result *result);
   static bool ImportClementineDatabase(const Installation &installation, const bool covers, Result *result);
   static bool ImportCovers(const Installation &installation, Result *result);
+  static bool ImportStrawberrySmartPlaylists(const Installation &installation, Result *result);
+  static bool ImportClementineSmartPlaylists(const Installation &installation, Result *result);
+  static void ImportClementineServices(const Installation &installation, QSettings *source, const bool passwords, Result *result);
+  static bool ImportStrawberryPasswords(const Installation &installation, Result *result);
+  static bool ImportClementinePasswords(const Installation &installation, Result *result);
 
   static QSettings *OpenSettings(const Installation &installation);
   static QString ClementineLanguage(const QString &language);

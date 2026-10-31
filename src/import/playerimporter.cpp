@@ -37,6 +37,7 @@
 #include <QSqlRecord>
 #include <QStandardPaths>
 #include <QUrl>
+#include <QUrlQuery>
 #include <QVariant>
 
 #include "includes/scoped_ptr.h"
@@ -44,7 +45,18 @@
 #include "core/settings.h"
 #include "core/standardpaths.h"
 #include "core/database.h"
+#include "core/song.h"
+#include "constants/jellyfinsettings.h"
+#include "constants/plexsettings.h"
+#include "constants/subsonicsettings.h"
+#include "constants/networkproxysettings.h"
+#include "credentialsmanager/credentialsbackendinterface.h"
+#include "credentialsmanager/credentialsidentity.h"
+#include "credentialsmanager/credentialsmanager.h"
+#include "credentialsmanager/credentialsresult.h"
 #include "playerimporter.h"
+#include "clementinesmartplaylist.h"
+#include "passwordcopier.h"
 
 using namespace Qt::Literals::StringLiterals;
 
@@ -59,6 +71,38 @@ constexpr char kFirstRunPromptDone[] = "first_run_prompt_done";
 constexpr char kLastImport[] = "last_import";
 
 constexpr char kConnectionName[] = "akousma_player_import";
+
+// Smart playlists: Strawberry's and Akousma's SmartPlaylistsModel::kSettingsGroup, and Clementine's LibraryModel::kSmartPlaylistsSettingsGroup.
+// Both keep an array per songs table (only "songs" is used) with name, type and data, and "songs_version", the number of default smart playlist sets written.
+constexpr char kSmartPlaylistsGroup[] = "SerializedSmartPlaylists";
+constexpr char kClementineSmartPlaylistsGroup[] = "SerialisedSmartPlaylists";
+constexpr char kSmartPlaylistsArray[] = "songs";
+constexpr char kSmartPlaylistsVersion[] = "songs_version";
+// The number of default smart playlist sets in SmartPlaylistsModel::Init(). Writing it keeps Akousma from adding its own defaults next to the imported ones.
+constexpr int kAkousmaDefaultSmartPlaylistsVersion = 3;
+
+// The group where the settings credentials backend (CredentialsBackendSettings) keeps passwords.
+constexpr char kCredentialsSettingsGroup[] = "Credentials";
+
+// Setting keys holding passwords, login tokens or API secrets in Strawberry and Akousma (the last part of the key).
+// The services keep them in their settings group (Subsonic/password from before the credentials manager, Tidal/Spotify/Qobuz OAuth tokens, Plex tokens,
+// scrobbler session keys and user tokens, custom API secrets, the network proxy password).
+const QStringList &SecretSettingNames() {
+  static const QStringList names = QStringList() << u"password"_s
+                                                 << u"access_token"_s
+                                                 << u"refresh_token"_s
+                                                 << u"token"_s
+                                                 << u"server_token"_s
+                                                 << u"user_auth_token"_s
+                                                 << u"api_token"_s
+                                                 << u"api_key"_s
+                                                 << u"session_key"_s
+                                                 << u"user_token"_s
+                                                 << u"client_secret"_s
+                                                 << u"app_secret"_s
+                                                 << u"private_key"_s;
+  return names;
+}
 
 bool sRestartRequested = false;
 
@@ -472,6 +516,8 @@ PlayerImporter::Items PlayerImporter::Installation::available_items() const {
   if (has_settings) items |= Item::Settings;
   if (has_database()) items |= Item::Collection;
   if (has_covers()) items |= Item::Covers;
+  // Passwords are in the settings or in the keyring entries the settings refer to.
+  if (has_settings) items |= Item::Passwords;
   return items;
 
 }
@@ -512,6 +558,7 @@ PlayerImporter::Items PlayerImporter::ItemsFromString(const QString &items, bool
     else if (item == "settings"_L1) ret |= Item::Settings;
     else if (item == "collection"_L1 || item == "library"_L1) ret |= Item::Collection;
     else if (item == "covers"_L1) ret |= Item::Covers;
+    else if (item == "passwords"_L1) ret |= Item::Passwords;
     else valid = false;
   }
   if (ok) *ok = valid && ret != Item::None;
@@ -525,8 +572,21 @@ QString PlayerImporter::ItemsToString(const Items items) {
   if (items & Item::Settings) list << u"settings"_s;
   if (items & Item::Collection) list << u"collection"_s;
   if (items & Item::Covers) list << u"covers"_s;
+  if (items & Item::Passwords) list << u"passwords"_s;
   return list.join(u',');
 
+}
+
+bool PlayerImporter::IsSecretSettingKey(const QString &key) {
+
+  if (key.startsWith(QLatin1String(kCredentialsSettingsGroup) + u'/')) return true;
+  const QString name = key.mid(key.lastIndexOf(u'/') + 1);
+  return SecretSettingNames().contains(name, Qt::CaseInsensitive);
+
+}
+
+QStringList PlayerImporter::CredentialsServices() {
+  return QStringList() << QLatin1String(SubsonicSettings::kCredentialsService) << QLatin1String(JellyfinSettings::kCredentialsService);
 }
 
 QString PlayerImporter::AkousmaDataDir() {
@@ -783,7 +843,8 @@ PlayerImporter::Result PlayerImporter::Import(const Installation &installation, 
   result.backup_dir = AkousmaDataDir() + u"/import-backup-"_s + QDateTime::currentDateTime().toString(u"yyyyMMdd-HHmmss"_s);
 
   QString error;
-  if (todo & Item::Settings && !BackupSettings(result.backup_dir, &error)) {
+  // The smart playlists of the collection and the passwords are written to the settings as well.
+  if (todo & (Item::Settings | Item::Collection | Item::Passwords) && !BackupSettings(result.backup_dir, &error)) {
     result.success = false;
     result.errors << error;
     return result;
@@ -812,9 +873,32 @@ PlayerImporter::Result PlayerImporter::Import(const Installation &installation, 
     if (success) result.imported |= Item::Collection;
   }
 
+  const bool passwords = todo & Item::Passwords;
+
+  // The settings are replaced, so this comes before the smart playlists and passwords, which are written to the settings as well.
   if (todo & Item::Settings) {
-    const bool success = installation.player == Player::Strawberry ? ImportStrawberrySettings(installation, &result) : ImportClementineSettings(installation, &result);
+    const bool success = installation.player == Player::Strawberry ? ImportStrawberrySettings(installation, passwords, &result) : ImportClementineSettings(installation, passwords, &result);
     if (success) result.imported |= Item::Settings;
+  }
+
+  // Smart playlists are kept in the settings, but they belong to the collection.
+  // Strawberry's come with its settings, Clementine's have to be converted.
+  if (todo & Item::Collection && installation.has_settings) {
+    if (installation.player == Player::Clementine) {
+      ImportClementineSmartPlaylists(installation, &result);
+    }
+    else if (!(result.imported & Item::Settings)) {
+      ImportStrawberrySmartPlaylists(installation, &result);
+    }
+  }
+
+  if (passwords) {
+    const bool success = installation.player == Player::Strawberry ? ImportStrawberryPasswords(installation, &result) : ImportClementinePasswords(installation, &result);
+    if (success) result.imported |= Item::Passwords;
+  }
+
+  if (installation.player == Player::Clementine && todo & (Item::Settings | Item::Collection)) {
+    ListClementineOnlyServices(installation, &result);
   }
 
   result.success = result.errors.isEmpty();
@@ -830,6 +914,12 @@ PlayerImporter::Result PlayerImporter::Import(const Installation &installation, 
   for (const QString &message : std::as_const(result.messages)) {
     qLog(Info) << message;
   }
+  for (const QString &message : std::as_const(result.skipped)) {
+    qLog(Info) << "Skipped:" << message;
+  }
+  for (const QString &message : std::as_const(result.dropped)) {
+    qLog(Info) << "Dropped:" << message;
+  }
   for (const QString &import_error : std::as_const(result.errors)) {
     qLog(Error) << import_error;
   }
@@ -838,7 +928,35 @@ PlayerImporter::Result PlayerImporter::Import(const Installation &installation, 
 
 }
 
-bool PlayerImporter::ImportStrawberrySettings(const Installation &installation, Result *result) {
+namespace {
+
+// Akousma's own passwords and tokens in its settings, kept when the import doesn't include passwords.
+QList<std::pair<QString, QVariant>> AkousmaSecretSettings() {
+
+  QList<std::pair<QString, QVariant>> secrets;
+  Settings s;
+  const QStringList keys = s.allKeys();
+  for (const QString &key : keys) {
+    if (PlayerImporter::IsSecretSettingKey(key)) secrets << std::make_pair(key, s.value(key));
+  }
+  return secrets;
+
+}
+
+void RestoreSettings(Settings *s, const QList<std::pair<QString, QVariant>> &values) {
+  for (const std::pair<QString, QVariant> &value : values) {
+    s->setValue(value.first, value.second);
+  }
+}
+
+QString GroupOfKey(const QString &key) {
+  const qsizetype slash = key.indexOf(u'/');
+  return slash > 0 ? key.left(slash) : QString();
+}
+
+}  // namespace
+
+bool PlayerImporter::ImportStrawberrySettings(const Installation &installation, const bool passwords, Result *result) {
 
   ScopedPtr<QSettings> source(OpenSettings(installation));
   const QStringList keys = source->allKeys();
@@ -859,11 +977,25 @@ bool PlayerImporter::ImportStrawberrySettings(const Installation &installation, 
     dirs << std::make_pair(installation.config_dir, QFileInfo(akousma_settings.fileName()).absolutePath());
   }
 
+  const QList<std::pair<QString, QVariant>> akousma_secrets = passwords ? QList<std::pair<QString, QVariant>>() : AkousmaSecretSettings();
+
   Settings s;
   s.clear();
+  int imported = 0;
   int rewritten = 0;
+  int secrets_left_out = 0;
+  QStringList secret_groups;
   for (const QString &key : keys) {
     if (key.startsWith(QLatin1String(kSettingsGroup) + u'/')) continue;
+    // Passwords Strawberry kept in its settings file because no keyring was available: the password import saves them in Akousma's credentials storage.
+    if (key.startsWith(QLatin1String(kCredentialsSettingsGroup) + u'/') && passwords) continue;
+    if (!passwords && IsSecretSettingKey(key)) {
+      ++secrets_left_out;
+      const QString group = GroupOfKey(key);
+      if (!group.isEmpty() && !secret_groups.contains(group)) secret_groups << group;
+      continue;
+    }
+    ++imported;
     bool changed = false;
     const QVariant value = RewriteSettingValue(source->value(key), dirs, &changed);
     if (changed) {
@@ -872,6 +1004,7 @@ bool PlayerImporter::ImportStrawberrySettings(const Installation &installation, 
     }
     s.setValue(key, value);
   }
+  RestoreSettings(&s, akousma_secrets);
   s.sync();
 
   if (s.status() != QSettings::NoError) {
@@ -879,11 +1012,17 @@ bool PlayerImporter::ImportStrawberrySettings(const Installation &installation, 
     return false;
   }
 
-  result->messages << tr("Imported %1 settings from %2.").arg(keys.count()).arg(installation.settings_location);
+  result->messages << tr("Imported %1 settings from %2, including the smart playlists and the settings of the streaming services.").arg(imported).arg(installation.settings_location);
   if (rewritten > 0) {
     result->messages << tr("Changed %1 paths in the settings from Strawberry's directories to Akousma's.").arg(rewritten);
   }
-  result->messages << tr("Passwords Strawberry kept in the system keyring or credential store are not imported, enter them again in the settings.");
+  if (secrets_left_out > 0) {
+    secret_groups.sort();
+    result->skipped << tr("%1 saved passwords and login tokens in the settings (%2): \"Saved passwords and logins\" was not selected. Log in again, or import again with it.").arg(secrets_left_out).arg(secret_groups.join(u", "_s));
+  }
+  if (!passwords) {
+    result->skipped << tr("Passwords Strawberry kept in the system keyring: \"Saved passwords and logins\" was not selected.");
+  }
 
   return true;
 
@@ -911,7 +1050,7 @@ QString PlayerImporter::ClementineLanguage(const QString &language) {
 
 }
 
-bool PlayerImporter::ImportClementineSettings(const Installation &installation, Result *result) {
+bool PlayerImporter::ImportClementineSettings(const Installation &installation, const bool passwords, Result *result) {
 
   ScopedPtr<QSettings> source(OpenSettings(installation));
   if (source->allKeys().isEmpty()) {
@@ -919,13 +1058,23 @@ bool PlayerImporter::ImportClementineSettings(const Installation &installation, 
     return false;
   }
 
+  const QList<std::pair<QString, QVariant>> akousma_secrets = passwords ? QList<std::pair<QString, QVariant>>() : AkousmaSecretSettings();
+
   Settings s;
   s.clear();
+  RestoreSettings(&s, akousma_secrets);
 
   int imported = 0;
   const QList<SettingMapping> mappings = ClementineSettingMappings();
   for (const SettingMapping &mapping : mappings) {
     const QString source_key = mapping.source_group + u'/' + mapping.source_key;
+    // The network proxy password, imported with the passwords.
+    if (!passwords && IsSecretSettingKey(mapping.group + u'/' + mapping.key)) {
+      if (!source->value(source_key).toString().isEmpty()) {
+        result->skipped << tr("The network proxy password: \"Saved passwords and logins\" was not selected.");
+      }
+      continue;
+    }
     QVariant value = source->value(source_key);
     if (!value.isValid()) {
       if (!mapping.clementine_default.isValid()) continue;
@@ -967,9 +1116,313 @@ bool PlayerImporter::ImportClementineSettings(const Installation &installation, 
     return false;
   }
 
-  result->messages << tr("Imported %1 settings from %2. Clementine settings without an equivalent in Akousma, such as Last.fm, internet services, appearance and the equalizer, are not imported.").arg(imported).arg(installation.settings_location);
+  result->messages << tr("Imported %1 settings from %2.").arg(imported).arg(installation.settings_location);
+  result->skipped << tr("Clementine settings without an equivalent in Akousma: appearance, equalizer, transcoder, global search and the other settings listed in the documentation.");
+
+  ImportClementineServices(installation, &*source, passwords, result);
 
   return true;
+
+}
+
+void PlayerImporter::ImportClementineServices(const Installation &installation, QSettings *source, const bool passwords, Result *result) {
+
+  Q_UNUSED(installation)
+
+  Settings s;
+
+  // Subsonic: the same service in both. Clementine sends the password hex encoded ("enc:"), the matching Akousma authentication method is Hex.
+  const QString subsonic_server = source->value(u"Subsonic/server"_s).toString().trimmed();
+  const QString subsonic_username = source->value(u"Subsonic/username"_s).toString();
+  if (!subsonic_server.isEmpty()) {
+    s.beginGroup(SubsonicSettings::kSettingsGroup);
+    s.setValue(SubsonicSettings::kEnabled, !subsonic_username.isEmpty());
+    s.setValue(SubsonicSettings::kUrl, QUrl::fromUserInput(subsonic_server));
+    s.setValue(SubsonicSettings::kUsername, subsonic_username);
+    s.setValue(SubsonicSettings::kVerifyCertificate, source->value(u"Subsonic/verifycert"_s, true).toBool());
+    s.setValue(SubsonicSettings::kAuthMethod, static_cast<int>(SubsonicSettings::AuthMethod::Hex));
+    s.endGroup();
+    result->messages << tr("Subsonic: imported the server and the user name.");
+  }
+
+  // Plex: the same service in both. The client identifier is imported with the server, so the login tokens Plex gave Clementine stay valid for Akousma.
+  // The server URL is left empty, Akousma picks a connection to the server itself.
+  const QString plex_server_id = source->value(u"Plex/server_id"_s).toString();
+  if (!plex_server_id.isEmpty()) {
+    s.beginGroup(PlexSettings::kSettingsGroup);
+    s.setValue(PlexSettings::kEnabled, true);
+    s.setValue(PlexSettings::kServerMachineIdentifier, plex_server_id);
+    s.setValue(PlexSettings::kServerName, source->value(u"Plex/server_name"_s).toString());
+    const QString client_id = source->value(u"Plex/client_id"_s).toString();
+    if (!client_id.isEmpty()) s.setValue(PlexSettings::kClientId, client_id);
+    s.setValue(PlexSettings::kVerifyCertificate, source->value(u"Plex/verify_cert"_s, true).toBool());
+    s.endGroup();
+    if (passwords) {
+      result->messages << tr("Plex: imported the server.");
+    }
+    else {
+      result->messages << tr("Plex: imported the server, log in again in the Plex settings (\"Saved passwords and logins\" was not selected).");
+    }
+  }
+
+  // Last.fm: Clementine's session key was issued for Clementine's own Last.fm API key, it can't be used with Akousma's.
+  if (!source->value(u"Last.fm/Session"_s).toString().isEmpty() || !source->value(u"Last.fm/Username"_s).toString().isEmpty()) {
+    result->skipped << tr("Last.fm login: Clementine's session key only works with Clementine's Last.fm API key. Log in again under Settings > Scrobbler.");
+  }
+
+  if (!passwords && !source->value(u"Subsonic/password"_s).toString().isEmpty()) {
+    result->skipped << tr("Subsonic password: \"Saved passwords and logins\" was not selected.");
+  }
+  if (!passwords && (!source->value(u"Plex/user_token"_s).toString().isEmpty() || !source->value(u"Plex/server_token"_s).toString().isEmpty())) {
+    result->skipped << tr("Plex login: \"Saved passwords and logins\" was not selected.");
+  }
+
+  s.sync();
+
+}
+
+void PlayerImporter::ListClementineOnlyServices(const Installation &installation, Result *result) {
+
+  // Services Clementine has and Akousma doesn't, found by their settings group or their data in the library database.
+  struct ClementineService {
+    const char *name;
+    const char *settings_group;
+    const char *table;
+  };
+  static constexpr ClementineService kServices[] = {
+    { "Jamendo", "Jamendo", nullptr },
+    { "Magnatune", "Magnatune", "magnatune_songs" },
+    { "Digitally Imported / RadioTunes / JazzRadio / RockRadio", "digitally_imported", nullptr },
+    { "Icecast", "Icecast", nullptr },
+    { "Intergalactic FM", "IntergalacticFM", nullptr },
+    { "Your radio streams", "SavedRadio", nullptr },
+    { "Podcasts", "Podcasts", "podcasts" },
+    { "Box", "Box", "box_songs" },
+    { "Dropbox", "Dropbox", "dropbox_songs" },
+    { "Google Drive", "GoogleDrive", "google_drive_songs" },
+    { "OneDrive", "OneDrive", "skydrive_songs" },
+    { "Seafile", "Seafile", "seafile_songs" },
+    { "Amazon Cloud Drive", "AmazonCloudDrive", "amazon_cloud_drive_songs" },
+    { "Ubuntu One", "UbuntuOne", "ubuntu_one_songs" },
+    { "Spotify (Clementine's Spotify plugin)", "Spotify", nullptr },
+    { "SoundCloud", "SoundCloud", nullptr },
+    { "Grooveshark", "Grooveshark", nullptr },
+    { "VK.com", "Vk", nullptr },
+  };
+
+  QStringList groups;
+  if (installation.has_settings) {
+    ScopedPtr<QSettings> source(OpenSettings(installation));
+    groups = source->childGroups();
+  }
+
+  QSet<QString> tables_with_rows;
+  if (installation.has_database()) {
+    {
+      QSqlDatabase db = QSqlDatabase::addDatabase(u"QSQLITE"_s, QLatin1String(kConnectionName));
+      db.setConnectOptions(u"QSQLITE_OPEN_READONLY;QSQLITE_BUSY_TIMEOUT=30000"_s);
+      db.setDatabaseName(installation.database_file);
+      if (db.open()) {
+        const QStringList tables = db.tables(QSql::Tables);
+        for (const ClementineService &service : kServices) {
+          if (service.table && tables.contains(QLatin1String(service.table)) && CountRows(db, QLatin1String(service.table)) > 0) {
+            tables_with_rows << QLatin1String(service.table);
+          }
+        }
+        db.close();
+      }
+    }
+    QSqlDatabase::removeDatabase(QLatin1String(kConnectionName));
+  }
+
+  QStringList found;
+  for (const ClementineService &service : kServices) {
+    if (groups.contains(QLatin1String(service.settings_group)) || (service.table && tables_with_rows.contains(QLatin1String(service.table)))) {
+      found << QLatin1String(service.name);
+    }
+  }
+
+  if (!found.isEmpty()) {
+    result->skipped << tr("Clementine services Akousma doesn't have: %1. Their accounts, settings and libraries are not imported.").arg(found.join(u", "_s));
+  }
+
+}
+
+bool PlayerImporter::ImportStrawberrySmartPlaylists(const Installation &installation, Result *result) {
+
+  // Normally the smart playlists come with the settings, this copies them when only the collection is imported.
+  ScopedPtr<QSettings> source(OpenSettings(installation));
+  source->beginGroup(QLatin1String(kSmartPlaylistsGroup));
+  const QStringList keys = source->allKeys();
+  if (keys.isEmpty()) {
+    source->endGroup();
+    return true;
+  }
+
+  Settings s;
+  s.beginGroup(QLatin1String(kSmartPlaylistsGroup));
+  s.remove(QString());
+  for (const QString &key : keys) {
+    s.setValue(key, source->value(key));
+  }
+  const int count = source->value(QLatin1String(kSmartPlaylistsArray) + u"/size"_s).toInt();
+  s.endGroup();
+  source->endGroup();
+  s.sync();
+
+  result->messages << tr("Imported %1 smart playlists.").arg(count);
+
+  return true;
+
+}
+
+bool PlayerImporter::ImportClementineSmartPlaylists(const Installation &installation, Result *result) {
+
+  struct SmartPlaylist {
+    QString name;
+    int type;
+    QByteArray data;
+  };
+
+  ScopedPtr<QSettings> source(OpenSettings(installation));
+  source->beginGroup(QLatin1String(kClementineSmartPlaylistsGroup));
+  if (source->childKeys().isEmpty() && source->childGroups().isEmpty()) {
+    // Clementine never wrote its smart playlists, Akousma creates its default ones.
+    source->endGroup();
+    return true;
+  }
+
+  QList<SmartPlaylist> smart_playlists;
+  const int count = source->beginReadArray(QLatin1String(kSmartPlaylistsArray));
+  for (int i = 0; i < count; ++i) {
+    source->setArrayIndex(i);
+    // Clementine translates the names of its default smart playlists when it shows them, Akousma does the same.
+    const QString name = source->value(u"name"_s).toString();
+    const std::optional<int> type = ClementineSmartPlaylist::GeneratorType(source->value(u"type"_s).toString());
+    if (!type.has_value()) {
+      result->skipped << tr("Smart playlist \"%1\": unknown type \"%2\".").arg(name, source->value(u"type"_s).toString());
+      continue;
+    }
+    const ClementineSmartPlaylist::Result converted = ClementineSmartPlaylist::Convert(name, source->value(u"data"_s).toByteArray());
+    result->dropped << converted.dropped;
+    if (!converted.success) {
+      result->skipped << converted.error;
+      continue;
+    }
+    smart_playlists << SmartPlaylist { name, type.value(), converted.data };
+  }
+  source->endArray();
+  source->endGroup();
+
+  Settings s;
+  s.beginGroup(QLatin1String(kSmartPlaylistsGroup));
+  s.remove(QString());
+  s.beginWriteArray(QLatin1String(kSmartPlaylistsArray), static_cast<int>(smart_playlists.count()));
+  for (int i = 0; i < smart_playlists.count(); ++i) {
+    s.setArrayIndex(i);
+    s.setValue(u"name"_s, smart_playlists.at(i).name);
+    s.setValue(u"type"_s, smart_playlists.at(i).type);
+    s.setValue(u"data"_s, smart_playlists.at(i).data);
+  }
+  s.endArray();
+  s.setValue(QLatin1String(kSmartPlaylistsVersion), kAkousmaDefaultSmartPlaylistsVersion);
+  s.endGroup();
+  s.sync();
+
+  if (s.status() != QSettings::NoError) {
+    result->errors << tr("Could not write the smart playlists to %1.").arg(QDir::toNativeSeparators(s.fileName()));
+    return false;
+  }
+
+  result->messages << tr("Imported %1 of %2 smart playlists.").arg(smart_playlists.count()).arg(count);
+
+  return true;
+
+}
+
+bool PlayerImporter::ImportStrawberryPasswords(const Installation &installation, Result *result) {
+
+  ScopedPtr<QSettings> source(OpenSettings(installation));
+  const CredentialsManager::BackendType selected_backend = CredentialsManager::BackendFromString(source->value(QLatin1String(CredentialsManager::kSettingsGroup) + u'/' + QLatin1String(CredentialsManager::kBackend)).toString());
+
+  // The keyring entries Strawberry made for the current user, under Strawberry's names. Without a keyring Strawberry keeps them base64 encoded in its settings.
+  ScopedPtr<CredentialsBackendInterface> source_backend = PasswordCopier::FindBackend(selected_backend, CredentialsIdentity::Strawberry());
+  const QString source_name = source_backend ? source_backend->name() : tr("settings file");
+  PasswordCopier::ReadFunction read;
+  if (source_backend) {
+    CredentialsBackendInterface *backend = &*source_backend;
+    read = [backend](const QString &service) { return PasswordCopier::ReadPassword(backend, service); };
+  }
+  else {
+    QSettings *settings = &*source;
+    read = [settings](const QString &service) {
+      const QByteArray password = settings->value(QLatin1String(kCredentialsSettingsGroup) + u'/' + service).toByteArray();
+      if (password.isEmpty()) return CredentialsResult::NotFound();
+      return CredentialsResult::Success(QString::fromUtf8(QByteArray::fromBase64(password)));
+    };
+  }
+
+  // Saved the way Akousma saves them, in the keyring selected in Akousma's (possibly just imported) settings, under Akousma's names.
+  CredentialsManager credentials_manager;
+  const PasswordCopier::Result copied = PasswordCopier::Copy(CredentialsServices(), read, [&credentials_manager](const QString &service, const QString &password) { return PasswordCopier::SavePassword(&credentials_manager, service, password); });
+
+  if (!copied.copied.isEmpty()) {
+    QStringList services;
+    for (const QString &service : copied.copied) services << service.left(1).toUpper() + service.mid(1);
+    result->messages << tr("Copied the saved passwords for %1 from Strawberry's %2 to Akousma's %3.").arg(services.join(u", "_s), source_name, credentials_manager.backend_name());
+  }
+  else if (copied.failed.isEmpty()) {
+    result->messages << tr("Strawberry has no saved passwords in its %1.").arg(source_name);
+  }
+  for (const QString &failed : copied.failed) {
+    result->skipped << tr("Password %1").arg(failed);
+  }
+
+  return copied.failed.isEmpty();
+
+}
+
+bool PlayerImporter::ImportClementinePasswords(const Installation &installation, Result *result) {
+
+  ScopedPtr<QSettings> source(OpenSettings(installation));
+  bool success = true;
+
+  // Clementine keeps the Subsonic password in its settings, Akousma keeps it in the credentials manager.
+  const QString subsonic_password = source->value(u"Subsonic/password"_s).toString();
+  if (!subsonic_password.isEmpty()) {
+    CredentialsManager credentials_manager;
+    const PasswordCopier::Result copied = PasswordCopier::Copy(QStringList() << QLatin1String(SubsonicSettings::kCredentialsService),
+                                                               [&subsonic_password](const QString&) { return CredentialsResult::Success(subsonic_password); },
+                                                               [&credentials_manager](const QString &service, const QString &password) { return PasswordCopier::SavePassword(&credentials_manager, service, password); });
+    if (!copied.copied.isEmpty()) {
+      result->messages << tr("Subsonic: saved the password in Akousma's %1.").arg(credentials_manager.backend_name());
+    }
+    for (const QString &failed : copied.failed) {
+      result->skipped << tr("Password %1").arg(failed);
+      success = false;
+    }
+  }
+
+  // Plex login tokens: Clementine and Akousma both keep them in the settings, Akousma base64 encoded.
+  const QString plex_token = source->value(u"Plex/user_token"_s).toString();
+  const QString plex_server_token = source->value(u"Plex/server_token"_s).toString();
+  if (!plex_token.isEmpty() || !plex_server_token.isEmpty()) {
+    Settings s;
+    s.beginGroup(PlexSettings::kSettingsGroup);
+    if (!plex_token.isEmpty()) s.setValue(PlexSettings::kToken, plex_token.toUtf8().toBase64());
+    if (!plex_server_token.isEmpty()) s.setValue(PlexSettings::kServerToken, plex_server_token.toUtf8().toBase64());
+    s.endGroup();
+    s.sync();
+    result->messages << tr("Plex: imported the login.");
+  }
+
+  if (!source->value(u"Last.fm/Session"_s).toString().isEmpty()) {
+    // Reported with the settings as well, but this is where someone importing only the passwords looks for it.
+    const QString message = tr("Last.fm login: Clementine's session key only works with Clementine's Last.fm API key. Log in again under Settings > Scrobbler.");
+    if (!result->skipped.contains(message)) result->skipped << message;
+  }
+
+  return success;
 
 }
 
@@ -1129,6 +1582,101 @@ bool PlayerImporter::ImportStrawberryDatabase(const Installation &installation, 
 
 }
 
+void PlayerImporter::ConvertClementineDynamicPlaylists(QSqlDatabase &db, Result *result, QStringList *errors) {
+
+  struct DynamicPlaylist {
+    qint64 rowid;
+    QString name;
+    QString type;
+    QByteArray data;
+    QString backend;
+  };
+
+  QList<DynamicPlaylist> dynamic_playlists;
+  {
+    QSqlQuery q(db);
+    if (!q.exec(u"SELECT ROWID, name, dynamic_playlist_type, dynamic_playlist_data, dynamic_playlist_backend FROM clementine.playlists WHERE dynamic_playlist_type IS NOT NULL AND dynamic_playlist_type != ''"_s)) {
+      *errors << QueryError(q);
+      return;
+    }
+    while (q.next()) {
+      dynamic_playlists << DynamicPlaylist { q.value(0).toLongLong(), q.value(1).toString(), q.value(2).toString(), q.value(3).toByteArray(), q.value(4).toString() };
+    }
+  }
+
+  QSqlQuery update(db);
+  update.prepare(u"UPDATE playlists SET dynamic_playlist_type = :type, dynamic_playlist_data = :data, dynamic_playlist_backend = :backend WHERE ROWID = :rowid"_s);
+  for (const DynamicPlaylist &dynamic_playlist : std::as_const(dynamic_playlists)) {
+    const std::optional<int> type = ClementineSmartPlaylist::GeneratorType(dynamic_playlist.type);
+    // A smart playlist on the library ("songs"), not on an internet service library.
+    if (!type.has_value() || dynamic_playlist.backend != "songs"_L1) {
+      result->skipped << tr("The dynamic smart playlist of the playlist \"%1\", it is imported as a normal playlist.").arg(dynamic_playlist.name);
+      continue;
+    }
+    const ClementineSmartPlaylist::Result converted = ClementineSmartPlaylist::Convert(dynamic_playlist.name, dynamic_playlist.data);
+    result->dropped << converted.dropped;
+    if (!converted.success) {
+      result->skipped << converted.error + u' ' + tr("The playlist is imported as a normal playlist.");
+      continue;
+    }
+    update.bindValue(u":type"_s, type.value());
+    update.bindValue(u":data"_s, converted.data);
+    update.bindValue(u":backend"_s, u"songs"_s);
+    update.bindValue(u":rowid"_s, dynamic_playlist.rowid);
+    if (!update.exec()) {
+      *errors << QueryError(update);
+      return;
+    }
+  }
+
+}
+
+void PlayerImporter::ConvertClementineSubsonicItems(QSqlDatabase &db, Result *result, QStringList *errors) {
+
+  // Clementine: subsonic://?id=<song id>, Akousma: subsonic:<song id>.
+  QList<std::pair<qint64, QString>> items;
+  {
+    QSqlQuery q(db);
+    if (!q.exec(QStringLiteral("SELECT ROWID, url FROM playlist_items WHERE type = %1").arg(static_cast<int>(Song::Source::Subsonic)))) {
+      *errors << QueryError(q);
+      return;
+    }
+    while (q.next()) {
+      items << std::make_pair(q.value(0).toLongLong(), q.value(1).toString());
+    }
+  }
+
+  int converted = 0;
+  QSqlQuery update(db);
+  // Clementine's cover URLs for Subsonic songs contain the user name and the encoded password, Akousma gets the covers itself.
+  update.prepare(u"UPDATE playlist_items SET url = :url, song_id = :song_id, art_automatic = NULL, art_manual = NULL WHERE ROWID = :rowid"_s);
+  QSqlQuery remove(db);
+  remove.prepare(u"DELETE FROM playlist_items WHERE ROWID = :rowid"_s);
+  for (const std::pair<qint64, QString> &item : std::as_const(items)) {
+    const QUrl clementine_url = QUrl::fromEncoded(item.second.toUtf8());
+    const QString song_id = QUrlQuery(clementine_url).queryItemValue(u"id"_s, QUrl::FullyDecoded);
+    QSqlQuery &query = song_id.isEmpty() ? remove : update;
+    if (!song_id.isEmpty()) {
+      QUrl url;
+      url.setScheme(u"subsonic"_s);
+      url.setPath(song_id);
+      update.bindValue(u":url"_s, QString::fromUtf8(url.toEncoded()));
+      update.bindValue(u":song_id"_s, song_id);
+      ++converted;
+    }
+    query.bindValue(u":rowid"_s, item.first);
+    if (!query.exec()) {
+      *errors << QueryError(query);
+      return;
+    }
+  }
+
+  if (converted > 0) {
+    result->messages << tr("Converted %1 Subsonic playlist entries to Akousma's Subsonic addresses.").arg(converted);
+  }
+
+}
+
 bool PlayerImporter::ImportClementineDatabase(const Installation &installation, const bool covers, Result *result) {
 
   const QString database_file = AkousmaDatabaseFile();
@@ -1182,7 +1730,7 @@ bool PlayerImporter::ImportClementineDatabase(const Installation &installation, 
           SongColumnExpressions(song_columns, u"c"_s, &destination, &expressions);
           exec(QStringLiteral("INSERT OR IGNORE INTO songs (ROWID, source, artist_id, album_id, song_id, %1) SELECT c.ROWID, 2, '', '', '', %2 FROM clementine.songs AS c WHERE c.unavailable = 0").arg(destination.join(u", "_s), expressions.join(u", "_s)));
 
-          // Smart playlists from Clementine use a different generator format, only normal playlists are imported.
+          // Playlists playing a dynamic smart playlist are imported as well, their smart playlist is converted below.
           QStringList playlist_destination = QStringList() << u"name"_s;
           QStringList playlist_expressions = QStringList() << u"COALESCE(p.name, '')"_s;
           const QList<std::pair<QString, QString>> optional_playlist_columns = QList<std::pair<QString, QString>>() << std::make_pair(u"last_played"_s, u"-1"_s) << std::make_pair(u"ui_order"_s, u"0"_s) << std::make_pair(u"special_type"_s, QString()) << std::make_pair(u"ui_path"_s, QString()) << std::make_pair(u"is_favorite"_s, u"0"_s);
@@ -1191,21 +1739,57 @@ bool PlayerImporter::ImportClementineDatabase(const Installation &installation, 
             playlist_destination << column.first;
             playlist_expressions << (column.second.isEmpty() ? u"p."_s + column.first : QStringLiteral("COALESCE(p.%1, %2)").arg(column.first, column.second));
           }
-          const QString dynamic_filter = playlist_columns.contains(u"dynamic_playlist_type"_s) ? u" WHERE p.dynamic_playlist_type IS NULL"_s : QString();
-          exec(QStringLiteral("INSERT INTO playlists (ROWID, %1) SELECT p.ROWID, %2 FROM clementine.playlists AS p%3").arg(playlist_destination.join(u", "_s), playlist_expressions.join(u", "_s), dynamic_filter));
+          exec(QStringLiteral("INSERT INTO playlists (ROWID, %1) SELECT p.ROWID, %2 FROM clementine.playlists AS p").arg(playlist_destination.join(u", "_s), playlist_expressions.join(u", "_s)));
+          if (errors.isEmpty() && playlist_columns.contains(u"dynamic_playlist_type"_s)) {
+            ConvertClementineDynamicPlaylists(db, result, &errors);
+          }
 
-          // Collection songs, local files and streams. Items from Clementine's internet services can not be played by Akousma.
+          // Collection songs, local files and streams.
+          // Items from Clementine's internet services: Subsonic songs are converted to Akousma's Subsonic URLs, plain HTTP(S) streams (radio streams, podcast episodes) are kept as streams.
+          // Other internet service items can only be played by Clementine, they are counted per service for the summary.
           QStringList item_destination;
           QStringList item_expressions;
           SongColumnExpressions(item_columns, u"i"_s, &item_destination, &item_expressions);
+          const QString service_column = item_columns.contains(u"radio_service"_s) ? u"COALESCE(i.radio_service, '')"_s : u"''"_s;
+          const QString subsonic_item = QStringLiteral("(i.type = 'Internet' AND %1 = 'Subsonic' AND CAST(i.filename AS TEXT) LIKE 'subsonic:%')").arg(service_column);
+          const QString stream_item = u"(i.type = 'Internet' AND (CAST(i.filename AS TEXT) LIKE 'http://%' OR CAST(i.filename AS TEXT) LIKE 'https://%'))"_s;
+          const QString item_source = QStringLiteral("CASE WHEN i.type = 'Library' THEN 2 WHEN i.type = 'File' THEN 1 WHEN %1 THEN %2 ELSE 5 END").arg(subsonic_item).arg(static_cast<int>(Song::Source::Subsonic));
+          const QString item_filter = QStringLiteral("(i.type IN ('Library', 'File', 'Stream') OR %1 OR %2) AND i.playlist IN (SELECT ROWID FROM main.playlists)").arg(subsonic_item, stream_item);
           exec(QStringLiteral("INSERT INTO playlist_items (playlist, type, source, collection_id, %1) "
-                              "SELECT i.playlist, "
-                              "CASE i.type WHEN 'Library' THEN 2 WHEN 'File' THEN 1 ELSE 5 END, "
-                              "CASE i.type WHEN 'Library' THEN 2 WHEN 'File' THEN 1 ELSE 5 END, "
+                              "SELECT i.playlist, %3, %3, "
                               "CASE i.type WHEN 'Library' THEN i.library_id ELSE NULL END, "
                               "%2 FROM clementine.playlist_items AS i "
-                              "WHERE i.type IN ('Library', 'File', 'Stream') AND i.playlist IN (SELECT ROWID FROM main.playlists) "
-                              "ORDER BY i.ROWID").arg(item_destination.join(u", "_s), item_expressions.join(u", "_s)));
+                              "WHERE %4 "
+                              "ORDER BY i.ROWID").arg(item_destination.join(u", "_s), item_expressions.join(u", "_s), item_source, item_filter));
+          if (errors.isEmpty()) {
+            ConvertClementineSubsonicItems(db, result, &errors);
+          }
+          // Per service counts for the summary.
+          const auto count_services = [&db, &errors, &service_column](const QString &condition) {
+            QStringList services;
+            QSqlQuery query(db);
+            if (!query.exec(QStringLiteral("SELECT %1, COUNT(*) FROM clementine.playlist_items AS i WHERE i.type = 'Internet' AND %2 AND i.playlist IN (SELECT ROWID FROM main.playlists) GROUP BY 1 ORDER BY 1").arg(service_column, condition))) {
+              errors << QueryError(query);
+              return services;
+            }
+            while (query.next()) {
+              const QString service = query.value(0).toString().isEmpty() ? tr("unknown service") : query.value(0).toString();
+              services << QStringLiteral("%1 (%2)").arg(service).arg(query.value(1).toInt());
+            }
+            return services;
+          };
+          if (errors.isEmpty()) {
+            const QStringList services = count_services(stream_item);
+            if (!services.isEmpty()) {
+              result->messages << tr("Kept the playlist entries of internet radio streams and podcast episodes with plain web addresses as streams: %1.").arg(services.join(u", "_s));
+            }
+          }
+          if (errors.isEmpty()) {
+            const QStringList services = count_services(QStringLiteral("NOT (%1) AND NOT (%2)").arg(subsonic_item, stream_item));
+            if (!services.isEmpty()) {
+              result->skipped << tr("Playlist entries from internet services Akousma can't play or with different addresses (re-add them from Akousma's own Plex, SomaFM or Radio-Browser views where they exist): %1.").arg(services.join(u", "_s));
+            }
+          }
 
           if (errors.isEmpty()) {
             const QString old_cover_dir = covers ? installation.data_dir + u'/' + QLatin1String(kClementineCoverDir) : QString();
@@ -1370,14 +1954,15 @@ std::optional<PlayerImporter::Installation> PlayerImporter::FindInstallation(con
 
 }
 
-int PlayerImporter::ImportQuiet(const QString &player_option, const QString &items_option) {
+int PlayerImporter::ImportQuiet(const QString &player_option, const QString &items_option, const bool passwords) {
 
   bool ok = true;
-  const Items items = items_option.isEmpty() ? Items(Item::All) : ItemsFromString(items_option, &ok);
+  Items items = items_option.isEmpty() ? Items(Item::All) : ItemsFromString(items_option, &ok);
   if (!ok) {
-    qLog(Error) << "Invalid --import-items" << items_option << "- use a comma separated list of settings, collection, covers or all.";
+    qLog(Error) << "Invalid --import-items" << items_option << "- use a comma separated list of settings, collection, covers, passwords or all.";
     return 2;
   }
+  if (passwords) items |= Item::Passwords;
 
   QString error;
   const std::optional<Installation> installation = FindInstallation(player_option, &error);
