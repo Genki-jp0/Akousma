@@ -34,6 +34,7 @@
 #include "core/settings.h"
 #include "core/settingstransfer.h"
 #include "settings/tabbarthemes.h"
+#include "core/iconloader.h"
 #include <QImage>
 
 using namespace Qt::Literals::StringLiterals;
@@ -173,6 +174,28 @@ TEST_F(SettingsTransferTest, PendingAction) {
   EXPECT_EQ(SettingsTransfer::Action::Reset, SettingsTransfer::PendingAction());
   SettingsTransfer::SetPendingAction(SettingsTransfer::Action::None);
   EXPECT_EQ(SettingsTransfer::Action::None, SettingsTransfer::PendingAction());
+
+}
+
+// The icon set goes into an export, a reset goes back to the built-in icons and an import brings the set back.
+TEST_F(SettingsTransferTest, IconSet) {
+
+  {
+    Settings s;
+    s.setValue(u"Appearance/icon_set"_s, u"breeze"_s);
+    s.sync();
+  }
+  EXPECT_EQ(u"breeze"_s, IconLoader::IconSetFromSettings());
+
+  const QString filename = dir_.filePath(u"iconset.ini"_s);
+  ASSERT_TRUE(SettingsTransfer::Export(filename).success);
+  EXPECT_EQ(u"breeze"_s, QSettings(filename, QSettings::IniFormat).value(u"Appearance/icon_set"_s).toString());
+
+  ASSERT_TRUE(SettingsTransfer::Reset().success);
+  EXPECT_EQ(u"akousma"_s, IconLoader::IconSetFromSettings());
+
+  ASSERT_TRUE(SettingsTransfer::Import(filename).success);
+  EXPECT_EQ(u"breeze"_s, IconLoader::IconSetFromSettings());
 
 }
 
