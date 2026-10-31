@@ -30,9 +30,12 @@
 #include <QPixmapCache>
 #include <QSet>
 #include <QRgb>
+#include <QSize>
+#include <QColor>
 
 #include "widgets/fancytabwidget.h"
 #include "widgets/fancytabbar.h"
+#include "constants/appearancesettings.h"
 
 using namespace Qt::Literals::StringLiterals;
 
@@ -88,5 +91,27 @@ TEST(FancyTabWidgetTest, BackgroundPixmapFillsWideSidebar) {
   EXPECT_GT(ColorsInColumn(image, column(background_pixmap.width() / 2), top, bottom), 1);
   EXPECT_GT(ColorsInColumn(image, column(background_pixmap.width() + 5), top, bottom), 1);
   EXPECT_GT(ColorsInColumn(image, column(sidebar_width - 5), top, bottom), 1);
+
+}
+
+// Akousma: Clementine's background is its gradient with Clementine's graphics, the plain gradient has no graphics.
+TEST(FancyTabWidgetTest, ClementineBackgroundHasGraphics) {
+
+  const QPixmap graphics = FancyTabWidget::BackgroundGraphics(static_cast<int>(AppearanceSettings::TabBarBackground::Clementine));
+  ASSERT_FALSE(graphics.isNull());
+  EXPECT_EQ(QSize(70, 155), graphics.size());
+  EXPECT_TRUE(FancyTabWidget::BackgroundGraphics(static_cast<int>(AppearanceSettings::TabBarBackground::Gradient)).isNull());
+
+  FancyTabWidget::BackgroundOptions options;
+  options.color = QColor(40, 90, 160);
+  options.mode = static_cast<int>(AppearanceSettings::TabBarBackground::Clementine);
+  options.graphics = graphics;
+  const QImage clementine = FancyTabWidget::RenderBackground(QSize(70, 400), options).toImage();
+  EXPECT_GT(ColorsInColumn(clementine, 35, 0, 399), 1);
+
+  options.mode = static_cast<int>(AppearanceSettings::TabBarBackground::Gradient);
+  options.graphics = QPixmap();
+  const QImage gradient = FancyTabWidget::RenderBackground(QSize(70, 400), options).toImage();
+  EXPECT_EQ(1, ColorsInColumn(gradient, 35, 0, 399));
 
 }
