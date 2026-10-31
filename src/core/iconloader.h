@@ -73,7 +73,7 @@ class IconLoader {
     QString licence;
     QString source;
     int icons = -1;    // How many of the themable icons a bundled set has.
-    bool needs_svg = false;  // A bundled set with SVG icons, which need the Qt SVG module.
+    bool needs_svg = false;  // A bundled set with icons only in SVG, which need the Qt SVG module.
   };
 
   static void Init();

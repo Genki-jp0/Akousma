@@ -487,10 +487,10 @@ QList<IconLoader::IconSet> IconLoader::IconSets() {
       iconset.source = ini.value(u"IconSet/source"_s);
       const QMap<QString, QList<QPair<int, QString>>> set_files = IconSetFiles().value(iconset.id);
       iconset.icons = static_cast<int>(set_files.count());
+      // Needs Qt SVG when an icon has only SVG files; PNG files of an icon are enough without it.
       for (const QList<QPair<int, QString>> &icon_files : set_files) {
-        for (const QPair<int, QString> &icon_file : icon_files) {
-          if (icon_file.second.endsWith(".svg"_L1)) iconset.needs_svg = true;
-        }
+        const bool has_png = std::any_of(icon_files.cbegin(), icon_files.cend(), [](const QPair<int, QString> &icon_file) { return icon_file.second.endsWith(".png"_L1); });
+        if (!has_png) iconset.needs_svg = true;
       }
       if (iconset.needs_svg && !svg_supported_) {
         qLog(Warning) << "Icon set" << iconset.name << "needs the Qt SVG module.";
