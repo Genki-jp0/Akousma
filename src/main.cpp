@@ -63,6 +63,8 @@
 #include <QStyle>
 #include <QStyleHints>
 #include <QMessageBox>
+#include <QProcess>
+#include <QElapsedTimer>
 #ifdef HAVE_TRANSLATIONS
 #  include <QTranslator>
 #endif
@@ -133,6 +135,9 @@
 
 #include "engine/gststartup.h"
 
+#include "import/playerimporter.h"
+#include "import/importdialog.h"
+
 using namespace Qt::Literals::StringLiterals;
 using std::as_const;
 using std::make_unique;
@@ -167,18 +172,40 @@ int main(int argc, char *argv[]) {
     // Only start a core application now, so we can check if there's another instance without requiring an X server.
     // This MUST be done before parsing the commandline options so QTextCodec gets the right system locale for filenames.
     QCoreApplication core_app(argc, argv);
-    KDSingleApplication single_app(QCoreApplication::applicationName().toLower(), KDSingleApplication::Option::IncludeUsernameInSocketName);
     // Parse commandline options - need to do this before starting the full QApplication, so it works without an X server
     if (!options.Parse()) return 1;
     logging::SetLevels(options.log_levels());
-    if (!single_app.isPrimaryInstance()) {
+    ScopedPtr<KDSingleApplication> single_app = make_unique<KDSingleApplication>(QCoreApplication::applicationName().toLower(), KDSingleApplication::Option::IncludeUsernameInSocketName);
+    if (options.restarted()) {
+      // Akousma started itself again, for example to import from Strawberry or Clementine. Wait until the previous instance has exited.
+      QElapsedTimer timer;
+      timer.start();
+      while (!single_app->isPrimaryInstance() && timer.elapsed() < 30000) {
+        single_app.reset();
+        QThread::msleep(250);
+        single_app = make_unique<KDSingleApplication>(QCoreApplication::applicationName().toLower(), KDSingleApplication::Option::IncludeUsernameInSocketName);
+      }
+    }
+    if (!single_app->isPrimaryInstance()) {
+      if (!options.import_from().isEmpty()) {
+        qLog(Error) << "Akousma is already running, close it to import from" << options.import_from();
+        return 1;
+      }
       if (options.is_empty()) {
         qLog(Info) << "Akousma is already running - activating existing window (1)";
       }
-      if (!single_app.sendMessage(options.Serialize())) {
+      if (!single_app->sendMessage(options.Serialize())) {
         qLog(Error) << "Could not send message to primary instance.";
       }
       return 0;
+    }
+    if (options.import_quiet() && !options.import_from().isEmpty()) {
+      // Import without a user interface and exit, used by the Windows installer.
+      Q_INIT_RESOURCE(data);
+#if defined(HAVE_TRANSLATIONS) && !defined(INSTALL_TRANSLATIONS)
+      Q_INIT_RESOURCE(translations);
+#endif
+      return PlayerImporter::ImportQuiet(options.import_from(), options.import_items());
     }
   }
 
@@ -226,6 +253,9 @@ int main(int argc, char *argv[]) {
   }
 
   QThread::currentThread()->setObjectName(u"Main"_s);
+
+  // Whether this is the first start of Akousma, checked before anything writes settings.
+  const bool first_start = !PlayerImporter::AkousmaHasData();
 
   if (QGuiApplication::platformName() != "wayland"_L1) {
     QGuiApplication::setWindowIcon(IconLoader::Load(u"akousma"_s));
@@ -365,6 +395,14 @@ int main(int argc, char *argv[]) {
 
 #endif  // HAVE_TRANSLATIONS
 
+  // Import from Strawberry or Clementine: an import chosen before Akousma restarted, one requested with --import-from, or the offer on the first start.
+  // This has to be done before the collection database is opened.
+  if (ImportDialog::ImportAtStartup(options, first_start)) {
+    // Imported settings like the style and language are read before this, start again to use them.
+    QProcess::startDetached(QCoreApplication::applicationFilePath(), QStringList() << u"--restarted"_s);
+    return 0;
+  }
+
   Application app;
 
   // Network proxy
@@ -419,6 +457,11 @@ int main(int argc, char *argv[]) {
   QObject::connect(&single_app, &KDSingleApplication::messageReceived, &w, QOverload<const QByteArray&>::of(&MainWindow::CommandlineOptionsReceived));
 
   int ret = QCoreApplication::exec();
+
+  if (PlayerImporter::RestartRequested()) {
+    // The import dialog asked to restart, the import is done at the start.
+    QProcess::startDetached(QCoreApplication::applicationFilePath(), QStringList() << u"--restarted"_s);
+  }
 
 #if defined(__MINGW32__) && !defined(HAVE_WINPTHREADS)
   // Workaround crash on exit with the GCC win32 threading model (not needed with winpthreads).

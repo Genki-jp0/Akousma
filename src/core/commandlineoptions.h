@@ -84,6 +84,13 @@ class CommandlineOptions {
   QString playlist_name() const { return playlist_name_; }
   QString window_size() const { return window_size_; }
 
+  // Importing from Strawberry or Clementine at startup. These are not sent to a running instance, the import needs Akousma to be closed.
+  QString import_from() const { return import_from_; }
+  QString import_items() const { return import_items_; }
+  bool import_quiet() const { return import_quiet_; }
+  // Started again by Akousma itself: wait for the previous instance to exit.
+  bool restarted() const { return restarted_; }
+
   QByteArray Serialize() const;
   void Load(const QByteArray &serialized);
 
@@ -102,6 +109,10 @@ class CommandlineOptions {
     VolumeDecreaseBy,
     RestartOrPrevious,
     CreateFingerPrint,
+    ImportFrom,
+    ImportItems,
+    ImportQuiet,
+    Restarted,
   };
 
   void RemoveArg(const QString &starts_with, int count);
@@ -139,6 +150,11 @@ class CommandlineOptions {
   QString window_size_;
 
   QList<QUrl> urls_;
+
+  QString import_from_;
+  QString import_items_;
+  bool import_quiet_;
+  bool restarted_;
 };
 
 QDataStream &operator<<(QDataStream &s, const CommandlineOptions &a);

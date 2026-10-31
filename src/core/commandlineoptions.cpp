@@ -93,7 +93,12 @@ constexpr char kHelpText[] =
     "      --verbose              %32\n"
     "      --log-levels <levels>  %33\n"
     "      --version              %34\n"
-    "      --create-fingerprint <filename>  %35\n";
+    "      --create-fingerprint <filename>  %35\n"
+    "\n"
+    "%36:\n"
+    "      --import-from <player>  %37\n"
+    "      --import-items <items>  %38\n"
+    "      --import-quiet          %39\n";
 
 constexpr char kVersionText[] = "Akousma %1 (based on Strawberry)";
 
@@ -115,7 +120,9 @@ CommandlineOptions::CommandlineOptions(int argc, char **argv)
       play_track_at_(-1),
       show_osd_(false),
       toggle_pretty_osd_(false),
-      log_levels_(QLatin1String(logging::kDefaultLogLevels)) {
+      log_levels_(QLatin1String(logging::kDefaultLogLevels)),
+      import_quiet_(false),
+      restarted_(false) {
 
 #ifdef Q_OS_WIN32
   Q_UNUSED(argv);
@@ -185,6 +192,10 @@ bool CommandlineOptions::Parse() {
       { OPTSTR("log-levels"), required_argument, nullptr, LongOptions::LogLevels },
       { OPTSTR("version"), no_argument, nullptr, LongOptions::Version },
       { OPTSTR("create-fingerprint"), required_argument, nullptr, LongOptions::CreateFingerPrint },
+      { OPTSTR("import-from"), required_argument, nullptr, LongOptions::ImportFrom },
+      { OPTSTR("import-items"), required_argument, nullptr, LongOptions::ImportItems },
+      { OPTSTR("import-quiet"), no_argument, nullptr, LongOptions::ImportQuiet },
+      { OPTSTR("restarted"), no_argument, nullptr, LongOptions::Restarted },
       { nullptr, 0, nullptr, 0 }
   };
 
@@ -235,7 +246,11 @@ bool CommandlineOptions::Parse() {
                      QObject::tr("Equivalent to --log-levels *:3"),
                      QObject::tr("Comma separated list of class:level, level is 0-3"),
                      QObject::tr("Print out version information"),
-                     QObject::tr("Create fingerprint")
+                     QObject::tr("Create fingerprint"),
+                     QObject::tr("Import options"),
+                     QObject::tr("Import from strawberry, clementine or auto before starting, Akousma must not be running"),
+                     QObject::tr("Comma separated list of settings, collection, covers or all (the default)"),
+                     QObject::tr("Import without asking and exit, for installers")
                      );
 
         std::cout << translated_help_text.toLocal8Bit().constData();
@@ -333,6 +348,22 @@ bool CommandlineOptions::Parse() {
 
       case LongOptions::RestartOrPrevious:
         player_action_ = PlayerAction::RestartOrPrevious;
+        break;
+
+      case LongOptions::ImportFrom:
+        import_from_ = OptArgToString(optarg);
+        break;
+
+      case LongOptions::ImportItems:
+        import_items_ = OptArgToString(optarg);
+        break;
+
+      case LongOptions::ImportQuiet:
+        import_quiet_ = true;
+        break;
+
+      case LongOptions::Restarted:
+        restarted_ = true;
         break;
 
       case 'k':

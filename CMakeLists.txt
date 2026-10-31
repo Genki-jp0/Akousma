@@ -806,6 +806,9 @@ set(SOURCES
   src/settings/transcodersettingspage.cpp
 
   src/dialogs/aboutdialog.cpp
+
+  src/import/playerimporter.cpp
+  src/import/importdialog.cpp
   src/dialogs/console.cpp
   src/dialogs/errordialog.cpp
   src/dialogs/addstreamdialog.cpp
@@ -1115,6 +1118,8 @@ set(HEADERS
   src/settings/transcodersettingspage.h
 
   src/dialogs/aboutdialog.h
+
+  src/import/importdialog.h
   src/dialogs/errordialog.h
   src/dialogs/console.h
   src/dialogs/addstreamdialog.h

@@ -245,6 +245,7 @@ class MainWindow : public QMainWindow, public PlatformInterface {
   void ShowEqualizer();
 
   void ShowAboutDialog();
+  void ShowImportDialog();
   void ShowErrorDialog(const QString &message);
   void CheckShowErrorDialog();
   void ShowTranscodeDialog();

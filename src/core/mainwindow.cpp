@@ -113,6 +113,8 @@
 #include "engine/enginebase.h"
 #include "dialogs/errordialog.h"
 #include "dialogs/aboutdialog.h"
+#include "import/importdialog.h"
+#include "import/playerimporter.h"
 #include "dialogs/console.h"
 #include "dialogs/addstreamdialog.h"
 #include "dialogs/deleteconfirmationdialog.h"
@@ -652,6 +654,9 @@ MainWindow::MainWindow(Application *app,
   QObject::connect(ui_->action_auto_complete_tags, &QAction::triggered, this, &MainWindow::AutoCompleteTags);
 #endif
   QObject::connect(ui_->action_settings, &QAction::triggered, this, &MainWindow::OpenSettingsDialog);
+  QAction *action_import = new QAction(IconLoader::Load(u"document-download"_s), tr("&Import from Strawberry / Clementine..."), this);
+  ui_->menu_tools->insertAction(ui_->action_settings, action_import);
+  QObject::connect(action_import, &QAction::triggered, this, &MainWindow::ShowImportDialog);
   QObject::connect(ui_->action_toggle_show_sidebar, &QAction::toggled, this, &MainWindow::ToggleSidebar);
   QObject::connect(ui_->action_about_strawberry, &QAction::triggered, this, &MainWindow::ShowAboutDialog);
   QObject::connect(ui_->action_about_qt, &QAction::triggered, qApp, &QApplication::aboutQt);
@@ -3420,6 +3425,17 @@ void MainWindow::ShowAboutDialog() {
 
   about_dialog_->show();
   about_dialog_->raise();
+
+}
+
+void MainWindow::ShowImportDialog() {
+
+  ImportDialog dialog(ImportDialog::Mode::Running, this);
+  dialog.exec();
+  if (dialog.restart_now()) {
+    PlayerImporter::SetRestartRequested(true);
+    Exit();
+  }
 
 }
 
