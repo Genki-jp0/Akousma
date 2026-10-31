@@ -63,10 +63,12 @@
 #include <QEasingCurve>
 #include <QMetaObject>
 #include <QUuid>
+#include <QFileInfo>
 #include <QVersionNumber>
 
 #include "constants/timeconstants.h"
 #include "constants/backendsettings.h"
+#include "core/song.h"
 #include "utilities/useragent.h"
 #include "core/logging.h"
 #include "core/signalchecker.h"
@@ -137,6 +139,7 @@ GstEnginePipeline::GstEnginePipeline(QObject *parent)
       playbin3_support_(false),
       volume_full_range_support_(false),
       playbin3_enabled_(true),
+      uses_playbin3_(false),
       exclusive_mode_(false),
       volume_enabled_(true),
       volume_exponential_(false),
@@ -569,6 +572,14 @@ bool GstEnginePipeline::Finish() {
 
 }
 
+bool GstEnginePipeline::IsTrackerModule(const QUrl &url) {
+
+  if (!url.isLocalFile()) return false;
+  const Song::FileType filetype = Song::FiletypeByExtension(QFileInfo(url.toLocalFile()).suffix());
+  return filetype == Song::FileType::MOD || filetype == Song::FileType::S3M || filetype == Song::FileType::XM || filetype == Song::FileType::IT;
+
+}
+
 bool GstEnginePipeline::InitFromUrl(const QUrl &media_url, const QUrl &stream_url, const QByteArray &gst_url, const qint64 beginning_offset_nanosec, const qint64 end_offset_nanosec, const double ebur128_loudness_normalizing_gain_db, QString &error) {
 
   {
@@ -583,7 +594,9 @@ bool GstEnginePipeline::InitFromUrl(const QUrl &media_url, const QUrl &stream_ur
 
   ebur128_loudness_normalizing_gain_db_ = ebur128_loudness_normalizing_gain_db;
 
-  const QString playbin_name = playbin3_support_ && playbin3_enabled_ ? u"playbin3"_s : u"playbin"_s;
+  // Seeking in a tracker module blocks with playbin3 (GStreamer issue 3261, upstream #1374): those are played with playbin.
+  uses_playbin3_ = playbin3_support_ && playbin3_enabled_ && !IsTrackerModule(media_url);
+  const QString playbin_name = uses_playbin3_ ? u"playbin3"_s : u"playbin"_s;
   qLog(Debug) << "Using" << playbin_name << "for pipeline";
   pipeline_ = CreateElement(playbin_name, u"pipeline"_s, nullptr, error);
   if (!pipeline_) return false;

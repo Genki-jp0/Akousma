@@ -72,6 +72,9 @@ class GstEnginePipeline : public QObject {
   // Call these setters before Init
   void set_output_device(const QString &output, const QVariant &device);
   void set_playbin3_enabled(const bool playbin3_enabled);
+  // Tracker modules (MOD, S3M, XM, IT) are played with playbin: with playbin3, seeking in them blocks (upstream #1374).
+  static bool IsTrackerModule(const QUrl &url);
+  bool uses_playbin3() const { return uses_playbin3_; }
   void set_exclusive_mode(const bool exclusive_mode);
   void set_volume_enabled(const bool enabled);
   void set_volume_exponential(const bool enabled);
@@ -256,6 +259,7 @@ class GstEnginePipeline : public QObject {
   bool volume_full_range_support_;
 
   bool playbin3_enabled_;
+  bool uses_playbin3_;
 
   // General settings for the pipeline
   QString output_;

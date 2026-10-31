@@ -204,6 +204,12 @@ void GstEngine::StartPreloading(const QUrl &media_url, const QUrl &stream_url, c
 
   const GstUrl gst_url = FixupUrl(stream_url);
 
+  // A tracker module after a playbin3 pipeline gets its own playbin pipeline when the current track ends (upstream #1374).
+  if (current_pipeline_ && current_pipeline_->uses_playbin3() && GstEnginePipeline::IsTrackerModule(media_url)) {
+    qLog(Debug) << "Not preloading tracker module" << media_url << "into a playbin3 pipeline";
+    return;
+  }
+
   // No crossfading, so we can just queue the new URL in the existing pipeline and get gapless playback (hopefully)
   if (current_pipeline_) {
     if (!gst_url.source_device.isEmpty()) {

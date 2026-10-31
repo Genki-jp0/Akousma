@@ -110,6 +110,19 @@ void ProcessEventsFor(const int duration_msec) {
   }
 }
 
+// Tracker modules get a playbin pipeline, seeking in them blocks with playbin3 (upstream #1374).
+TEST(GstEnginePipelineTest, TrackerModules) {
+
+  EXPECT_TRUE(GstEnginePipeline::IsTrackerModule(QUrl::fromLocalFile(u"/music/song.mod"_s)));
+  EXPECT_TRUE(GstEnginePipeline::IsTrackerModule(QUrl::fromLocalFile(u"/music/song.S3M"_s)));
+  EXPECT_TRUE(GstEnginePipeline::IsTrackerModule(QUrl::fromLocalFile(u"/music/song.xm"_s)));
+  EXPECT_TRUE(GstEnginePipeline::IsTrackerModule(QUrl::fromLocalFile(u"/music/song.it"_s)));
+  EXPECT_FALSE(GstEnginePipeline::IsTrackerModule(QUrl::fromLocalFile(u"/music/song.flac"_s)));
+  EXPECT_FALSE(GstEnginePipeline::IsTrackerModule(QUrl::fromLocalFile(u"/music/mod"_s)));
+  EXPECT_FALSE(GstEnginePipeline::IsTrackerModule(QUrl(u"https://example.org/song.mod"_s)));
+
+}
+
 // Regression test: pausing while playback was waiting for the audio device warm-up was ignored, and the warm-up timer then started playback anyway.
 TEST(GstEnginePipelineTest, PauseDuringDeviceWarmupHoldsPlayback) {
 
