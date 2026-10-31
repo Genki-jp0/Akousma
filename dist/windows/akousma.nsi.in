@@ -591,6 +591,7 @@ Section "Akousma" Akousma
   File "Qt6Guid.dll"
   File "Qt6Networkd.dll"
   File "Qt6Sqld.dll"
+  File "Qt6Svgd.dll"
   File "Qt6Widgetsd.dll"
 !else
   File "icuin78.dll"
@@ -601,6 +602,7 @@ Section "Akousma" Akousma
   File "Qt6Gui.dll"
   File "Qt6Network.dll"
   File "Qt6Sql.dll"
+  File "Qt6Svg.dll"
   File "Qt6Widgets.dll"
 !endif
 
@@ -722,6 +724,7 @@ Section "Qt imageformats" imageformats
   File "/oname=qtiffd.dll" "imageformats\qtiffd.dll"
   File "/oname=qjp2d.dll" "imageformats\qjp2d.dll"
   File "/oname=qwebpd.dll" "imageformats\qwebpd.dll"
+  File "/oname=qsvgd.dll" "imageformats\qsvgd.dll"
 !else
   File "/oname=qgif.dll" "imageformats\qgif.dll"
   File "/oname=qico.dll" "imageformats\qico.dll"
@@ -729,7 +732,30 @@ Section "Qt imageformats" imageformats
   File "/oname=qtiff.dll" "imageformats\qtiff.dll"
   File "/oname=qjp2.dll" "imageformats\qjp2.dll"
   File "/oname=qwebp.dll" "imageformats\qwebp.dll"
+  File "/oname=qsvg.dll" "imageformats\qsvg.dll"
 !endif
+SectionEnd
+
+Section "Qt icon engines" iconengines
+  SetOutPath "$INSTDIR\iconengines"
+!ifdef msvc && debug
+  File "/oname=qsvgicond.dll" "iconengines\qsvgicond.dll"
+!else
+  File "/oname=qsvgicon.dll" "iconengines\qsvgicon.dll"
+!endif
+SectionEnd
+
+Section "Icon sets" iconsets
+  SetOutPath "$INSTDIR\iconsets"
+  File "/oname=adwaita.rcc" "iconsets\adwaita.rcc"
+  File "/oname=breeze.rcc" "iconsets\breeze.rcc"
+  File "/oname=breeze-dark.rcc" "iconsets\breeze-dark.rcc"
+  File "/oname=clementine.rcc" "iconsets\clementine.rcc"
+  File "/oname=elementary.rcc" "iconsets\elementary.rcc"
+  File "/oname=oxygen.rcc" "iconsets\oxygen.rcc"
+  File "/oname=papirus.rcc" "iconsets\papirus.rcc"
+  File "/oname=papirus-dark.rcc" "iconsets\papirus-dark.rcc"
+  File "/oname=tango.rcc" "iconsets\tango.rcc"
 SectionEnd
 
 Section "Gstreamer plugins" gstreamer-plugins
@@ -1132,6 +1158,7 @@ Section "Uninstall"
   Delete "$INSTDIR\Qt6Guid.dll"
   Delete "$INSTDIR\Qt6Networkd.dll"
   Delete "$INSTDIR\Qt6Sqld.dll"
+  Delete "$INSTDIR\Qt6Svgd.dll"
   Delete "$INSTDIR\Qt6Widgetsd.dll"
 !else
   Delete "$INSTDIR\icuin78.dll"
@@ -1142,6 +1169,7 @@ Section "Uninstall"
   Delete "$INSTDIR\Qt6Gui.dll"
   Delete "$INSTDIR\Qt6Network.dll"
   Delete "$INSTDIR\Qt6Sql.dll"
+  Delete "$INSTDIR\Qt6Svg.dll"
   Delete "$INSTDIR\Qt6Widgets.dll"
 !endif
 
@@ -1171,6 +1199,8 @@ Section "Uninstall"
   Delete "$INSTDIR\imageformats\qtiffd.dll"
   Delete "$INSTDIR\imageformats\qjp2d.dll"
   Delete "$INSTDIR\imageformats\qwebpd.dll"
+  Delete "$INSTDIR\imageformats\qsvgd.dll"
+  Delete "$INSTDIR\iconengines\qsvgicond.dll"
 !else
   Delete "$INSTDIR\platforms\qwindows.dll"
   Delete "$INSTDIR\styles\qmodernwindowsstyle.dll"
@@ -1183,6 +1213,8 @@ Section "Uninstall"
   Delete "$INSTDIR\imageformats\qtiff.dll"
   Delete "$INSTDIR\imageformats\qjp2.dll"
   Delete "$INSTDIR\imageformats\qwebp.dll"
+  Delete "$INSTDIR\imageformats\qsvg.dll"
+  Delete "$INSTDIR\iconengines\qsvgicon.dll"
 !endif
 
   ; MinGW GStreamer plugins
@@ -1315,12 +1347,24 @@ Section "Uninstall"
 
   Delete "$INSTDIR\Uninstall.exe"
 
+  Delete "$INSTDIR\iconsets\adwaita.rcc"
+  Delete "$INSTDIR\iconsets\breeze.rcc"
+  Delete "$INSTDIR\iconsets\breeze-dark.rcc"
+  Delete "$INSTDIR\iconsets\clementine.rcc"
+  Delete "$INSTDIR\iconsets\elementary.rcc"
+  Delete "$INSTDIR\iconsets\oxygen.rcc"
+  Delete "$INSTDIR\iconsets\papirus.rcc"
+  Delete "$INSTDIR\iconsets\papirus-dark.rcc"
+  Delete "$INSTDIR\iconsets\tango.rcc"
+
   ; Remove the installation folders.
+  RMDir "$INSTDIR\iconsets"
   RMDir "$INSTDIR\platforms"
   RMDir "$INSTDIR\styles"
   RMDir "$INSTDIR\tls"
   RMDir "$INSTDIR\sqldrivers"
   RMDir "$INSTDIR\imageformats"
+  RMDir "$INSTDIR\iconengines"
   RMDir "$INSTDIR\gio-modules"
   RMDir "$INSTDIR\gstreamer-plugins"
   RMDir "$INSTDIR"
