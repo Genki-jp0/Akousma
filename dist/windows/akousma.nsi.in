@@ -132,7 +132,13 @@ Page Custom LockedListPageShow
 !define MUI_FINISHPAGE_RUN_TEXT "Import settings and library from Strawberry / Clementine"
 !define MUI_FINISHPAGE_RUN_FUNCTION ImportFromOtherPlayer
 !define MUI_FINISHPAGE_RUN_NOTCHECKED
+; The second checkbox of the finish page (the "show readme" one) adds the saved passwords and logins to the import, off by default.
+!define MUI_FINISHPAGE_SHOWREADME ""
+!define MUI_FINISHPAGE_SHOWREADME_TEXT "Include saved passwords"
+!define MUI_FINISHPAGE_SHOWREADME_FUNCTION ImportPasswordsChecked
+!define MUI_FINISHPAGE_SHOWREADME_NOTCHECKED
 !define MUI_PAGE_CUSTOMFUNCTION_SHOW FinishPageShow
+!define MUI_PAGE_CUSTOMFUNCTION_LEAVE FinishPageLeave
 !insertmacro MUI_PAGE_FINISH
 
 ; Uninstaller pages
@@ -154,15 +160,23 @@ ShowInstDetails show
 ShowUnInstDetails show
 RequestExecutionLevel admin
 
+; "1" when "Include saved passwords" is ticked on the finish page, read by ImportFromOtherPlayer.
+Var ImportPasswords
+
 ; Import the settings, collection and album covers of Strawberry or Clementine into the new installation, the existing Akousma settings and collection are backed up first.
 ; The installer runs elevated, and with "over the shoulder" UAC elevation it even runs as a different administrator account than the logged in user.
 ; The settings are in HKCU and the collection is under %LOCALAPPDATA%, so the import has to run as the logged in user, unelevated, not as the installer.
 ; akousma.exe is therefore started through a shortcut opened by the desktop shell: explorer.exe runs as the logged in user without elevation,
 ; and an elevated process asking it to open a file hands the request to that running shell instead of starting an elevated one.
 ; The finish page is not shown for silent installs, which may run without anybody logged in, Akousma then offers the import itself on its first start.
+; Saved passwords and logins are only imported with --import-passwords, when "Include saved passwords" is ticked.
 Function ImportFromOtherPlayer
   ${If} ${FileExists} "$INSTDIR\akousma.exe"
-    CreateShortCut "$INSTDIR\akousma-import.lnk" "$INSTDIR\akousma.exe" "--import-from=auto --import-quiet"
+    ${If} $ImportPasswords == "1"
+      CreateShortCut "$INSTDIR\akousma-import.lnk" "$INSTDIR\akousma.exe" "--import-from=auto --import-quiet --import-passwords"
+    ${Else}
+      CreateShortCut "$INSTDIR\akousma-import.lnk" "$INSTDIR\akousma.exe" "--import-from=auto --import-quiet"
+    ${EndIf}
     Exec '"$WINDIR\explorer.exe" "$INSTDIR\akousma-import.lnk"'
     ; Give the shell time to open the shortcut before it is removed again.
     Sleep 3000
@@ -192,6 +206,19 @@ Function FinishPageShow
   ${If} $0 == "1"
     SendMessage $mui.FinishPage.Run ${BM_SETCHECK} ${BST_CHECKED} 0
   ${EndIf}
+FunctionEnd
+
+; The finish page runs the import (the "run" function) before the function of the passwords checkbox, so its state is read here, before both.
+Function FinishPageLeave
+  StrCpy $ImportPasswords "0"
+  SendMessage $mui.FinishPage.ShowReadme ${BM_GETCHECK} 0 0 $0
+  ${If} $0 == ${BST_CHECKED}
+    StrCpy $ImportPasswords "1"
+  ${EndIf}
+FunctionEnd
+
+; Nothing to do here, ImportFromOtherPlayer passes --import-passwords.
+Function ImportPasswordsChecked
 FunctionEnd
 
 Function LockedListPageShow
