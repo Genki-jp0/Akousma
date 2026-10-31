@@ -810,6 +810,7 @@ set(SOURCES
 
   src/import/playerimporter.cpp
   src/import/clementinesmartplaylist.cpp
+  src/import/passwordcopier.cpp
   src/import/importdialog.cpp
   src/dialogs/console.cpp
   src/dialogs/errordialog.cpp
