@@ -35,8 +35,6 @@ using namespace Qt::Literals::StringLiterals;
 namespace {
 
 constexpr char kInterface[] = "org.kde.KWallet";
-constexpr char kAppId[] = "Akousma";
-constexpr char kFolder[] = "Akousma";
 
 // Opening the wallet can show a password prompt, so give the user plenty of time.
 constexpr int kOpenTimeout = 300000;
@@ -71,13 +69,13 @@ bool ReplyValue(const QDBusMessage &reply, T &value, QString &error) {
 
 }  // namespace
 
-CredentialsBackendKWallet::CredentialsBackendKWallet(QObject *parent) : CredentialsBackendInterface(parent), handle_(-1) {}
+CredentialsBackendKWallet::CredentialsBackendKWallet(const CredentialsIdentity &identity, QObject *parent) : CredentialsBackendInterface(parent), identity_(identity), handle_(-1) {}
 
 CredentialsBackendKWallet::~CredentialsBackendKWallet() {
 
   if (handle_ >= 0 && !service_name_.isEmpty()) {
     QDBusMessage message = QDBusMessage::createMethodCall(service_name_, path_, QLatin1String(kInterface), u"close"_s);
-    message.setArguments(QVariantList() << handle_ << false << QLatin1String(kAppId));
+    message.setArguments(QVariantList() << handle_ << false << identity_.kwallet_app_id);
     QDBusConnection::sessionBus().send(message);
   }
 
@@ -170,7 +168,7 @@ void CredentialsBackendKWallet::OpenWallet(const SuccessCallback &callback) {
       callback(false, error);
       return;
     }
-    Call(u"open"_s, QVariantList() << wallet << static_cast<qlonglong>(0) << QLatin1String(kAppId), [this, wallet, callback](const QDBusMessage &open_reply) {
+    Call(u"open"_s, QVariantList() << wallet << static_cast<qlonglong>(0) << identity_.kwallet_app_id, [this, wallet, callback](const QDBusMessage &open_reply) {
       int handle = -1;
       QString open_error;
       if (!ReplyValue(open_reply, handle, open_error)) {
@@ -190,7 +188,7 @@ void CredentialsBackendKWallet::OpenWallet(const SuccessCallback &callback) {
 
 void CredentialsBackendKWallet::HasFolder(const BoolCallback &callback) {
 
-  Call(u"hasFolder"_s, QVariantList() << handle_ << QLatin1String(kFolder) << QLatin1String(kAppId), [callback](const QDBusMessage &reply) {
+  Call(u"hasFolder"_s, QVariantList() << handle_ << identity_.kwallet_folder << identity_.kwallet_app_id, [callback](const QDBusMessage &reply) {
     bool has_folder = false;
     QString error;
     const bool success = ReplyValue(reply, has_folder, error);
@@ -206,7 +204,7 @@ void CredentialsBackendKWallet::HasEntry(const QString &service, const BoolCallb
       callback(success, false, error);
       return;
     }
-    Call(u"hasEntry"_s, QVariantList() << handle_ << QLatin1String(kFolder) << service << QLatin1String(kAppId), [callback](const QDBusMessage &reply) {
+    Call(u"hasEntry"_s, QVariantList() << handle_ << identity_.kwallet_folder << service << identity_.kwallet_app_id, [callback](const QDBusMessage &reply) {
       bool has_entry = false;
       QString entry_error;
       const bool entry_success = ReplyValue(reply, has_entry, entry_error);
@@ -218,7 +216,8 @@ void CredentialsBackendKWallet::HasEntry(const QString &service, const BoolCallb
 
 void CredentialsBackendKWallet::CreateFolder(const SuccessCallback &callback) {
 
-  Call(u"createFolder"_s, QVariantList() << handle_ << QLatin1String(kFolder) << QLatin1String(kAppId), [callback](const QDBusMessage &reply) {
+  const QString folder = identity_.kwallet_folder;
+  Call(u"createFolder"_s, QVariantList() << handle_ << folder << identity_.kwallet_app_id, [callback, folder](const QDBusMessage &reply) {
     bool folder_created = false;
     QString error;
     if (!ReplyValue(reply, folder_created, error)) {
@@ -226,7 +225,7 @@ void CredentialsBackendKWallet::CreateFolder(const SuccessCallback &callback) {
       return;
     }
     if (!folder_created) {
-      callback(false, QStringLiteral("Failed to create folder %1 in wallet.").arg(QLatin1String(kFolder)));
+      callback(false, QStringLiteral("Failed to create folder %1 in wallet.").arg(folder));
       return;
     }
     callback(true, QString());
@@ -236,7 +235,7 @@ void CredentialsBackendKWallet::CreateFolder(const SuccessCallback &callback) {
 
 void CredentialsBackendKWallet::WritePassword(const QString &service, const QString &password, const ResultCallback &callback) {
 
-  Call(u"writePassword"_s, QVariantList() << handle_ << QLatin1String(kFolder) << service << password << QLatin1String(kAppId), [callback](const QDBusMessage &reply) {
+  Call(u"writePassword"_s, QVariantList() << handle_ << identity_.kwallet_folder << service << password << identity_.kwallet_app_id, [callback](const QDBusMessage &reply) {
     int result = -1;
     QString error;
     if (!ReplyValue(reply, result, error)) {
@@ -268,7 +267,7 @@ void CredentialsBackendKWallet::ReadPassword(const QString &service, const Resul
         callback(CredentialsResult::NotFound());
         return;
       }
-      Call(u"readPassword"_s, QVariantList() << handle_ << QLatin1String(kFolder) << service << QLatin1String(kAppId), [callback](const QDBusMessage &reply) {
+      Call(u"readPassword"_s, QVariantList() << handle_ << identity_.kwallet_folder << service << identity_.kwallet_app_id, [callback](const QDBusMessage &reply) {
         QString password;
         QString read_error;
         if (!ReplyValue(reply, password, read_error)) {
@@ -326,7 +325,7 @@ void CredentialsBackendKWallet::DeletePassword(const QString &service, const Res
         callback(CredentialsResult::Success());
         return;
       }
-      Call(u"removeEntry"_s, QVariantList() << handle_ << QLatin1String(kFolder) << service << QLatin1String(kAppId), [callback](const QDBusMessage &reply) {
+      Call(u"removeEntry"_s, QVariantList() << handle_ << identity_.kwallet_folder << service << identity_.kwallet_app_id, [callback](const QDBusMessage &reply) {
         int result = -1;
         QString remove_error;
         if (!ReplyValue(reply, result, remove_error)) {

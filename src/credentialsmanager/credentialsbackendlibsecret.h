@@ -22,10 +22,14 @@
 
 #include <memory>
 
+#include <libsecret/secret.h>
+
 #include <QObject>
+#include <QByteArray>
 #include <QString>
 
 #include "credentialsbackendinterface.h"
+#include "credentialsidentity.h"
 
 struct _GCancellable;
 struct CredentialsBackendLibSecretGuard;
@@ -36,7 +40,7 @@ class CredentialsBackendLibSecret : public CredentialsBackendInterface {
   Q_OBJECT
 
  public:
-  explicit CredentialsBackendLibSecret(QObject *parent = nullptr);
+  explicit CredentialsBackendLibSecret(const CredentialsIdentity &identity = CredentialsIdentity::Akousma(), QObject *parent = nullptr);
   ~CredentialsBackendLibSecret() override;
 
   QString name() const override;
@@ -46,6 +50,10 @@ class CredentialsBackendLibSecret : public CredentialsBackendInterface {
   void DeletePassword(const QString &service, const ResultCallback &callback) override;
 
  private:
+  const CredentialsIdentity identity_;
+  const QByteArray schema_name_;
+  const QByteArray application_;
+  SecretSchema schema_;
   std::shared_ptr<CredentialsBackendLibSecretGuard> guard_;
   _GCancellable *cancellable_;
 };

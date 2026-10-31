@@ -163,28 +163,30 @@ QList<CredentialsManager::BackendType> CredentialsManager::AutoBackendTypes() {
 
 }
 
-ScopedPtr<CredentialsBackendInterface> CredentialsManager::CreateBackend(const BackendType backend_type) {
+ScopedPtr<CredentialsBackendInterface> CredentialsManager::CreateBackend(const BackendType backend_type, const CredentialsIdentity &identity) {
+
+  Q_UNUSED(identity)
 
   switch (backend_type) {
 #ifdef HAVE_KWALLET
     case BackendType::KWallet:
-      return ScopedPtr<CredentialsBackendInterface>(new CredentialsBackendKWallet);
+      return ScopedPtr<CredentialsBackendInterface>(new CredentialsBackendKWallet(identity));
 #endif
 #ifdef HAVE_GNOME_KEYRING
     case BackendType::GnomeKeyring:
-      return ScopedPtr<CredentialsBackendInterface>(new CredentialsBackendGnomeKeyring);
+      return ScopedPtr<CredentialsBackendInterface>(new CredentialsBackendGnomeKeyring(identity));
 #endif
 #ifdef HAVE_LIBSECRET
     case BackendType::LibSecret:
-      return ScopedPtr<CredentialsBackendInterface>(new CredentialsBackendLibSecret);
+      return ScopedPtr<CredentialsBackendInterface>(new CredentialsBackendLibSecret(identity));
 #endif
 #ifdef Q_OS_WIN32
     case BackendType::WindowsCredentialManager:
-      return ScopedPtr<CredentialsBackendInterface>(new CredentialsBlockingBackend(new CredentialsBackendWinCred));
+      return ScopedPtr<CredentialsBackendInterface>(new CredentialsBlockingBackend(new CredentialsBackendWinCred(identity)));
 #endif
 #ifdef Q_OS_MACOS
     case BackendType::Keychain:
-      return ScopedPtr<CredentialsBackendInterface>(new CredentialsBlockingBackend(new CredentialsBackendKeychain));
+      return ScopedPtr<CredentialsBackendInterface>(new CredentialsBlockingBackend(new CredentialsBackendKeychain(identity)));
 #endif
     case BackendType::Settings:
       return ScopedPtr<CredentialsBackendInterface>(new CredentialsBlockingBackend(new CredentialsBackendSettings));
@@ -194,6 +196,10 @@ ScopedPtr<CredentialsBackendInterface> CredentialsManager::CreateBackend(const B
 
   return nullptr;
 
+}
+
+QString CredentialsManager::backend_name() const {
+  return backend_ && backend_state_ == BackendState::Ready ? backend_->name() : QString();
 }
 
 void CredentialsManager::ReloadSettings() {

@@ -38,26 +38,6 @@ using namespace Qt::Literals::StringLiterals;
 
 namespace {
 
-// Same schema name and attributes as the GNOME Keyring backend.
-constexpr char kSchemaName[] = "io.github.genki_jp0.Akousma.Password";
-constexpr char kApplication[] = "akousma";
-
-const SecretSchema *Schema() {
-
-  static const SecretSchema schema = []() {
-    SecretSchema s{};
-    s.name = kSchemaName;
-    s.flags = SECRET_SCHEMA_NONE;
-    s.attributes[0] = { "application", SECRET_SCHEMA_ATTRIBUTE_STRING };
-    s.attributes[1] = { "service", SECRET_SCHEMA_ATTRIBUTE_STRING };
-    s.attributes[2] = { nullptr, SECRET_SCHEMA_ATTRIBUTE_STRING };
-    return s;
-  }();
-
-  return &schema;
-
-}
-
 QString ErrorString(GError *error) {
 
   const QString error_string = QString::fromUtf8(error->message);
@@ -182,12 +162,24 @@ void ClearFinished(GObject *source, GAsyncResult *result, gpointer user_data) {
 
 }  // namespace
 
-CredentialsBackendLibSecret::CredentialsBackendLibSecret(QObject *parent)
+CredentialsBackendLibSecret::CredentialsBackendLibSecret(const CredentialsIdentity &identity, QObject *parent)
     : CredentialsBackendInterface(parent),
+      identity_(identity),
+      schema_name_(identity.secret_service_schema.toUtf8()),
+      application_(identity.secret_service_application.toUtf8()),
+      schema_{},
       guard_(std::make_shared<CredentialsBackendLibSecretGuard>()),
       cancellable_(g_cancellable_new()) {
 
   guard_->backend = this;
+
+  // Same schema name and attributes as the GNOME Keyring backend.
+  // libsecret copies the schema for asynchronous requests, so requests still running when this backend is deleted are safe.
+  schema_.name = schema_name_.constData();
+  schema_.flags = SECRET_SCHEMA_NONE;
+  schema_.attributes[0] = { "application", SECRET_SCHEMA_ATTRIBUTE_STRING };
+  schema_.attributes[1] = { "service", SECRET_SCHEMA_ATTRIBUTE_STRING };
+  schema_.attributes[2] = { nullptr, SECRET_SCHEMA_ATTRIBUTE_STRING };
 
 }
 
@@ -211,7 +203,7 @@ void CredentialsBackendLibSecret::CheckAvailable(const AvailableCallback &availa
 
   // Use a password lookup instead of secret_service_get(), so that the check goes through the same backend as the actual requests.
   // Inside Flatpak, libsecret uses a local keyring file unlocked through the Secret portal instead of the Secret Service D-Bus API.
-  secret_password_lookup(Schema(), cancellable_, AvailableLookupFinished, new AvailableCallData{ guard_, available_callback }, "application", kApplication, "service", "", nullptr);
+  secret_password_lookup(&schema_, cancellable_, AvailableLookupFinished, new AvailableCallData{ guard_, available_callback }, "application", application_.constData(), "service", "", nullptr);
 
 }
 
@@ -219,17 +211,17 @@ void CredentialsBackendLibSecret::ReadPassword(const QString &service, const Res
 
   const QByteArray service_utf8 = service.toUtf8();
 
-  secret_password_lookup(Schema(), cancellable_, LookupFinished, new ResultCallData{ guard_, callback }, "application", kApplication, "service", service_utf8.constData(), nullptr);
+  secret_password_lookup(&schema_, cancellable_, LookupFinished, new ResultCallData{ guard_, callback }, "application", application_.constData(), "service", service_utf8.constData(), nullptr);
 
 }
 
 void CredentialsBackendLibSecret::SavePassword(const QString &service, const QString &password, const ResultCallback &callback) {
 
   const QByteArray service_utf8 = service.toUtf8();
-  const QByteArray label = QStringLiteral("Akousma %1 password").arg(service).toUtf8();
+  const QByteArray label = identity_.ItemLabel(service).toUtf8();
   const QByteArray password_utf8 = password.toUtf8();
 
-  secret_password_store(Schema(), SECRET_COLLECTION_DEFAULT, label.constData(), password_utf8.constData(), cancellable_, StoreFinished, new ResultCallData{ guard_, callback }, "application", kApplication, "service", service_utf8.constData(), nullptr);
+  secret_password_store(&schema_, SECRET_COLLECTION_DEFAULT, label.constData(), password_utf8.constData(), cancellable_, StoreFinished, new ResultCallData{ guard_, callback }, "application", application_.constData(), "service", service_utf8.constData(), nullptr);
 
 }
 
@@ -237,6 +229,6 @@ void CredentialsBackendLibSecret::DeletePassword(const QString &service, const R
 
   const QByteArray service_utf8 = service.toUtf8();
 
-  secret_password_clear(Schema(), cancellable_, ClearFinished, new ResultCallData{ guard_, callback }, "application", kApplication, "service", service_utf8.constData(), nullptr);
+  secret_password_clear(&schema_, cancellable_, ClearFinished, new ResultCallData{ guard_, callback }, "application", application_.constData(), "service", service_utf8.constData(), nullptr);
 
 }

@@ -23,17 +23,21 @@
 #include <QString>
 
 #include "credentialsblockingbackendinterface.h"
+#include "credentialsidentity.h"
 
 // Stores passwords as generic passwords in the macOS Keychain.
 class CredentialsBackendKeychain : public CredentialsBlockingBackendInterface {
  public:
-  explicit CredentialsBackendKeychain() = default;
+  explicit CredentialsBackendKeychain(const CredentialsIdentity &identity = CredentialsIdentity::Akousma());
 
   QString name() const override;
   bool IsAvailable() override;
   CredentialsResult ReadPassword(const QString &service) override;
   CredentialsResult SavePassword(const QString &service, const QString &password) override;
   CredentialsResult DeletePassword(const QString &service) override;
+
+ private:
+  const CredentialsIdentity identity_;
 };
 
 #endif  // CREDENTIALSBACKENDKEYCHAIN_H

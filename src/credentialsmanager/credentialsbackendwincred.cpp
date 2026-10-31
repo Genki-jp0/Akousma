@@ -29,13 +29,6 @@ using namespace Qt::Literals::StringLiterals;
 
 namespace {
 
-constexpr char kTargetNamePrefix[] = "Akousma/";
-constexpr wchar_t kUserName[] = L"akousma";
-
-QString TargetName(const QString &service) {
-  return QLatin1String(kTargetNamePrefix) + service;
-}
-
 QString ErrorString(const DWORD error_code) {
 
   wchar_t *buffer = nullptr;
@@ -55,6 +48,12 @@ QString ErrorString(const DWORD error_code) {
 }
 
 }  // namespace
+
+CredentialsBackendWinCred::CredentialsBackendWinCred(const CredentialsIdentity &identity) : identity_(identity) {}
+
+QString CredentialsBackendWinCred::TargetName(const QString &service) const {
+  return identity_.name_prefix + service;
+}
 
 QString CredentialsBackendWinCred::name() const {
   return u"Windows Credential Manager"_s;
@@ -100,7 +99,7 @@ CredentialsResult CredentialsBackendWinCred::SavePassword(const QString &service
   credential.CredentialBlob = const_cast<LPBYTE>(reinterpret_cast<const BYTE*>(password.utf16()));
   // Roam the password with the user profile like the settings in the registry, without a roaming profile it is stored locally.
   credential.Persist = CRED_PERSIST_ENTERPRISE;
-  credential.UserName = const_cast<LPWSTR>(kUserName);
+  credential.UserName = const_cast<LPWSTR>(reinterpret_cast<LPCWSTR>(identity_.wincred_user_name.utf16()));
 
   if (!CredWriteW(&credential, 0)) {
     return CredentialsResult::Error(ErrorString(GetLastError()));

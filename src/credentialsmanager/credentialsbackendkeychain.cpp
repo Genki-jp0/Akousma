@@ -29,8 +29,6 @@ using namespace Qt::Literals::StringLiterals;
 
 namespace {
 
-constexpr char kServiceNamePrefix[] = "Akousma/";
-
 QString ErrorString(const OSStatus status) {
 
   QString error_string;
@@ -57,11 +55,11 @@ void DictionarySetString(CFMutableDictionaryRef dictionary, const void *key, con
 }
 
 // Returns a query matching the generic password item for the service, the caller must release it.
-CFMutableDictionaryRef CreateQuery(const QString &service) {
+CFMutableDictionaryRef CreateQuery(const QString &name_prefix, const QString &service) {
 
   CFMutableDictionaryRef query = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
   CFDictionarySetValue(query, kSecClass, kSecClassGenericPassword);
-  DictionarySetString(query, kSecAttrService, QLatin1String(kServiceNamePrefix) + service);
+  DictionarySetString(query, kSecAttrService, name_prefix + service);
   DictionarySetString(query, kSecAttrAccount, service);
 
   return query;
@@ -69,6 +67,8 @@ CFMutableDictionaryRef CreateQuery(const QString &service) {
 }
 
 }  // namespace
+
+CredentialsBackendKeychain::CredentialsBackendKeychain(const CredentialsIdentity &identity) : identity_(identity) {}
 
 QString CredentialsBackendKeychain::name() const {
   return u"Keychain"_s;
@@ -80,7 +80,7 @@ bool CredentialsBackendKeychain::IsAvailable() {
 
 CredentialsResult CredentialsBackendKeychain::ReadPassword(const QString &service) {
 
-  CFMutableDictionaryRef query = CreateQuery(service);
+  CFMutableDictionaryRef query = CreateQuery(identity_.name_prefix, service);
   CFDictionarySetValue(query, kSecReturnData, kCFBooleanTrue);
   CFDictionarySetValue(query, kSecMatchLimit, kSecMatchLimitOne);
 
@@ -108,7 +108,7 @@ CredentialsResult CredentialsBackendKeychain::SavePassword(const QString &servic
   const QByteArray password_utf8 = password.toUtf8();
   CFDataRef data = CFDataCreate(kCFAllocatorDefault, reinterpret_cast<const UInt8*>(password_utf8.constData()), static_cast<CFIndex>(password_utf8.size()));
 
-  CFMutableDictionaryRef query = CreateQuery(service);
+  CFMutableDictionaryRef query = CreateQuery(identity_.name_prefix, service);
 
   CFMutableDictionaryRef attributes = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
   CFDictionarySetValue(attributes, kSecValueData, data);
@@ -116,7 +116,7 @@ CredentialsResult CredentialsBackendKeychain::SavePassword(const QString &servic
   OSStatus status = SecItemUpdate(query, attributes);
   if (status == errSecItemNotFound) {
     CFDictionarySetValue(query, kSecValueData, data);
-    DictionarySetString(query, kSecAttrLabel, QStringLiteral("Akousma %1 password").arg(service));
+    DictionarySetString(query, kSecAttrLabel, identity_.ItemLabel(service));
     status = SecItemAdd(query, nullptr);
   }
 
@@ -134,7 +134,7 @@ CredentialsResult CredentialsBackendKeychain::SavePassword(const QString &servic
 
 CredentialsResult CredentialsBackendKeychain::DeletePassword(const QString &service) {
 
-  CFMutableDictionaryRef query = CreateQuery(service);
+  CFMutableDictionaryRef query = CreateQuery(identity_.name_prefix, service);
   const OSStatus status = SecItemDelete(query);
   CFRelease(query);
 

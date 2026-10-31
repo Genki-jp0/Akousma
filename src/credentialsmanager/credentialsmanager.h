@@ -30,6 +30,7 @@
 #include "includes/scoped_ptr.h"
 #include "credentialsreply.h"
 #include "credentialsresult.h"
+#include "credentialsidentity.h"
 
 class CredentialsBackendInterface;
 
@@ -67,6 +68,16 @@ class CredentialsManager : public QObject {
   // Returns the backends compiled in for this platform, excluding Auto.
   static QList<BackendType> SupportedBackends();
 
+  // Returns the automatically detected backends in order of preference.
+  static QList<BackendType> AutoBackendTypes();
+
+  // Creates a backend using the names of the identity in the keyring, the settings backend always uses Akousma's settings.
+  // Returns nullptr when the backend is not supported on this platform.
+  static ScopedPtr<CredentialsBackendInterface> CreateBackend(const BackendType backend_type, const CredentialsIdentity &identity = CredentialsIdentity::Akousma());
+
+  // Name of the backend in use, empty until the first request has initialized it.
+  QString backend_name() const;
+
   // Re-reads the selected backend from the settings, the backend is initialized again before the next request.
   void ReloadSettings();
 
@@ -98,11 +109,6 @@ class CredentialsManager : public QObject {
     Initializing,
     Ready
   };
-
-  // Returns the automatically detected backends in order of preference.
-  static QList<BackendType> AutoBackendTypes();
-
-  ScopedPtr<CredentialsBackendInterface> CreateBackend(const BackendType backend_type);
 
   void AddRequest(const Request &request);
   void StartNextRequest();

@@ -49,10 +49,6 @@ constexpr char kCollectionInterface[] = "org.freedesktop.Secret.Collection";
 constexpr char kItemInterface[] = "org.freedesktop.Secret.Item";
 constexpr char kSessionInterface[] = "org.freedesktop.Secret.Session";
 
-// Same schema name and attributes as the libsecret backend.
-constexpr char kSchemaName[] = "io.github.genki_jp0.Akousma.Password";
-constexpr char kApplication[] = "akousma";
-
 // A path of "/" means no object, for example no prompt is needed.
 bool IsNullPath(const QDBusObjectPath &path) {
   return path.path().isEmpty() || path.path() == "/"_L1;
@@ -60,7 +56,7 @@ bool IsNullPath(const QDBusObjectPath &path) {
 
 }  // namespace
 
-CredentialsBackendGnomeKeyring::CredentialsBackendGnomeKeyring(QObject *parent) : CredentialsBackendInterface(parent) {
+CredentialsBackendGnomeKeyring::CredentialsBackendGnomeKeyring(const CredentialsIdentity &identity, QObject *parent) : CredentialsBackendInterface(parent), identity_(identity) {
 
   qDBusRegisterMetaType<SecretServiceSecret>();
   qDBusRegisterMetaType<SecretServiceAttributes>();
@@ -89,11 +85,12 @@ void CredentialsBackendGnomeKeyring::Call(const QString &path, const QString &in
 
 }
 
-SecretServiceAttributes CredentialsBackendGnomeKeyring::Attributes(const QString &service) {
+SecretServiceAttributes CredentialsBackendGnomeKeyring::Attributes(const QString &service) const {
 
+  // Same schema name and attributes as the libsecret backend.
   SecretServiceAttributes attributes;
-  attributes.insert(u"xdg:schema"_s, QLatin1String(kSchemaName));
-  attributes.insert(u"application"_s, QLatin1String(kApplication));
+  attributes.insert(u"xdg:schema"_s, identity_.secret_service_schema);
+  attributes.insert(u"application"_s, identity_.secret_service_application);
   attributes.insert(u"service"_s, service);
 
   return attributes;
@@ -247,7 +244,7 @@ void CredentialsBackendGnomeKeyring::DefaultCollection(const PathCallback &callb
 void CredentialsBackendGnomeKeyring::CreateItem(const QDBusObjectPath &collection, const QString &service, const QString &password, const ResultCallback &callback) {
 
   QVariantMap properties;
-  properties.insert(u"org.freedesktop.Secret.Item.Label"_s, QStringLiteral("Akousma %1 password").arg(service));
+  properties.insert(u"org.freedesktop.Secret.Item.Label"_s, identity_.ItemLabel(service));
   properties.insert(u"org.freedesktop.Secret.Item.Attributes"_s, QVariant::fromValue(Attributes(service)));
 
   SecretServiceSecret secret;

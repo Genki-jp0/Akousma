@@ -31,6 +31,7 @@
 #include <QDBusObjectPath>
 
 #include "credentialsbackendinterface.h"
+#include "credentialsidentity.h"
 #include "credentialsdbusutils.h"
 
 using SecretServiceAttributes = QMap<QString, QString>;
@@ -42,7 +43,7 @@ class CredentialsBackendGnomeKeyring : public CredentialsBackendInterface {
   Q_OBJECT
 
  public:
-  explicit CredentialsBackendGnomeKeyring(QObject *parent = nullptr);
+  explicit CredentialsBackendGnomeKeyring(const CredentialsIdentity &identity = CredentialsIdentity::Akousma(), QObject *parent = nullptr);
   ~CredentialsBackendGnomeKeyring() override;
 
   QString name() const override;
@@ -58,7 +59,7 @@ class CredentialsBackendGnomeKeyring : public CredentialsBackendInterface {
   using PathsCallback = std::function<void(const bool success, const QList<QDBusObjectPath> &paths, const QString &error)>;
 
   void Call(const QString &path, const QString &interface, const QString &method, const QVariantList &arguments, const CredentialsDBusUtils::ReplyCallback &callback);
-  static SecretServiceAttributes Attributes(const QString &service);
+  SecretServiceAttributes Attributes(const QString &service) const;
 
   void OpenSession(const SuccessCallback &callback);
   void RunPrompt(const QDBusObjectPath &prompt, const PromptCallback &callback);
@@ -69,6 +70,7 @@ class CredentialsBackendGnomeKeyring : public CredentialsBackendInterface {
   void DeleteItems(const QList<QDBusObjectPath> &items, const ResultCallback &callback);
 
  private:
+  const CredentialsIdentity identity_;
   QDBusObjectPath session_;
 };
 

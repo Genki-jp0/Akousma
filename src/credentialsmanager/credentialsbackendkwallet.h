@@ -27,6 +27,7 @@
 #include <QString>
 
 #include "credentialsbackendinterface.h"
+#include "credentialsidentity.h"
 #include "credentialsdbusutils.h"
 
 // Stores passwords in KWallet using the org.kde.KWallet D-Bus interface of kwalletd6 (or kwalletd5), all calls are asynchronous.
@@ -34,7 +35,7 @@ class CredentialsBackendKWallet : public CredentialsBackendInterface {
   Q_OBJECT
 
  public:
-  explicit CredentialsBackendKWallet(QObject *parent = nullptr);
+  explicit CredentialsBackendKWallet(const CredentialsIdentity &identity = CredentialsIdentity::Akousma(), QObject *parent = nullptr);
   ~CredentialsBackendKWallet() override;
 
   QString name() const override;
@@ -57,6 +58,7 @@ class CredentialsBackendKWallet : public CredentialsBackendInterface {
   void WritePassword(const QString &service, const QString &password, const ResultCallback &callback);
 
  private:
+  const CredentialsIdentity identity_;
   QString service_name_;
   QString path_;
   int handle_;

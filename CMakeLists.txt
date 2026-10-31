@@ -571,6 +571,7 @@ set(SOURCES
 
   src/credentialsmanager/credentialsmanager.cpp
   src/credentialsmanager/credentialsresult.cpp
+  src/credentialsmanager/credentialsidentity.cpp
   src/credentialsmanager/credentialsreply.cpp
   src/credentialsmanager/credentialsblockingbackend.cpp
   src/credentialsmanager/credentialsbackendsettings.cpp

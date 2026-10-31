@@ -23,17 +23,23 @@
 #include <QString>
 
 #include "credentialsblockingbackendinterface.h"
+#include "credentialsidentity.h"
 
 // Stores passwords as generic credentials in Windows Credential Manager.
 class CredentialsBackendWinCred : public CredentialsBlockingBackendInterface {
  public:
-  explicit CredentialsBackendWinCred() = default;
+  explicit CredentialsBackendWinCred(const CredentialsIdentity &identity = CredentialsIdentity::Akousma());
 
   QString name() const override;
   bool IsAvailable() override;
   CredentialsResult ReadPassword(const QString &service) override;
   CredentialsResult SavePassword(const QString &service, const QString &password) override;
   CredentialsResult DeletePassword(const QString &service) override;
+
+ private:
+  QString TargetName(const QString &service) const;
+
+  const CredentialsIdentity identity_;
 };
 
 #endif  // CREDENTIALSBACKENDWINCRED_H
