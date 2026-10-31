@@ -1246,7 +1246,7 @@ MainWindow::MainWindow(Application *app,
       rosetta_message->set_settings_group(QLatin1String(MainWindowSettings::kSettingsGroup));
       rosetta_message->set_do_not_show_message_again(QLatin1String(MainWindowSettings::kIgnoreRosetta));
       rosetta_message->setAttribute(Qt::WA_DeleteOnClose);
-      rosetta_message->ShowMessage(tr("Strawberry running under Rosetta"), tr("You are running Strawberry under Rosetta. Running Strawberry under Rosetta is unsupported and known to have issues. You should download Strawberry for the correct CPU architecture from %1").arg(QLatin1String("<a href=\"https://downloads.strawberrymusicplayer.org/\">downloads.strawberrymusicplayer.org</a>")), IconLoader::Load(u"dialog-warning"_s));
+      rosetta_message->ShowMessage(tr("Akousma running under Rosetta"), tr("You are running Akousma under Rosetta. Running Akousma under Rosetta is unsupported and known to have issues. You should download Akousma for the correct CPU architecture from %1").arg(QLatin1String("<a href=\"https://github.com/Genki-jp0/Akousma/releases\">github.com/Genki-jp0/Akousma/releases</a>")), IconLoader::Load(u"dialog-warning"_s));
     }
   }
 #endif
@@ -2047,11 +2047,11 @@ void MainWindow::UpdateTrackSliderPosition() {
 void MainWindow::UpdateTaskbarProgress(const bool visible, const double progress) {
 
   QVariantMap map;
-  QDBusMessage msg = QDBusMessage::createSignal(u"/org/strawberrymusicplayer/strawberry"_s, u"com.canonical.Unity.LauncherEntry"_s, u"Update"_s);
+  QDBusMessage msg = QDBusMessage::createSignal(u"/io/github/genki_jp0/Akousma"_s, u"com.canonical.Unity.LauncherEntry"_s, u"Update"_s);
 
   map.insert(u"progress-visible"_s, visible);
   map.insert(u"progress"_s, progress);
-  msg << u"application://org.strawberrymusicplayer.strawberry.desktop"_s << map;
+  msg << u"application://io.github.genki_jp0.Akousma.desktop"_s << map;
 
   QDBusConnection::sessionBus().send(msg);
 
@@ -3463,7 +3463,7 @@ void MainWindow::CheckFullRescanRevisions() {
 
   // If we have any...
   if (!reasons.isEmpty()) {
-    QString message = tr("The version of Strawberry you've just updated to requires a full collection rescan because of the new features listed below:") + u"<ul>"_s;
+    QString message = tr("The version of Akousma you've just updated to requires a full collection rescan because of the new features listed below:") + u"<ul>"_s;
     for (const QString &reason : reasons) {
       message += "<li>"_L1 + reason + "</li>"_L1;
     }

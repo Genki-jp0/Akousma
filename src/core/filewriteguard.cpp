@@ -43,7 +43,7 @@ bool FileWriteGuard::Init() {
 
   if (!active_) return true;
 
-  temp_file_.setFileTemplate(QDir::tempPath() + "/strawberry_tag_XXXXXX."_L1 + QFileInfo(filename_).suffix());
+  temp_file_.setFileTemplate(QDir::tempPath() + "/akousma_tag_XXXXXX."_L1 + QFileInfo(filename_).suffix());
   if (!temp_file_.open()) {
     qLog(Error) << "Failed to create temporary file for" << filename_ << ":" << temp_file_.errorString();
     return false;
@@ -69,7 +69,7 @@ bool FileWriteGuard::Commit() {
   // Capture the original file's permissions so they can be restored: QTemporaryFile creates the temporary file with restrictive (owner-only) permissions, and it would otherwise carry those over to the destination once renamed into place.
   const QFile::Permissions permissions = QFile::permissions(filename_);
 
-  QTemporaryFile temp_file(fileinfo.absolutePath() + "/.strawberry_tag_XXXXXX"_L1);
+  QTemporaryFile temp_file(fileinfo.absolutePath() + "/.akousma_tag_XXXXXX"_L1);
   if (!temp_file.open()) {
     qLog(Error) << "Failed to create temporary file next to" << filename_ << ":" << temp_file.errorString();
     return false;

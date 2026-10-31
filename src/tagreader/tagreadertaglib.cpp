@@ -1502,7 +1502,7 @@ void TagReaderTagLib::SetUnsyncLyricsFrame(const QString &value, TagLib::ID3v2::
   // If no frames stored create empty frame
   if (frames_buffer.isEmpty()) {
     TagLib::ID3v2::UnsynchronizedLyricsFrame frame(TagLib::String::UTF8);
-    frame.setDescription("Strawberry editor");
+    frame.setDescription("Akousma editor");
     frames_buffer.push_back(frame.render());
   }
 
@@ -1551,7 +1551,7 @@ bool TagReaderTagLib::SetSyncLyricsFrame(const QString &value, TagLib::ID3v2::Ta
 
   if (!frame) {
     frame = new TagLib::ID3v2::SynchronizedLyricsFrame(TagLib::String::UTF8);
-    frame->setDescription("Strawberry editor");
+    frame->setDescription("Akousma editor");
     frame->setType(TagLib::ID3v2::SynchronizedLyricsFrame::Lyrics);
     frame->setTimestampFormat(TagLib::ID3v2::SynchronizedLyricsFrame::AbsoluteMilliseconds);
     // Add frame takes ownership and clears the memory

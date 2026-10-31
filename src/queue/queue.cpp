@@ -44,7 +44,7 @@
 using namespace Qt::Literals::StringLiterals;
 
 namespace {
-constexpr char kRowsMimetype[] = "application/x-strawberry-queue-rows";
+constexpr char kRowsMimetype[] = "application/x-akousma-queue-rows";
 }
 
 Queue::Queue(Playlist *playlist, QObject *parent) : QAbstractProxyModel(parent), playlist_(playlist), total_length_ns_(0) {

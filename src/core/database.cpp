@@ -53,7 +53,7 @@ using namespace Qt::Literals::StringLiterals;
 const int Database::kSchemaVersion = 30;
 
 namespace {
-constexpr char kDatabaseFilename[] = "strawberry.db";
+constexpr char kDatabaseFilename[] = "akousma.db";
 constexpr int kMinSupportedSchemaVersion = 10;
 constexpr char kMagicAllSongsTables[] = "%allsongstables";
 }  // namespace
@@ -78,7 +78,7 @@ Database::Database(SharedPtr<TaskManager> task_manager, QObject *parent, const Q
     connection_id_ = sNextConnectionId++;
   }
 
-  directory_ = QDir::toNativeSeparators(StandardPaths::WritableLocation(StandardPaths::StandardLocation::AppLocalDataLocation)).replace(u"Strawberry"_s, u"strawberry"_s);
+  directory_ = QDir::toNativeSeparators(StandardPaths::WritableLocation(StandardPaths::StandardLocation::AppLocalDataLocation)).replace(u"Akousma"_s, u"akousma"_s);
 
   QMutexLocker l(&mutex_);
   Connect();

@@ -105,8 +105,8 @@ using namespace std::chrono_literals;
 using namespace Qt::Literals::StringLiterals;
 
 const char *Playlist::kCddaMimeType = "x-content/audio-cdda";
-const char *Playlist::kRowsMimetype = "application/x-strawberry-playlist-rows";
-const char *Playlist::kPlayNowMimetype = "application/x-strawberry-play-now";
+const char *Playlist::kRowsMimetype = "application/x-akousma-playlist-rows";
+const char *Playlist::kPlayNowMimetype = "application/x-akousma-play-now";
 const int Playlist::kUndoStackSize = 20;
 const int Playlist::kUndoItemLimit = 500;
 

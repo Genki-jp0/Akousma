@@ -124,7 +124,7 @@ bool CopyFileStaged(const QString &source, const QString &destination) {
   if (!source_file.open(QIODevice::ReadOnly)) return false;
 
   // The destination filename can be as long as the filesystem allows, so the temporary file has a short name, it's hidden in case it's left when copying is interrupted.
-  QTemporaryFile destination_file(QFileInfo(destination).absolutePath() + u"/.strawberry-XXXXXX"_s);
+  QTemporaryFile destination_file(QFileInfo(destination).absolutePath() + u"/.akousma-XXXXXX"_s);
   if (!destination_file.open()) return false;
 
   // The copy is also written to the storage before it's renamed, so a deferred write error, for example on a network filesystem, fails the copy, and the original is not removed when moving.

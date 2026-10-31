@@ -50,7 +50,7 @@ int main(int argc, char **argv) {
 #endif
 
   // Use the same application name and version as the application, the version is part of the user agent sent by the network tests.
-  QCoreApplication::setApplicationName(u"Strawberry"_s);
+  QCoreApplication::setApplicationName(u"Akousma"_s);
   QCoreApplication::setApplicationVersion(QStringLiteral(STRAWBERRY_VERSION_DISPLAY));
 
   // Keep settings written by the tests out of the users own configuration.

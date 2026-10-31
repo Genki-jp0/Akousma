@@ -105,9 +105,9 @@ const QDBusArgument &operator>>(const QDBusArgument &arg, MaybePlaylist &playlis
 
 namespace {
 constexpr char kMprisObjectPath[] = "/org/mpris/MediaPlayer2";
-constexpr char kServiceName[] = "org.mpris.MediaPlayer2.strawberry";
+constexpr char kServiceName[] = "org.mpris.MediaPlayer2.akousma";
 constexpr char kFreedesktopPath[] = "org.freedesktop.DBus.Properties";
-constexpr char kTrackPrefix[] = "/org/strawberrymusicplayer/strawberry/Track/";
+constexpr char kTrackPrefix[] = "/io/github/genki_jp0/Akousma/Track/";
 constexpr char kNoTrack[] = "/org/mpris/MediaPlayer2/TrackList/NoTrack";
 constexpr int kTracksSubsetCount = 20;
 }  // namespace
@@ -840,7 +840,7 @@ quint32 Mpris2::PlaylistCount() const {
 QStringList Mpris2::Orderings() const { return QStringList() << u"UserDefined"_s << u"Alphabetical"_s; }
 
 QDBusObjectPath Mpris2::MakePlaylistPath(const int id) const {
-  return QDBusObjectPath(QStringLiteral("/org/strawberrymusicplayer/strawberry/PlaylistId/%1").arg(id));
+  return QDBusObjectPath(QStringLiteral("/io/github/genki_jp0/Akousma/PlaylistId/%1").arg(id));
 }
 
 MaybePlaylist Mpris2::ActivePlaylist() const {

@@ -64,7 +64,7 @@ using std::make_shared;
 const Song::Source JellyfinService::kSource = Song::Source::Jellyfin;
 
 namespace {
-constexpr char kClientName[] = "Strawberry";
+constexpr char kClientName[] = "Akousma";
 // Property of a reply which redirect was refused, the host it redirected to.
 constexpr char kRedirectRefusedProperty[] = "jellyfin_redirect_refused";
 constexpr char kAuthEndpoint[] = "Users/AuthenticateByName";
@@ -614,7 +614,7 @@ QString JellyfinService::CreateAuthorizationHeader(const QString &access_token, 
     s.beginGroup(JellyfinSettings::kSettingsGroup);
     device_id_ = s.value(JellyfinSettings::kDeviceId).toString();
     if (device_id_.isEmpty()) {
-      device_id_ = u"strawberry-"_s + Utilities::CryptographicRandomString(16);
+      device_id_ = u"akousma-"_s + Utilities::CryptographicRandomString(16);
       s.setValue(JellyfinSettings::kDeviceId, device_id_);
     }
     s.endGroup();

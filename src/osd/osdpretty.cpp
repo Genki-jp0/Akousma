@@ -260,7 +260,7 @@ void OSDPretty::InitLayerShell() {
   // Show the OSD above other windows without taking the keyboard focus, and without reserving space on the screen.
   // An exclusive zone of -1 places the OSD relative to the whole screen and not next to panels, so the margins are in the same coordinates as the screen geometry, which PopupGeometry() returns.
   // Qt doesn't know the space panels reserve on Wayland, so with an exclusive zone of 0 the compositor would place the OSD next to them, off by their size from the calculated position.
-  layer_shell_window_->setScope(u"strawberry-osd"_s);
+  layer_shell_window_->setScope(u"akousma-osd"_s);
   layer_shell_window_->setLayer(LayerShellQt::Window::LayerOverlay);
   layer_shell_window_->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityNone);
   layer_shell_window_->setExclusiveZone(-1);

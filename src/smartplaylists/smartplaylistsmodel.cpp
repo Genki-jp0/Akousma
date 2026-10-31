@@ -52,7 +52,7 @@ constexpr char kData[] = "data";
 }  // namespace
 
 const char *SmartPlaylistsModel::kSettingsGroup = "SerializedSmartPlaylists";
-const char *SmartPlaylistsModel::kSmartPlaylistsMimeType = "application/x-strawberry-smart-playlist-generator";
+const char *SmartPlaylistsModel::kSmartPlaylistsMimeType = "application/x-akousma-smart-playlist-generator";
 const int SmartPlaylistsModel::kSmartPlaylistsVersion = 1;
 
 SmartPlaylistsModel::SmartPlaylistsModel(SharedPtr<CollectionBackend> collection_backend, QObject *parent)
