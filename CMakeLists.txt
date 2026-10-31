@@ -478,7 +478,7 @@ if(NOT CMAKE_CROSSCOMPILING)
       QT_SQLITE_SAME_LIBRARY_TEST
     )
     if(NOT QT_SQLITE_SAME_LIBRARY_TEST)
-      message(FATAL_ERROR "The Qt sqlite driver is not using the same sqlite library as strawberry (${SQLITE_LINK_LIBRARIES}), Qt is probably built with its own sqlite library instead of the system sqlite library. Strawberry uses sqlite functions on the database connections opened by Qt, which requires the same sqlite library.")
+      message(FATAL_ERROR "The Qt sqlite driver is not using the same sqlite library as akousma (${SQLITE_LINK_LIBRARIES}), Qt is probably built with its own sqlite library instead of the system sqlite library. Akousma uses sqlite functions on the database connections opened by Qt, which requires the same sqlite library.")
     endif()
   endif()
   unset(CMAKE_REQUIRED_FLAGS)
