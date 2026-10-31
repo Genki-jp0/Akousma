@@ -1,0 +1,8 @@
+# Akousma: predictable line endings on every platform, whatever core.autocrlf is set to.
+# Text files are stored with LF and checked out with LF (the sources are also handed out as archives made on Linux).
+* text=auto eol=lf
+
+# Kept byte for byte: the bundled icon sets are original theme files (some of them have CRLF line endings).
+data/iconsets/** -text
+# Upstream file with CRLF line endings.
+src/engine/AsyncOperations.h -text
