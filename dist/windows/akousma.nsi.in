@@ -25,6 +25,10 @@
   !define arch_x64
 !else if "@TARGET_ARCH@" == "arm64"
   !define arch_arm64
+!else if "@TARGET_ARCH@" == "i686"
+  !define arch_x86
+!else if "@TARGET_ARCH@" == "x86"
+  !define arch_x86
 !else if "@TARGET_ARCH@" == ""
   !error "Missing TARGET_ARCH"
 !else
@@ -37,6 +41,31 @@
 
 !ifdef arch_arm64
   !define arch "arm64"
+!endif
+
+!ifdef arch_x86
+  !define arch "x86"
+!endif
+
+; 32-bit (x86) builds install to Program Files (x86); x64 and arm64 to Program Files.
+!ifdef arch_x86
+  !define PROGRAM_FILES_DIR "$PROGRAMFILES"
+!else
+  !define PROGRAM_FILES_DIR "$PROGRAMFILES64"
+!endif
+
+; Installers made before the x86 build existed didn't record the architecture in the uninstall key: they were x64 (or
+; arm64, for an arm64 installer).
+!ifdef arch_x86
+  !define PREVIOUS_ARCH_DEFAULT "x64"
+!else
+  !define PREVIOUS_ARCH_DEFAULT "${arch}"
+!endif
+
+!if "@MINGW@" == "1"
+!ifdef arch_x86
+  !error "x86 installers are made with MSVC only (the MinGW file list is 64-bit)"
+!endif
 !endif
 
 
@@ -77,14 +106,14 @@
   !define PRODUCT_NAME "Akousma Debug"
   !define PRODUCT_NAME_SHORT "Akousma"
   !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME_SHORT}Debug"
-  !define PRODUCT_INSTALL_DIR "$PROGRAMFILES64\Akousma Debug"
+  !define PRODUCT_INSTALL_DIR "${PROGRAM_FILES_DIR}\Akousma Debug"
   ; Akousma installers made before the rename used the Strawberry uninstall key.
   !define PRODUCT_LEGACY_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\StrawberryDebug"
 !else
   !define PRODUCT_NAME "Akousma"
   !define PRODUCT_NAME_SHORT "Akousma"
   !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME_SHORT}"
-  !define PRODUCT_INSTALL_DIR "$PROGRAMFILES64\Akousma"
+  !define PRODUCT_INSTALL_DIR "${PROGRAM_FILES_DIR}\Akousma"
   ; Akousma installers made before the rename used the Strawberry uninstall key.
   !define PRODUCT_LEGACY_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\Strawberry"
 !endif
@@ -255,10 +284,24 @@ FunctionEnd
   ${EndIf}
 !macroend
 
+; The installer and the uninstaller use the 64-bit registry view, the x86 one too (on 64-bit Windows), so x64 and x86
+; Akousma share one uninstall entry: installing one architecture replaces the other, like an upgrade.
+!macro SetAkousmaRegView
+!ifdef arch_x86
+  ${If} ${RunningX64}
+    SetRegView 64
+  ${EndIf}
+!else
+  SetRegView 64
+!endif
+!macroend
+
 ; Check for previous installation, and call the uninstaller if any
 Function CheckPreviousInstall
 
   ReadRegStr $R0 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "UninstallString"
+  ; The architecture of the installed Akousma (x64, x86, arm64), empty for installers made before it was recorded.
+  ReadRegStr $R5 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "Architecture"
 
   ; Akousma installers made before the rename registered under the Strawberry uninstall key.
   ; Only take that key when it belongs to Akousma, a real Strawberry installation is left alone.
@@ -275,7 +318,7 @@ Function CheckPreviousInstall
   ${If} $R0 == ""
     SetRegView 32
     ReadRegStr $R0 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "UninstallString"
-    SetRegView 64
+    !insertmacro SetAkousmaRegView
   ${EndIf}
 
   ${If} $R0 == ""
@@ -285,10 +328,16 @@ Function CheckPreviousInstall
 
   ${GetParent} "$R0" $R1
 
+  ${If} $R5 == ""
+    StrCpy $R5 "${PREVIOUS_ARCH_DEFAULT}"
+  ${EndIf}
+
   ; Install to the same directory, unless another directory was given with /D.
   ; An installation made before the rename is in the old "Strawberry Music Player" directory, the new one goes to the new default directory.
+  ; So is one of another architecture (x64 in Program Files, x86 in Program Files (x86)): it is removed, this one goes to its own default directory.
   ${If} $INSTDIR == "${PRODUCT_INSTALL_DIR}"
   ${AndIf} $R4 == "0"
+  ${AndIf} $R5 == "${arch}"
     StrCpy $INSTDIR $R1
   ${EndIf}
 
@@ -320,8 +369,8 @@ FunctionEnd
 
 Function .onInit
 
-  ; Akousma is 64-bit, use the 64-bit registry view like it does.
-  SetRegView 64
+  ; The 64-bit registry view, like 64-bit Akousma uses (see SetAkousmaRegView).
+  !insertmacro SetAkousmaRegView
 
   !insertmacro AbortIfAkousmaRunning
 
@@ -331,7 +380,7 @@ FunctionEnd
 
 Function un.onInit
 
-  SetRegView 64
+  !insertmacro SetAkousmaRegView
 
   !insertmacro AbortIfAkousmaRunning
 
@@ -867,6 +916,8 @@ Section "Uninstaller"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "Publisher" "${PRODUCT_PUBLISHER}"
   WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "NoModify" 1
   WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "NoRepair" 1
+  ; x64, x86 or arm64: CheckPreviousInstall of the next installer reads it.
+  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "Architecture" "${arch}"
 
   ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
   IntFmt $0 "0x%08X" $0
@@ -1011,6 +1062,10 @@ Section "Uninstall"
   Delete "$INSTDIR\libcrypto-4-arm64.dll"
   Delete "$INSTDIR\libssl-4-arm64.dll"
 !endif
+!ifdef arch_x86
+  Delete "$INSTDIR\libcrypto-4.dll"
+  Delete "$INSTDIR\libssl-4.dll"
+!endif
 
   Delete "$INSTDIR\FLAC.dll"
   Delete "$INSTDIR\brotlicommon.dll"
@@ -1114,6 +1169,8 @@ Section "Uninstall"
   Delete "$INSTDIR\libcrypto-*.dll"
   Delete "$INSTDIR\libssl-*.dll"
 !ifdef msvc && arch_arm64
+  Delete "$INSTDIR\fftw3.dll"
+!else ifdef msvc && arch_x86
   Delete "$INSTDIR\fftw3.dll"
 !else
   Delete "$INSTDIR\libfftw3-3.dll"

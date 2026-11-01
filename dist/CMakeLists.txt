@@ -4,6 +4,10 @@ if(NOT DEFINED TARGET_ARCH)
     get_filename_component(compiler_filename "${CMAKE_C_COMPILER}" NAME)
     string(REGEX MATCH "^([A-Za-z0-9_]+)-w64-mingw32" _ "${compiler_filename}")
     set(target_processor "${CMAKE_MATCH_1}")
+  elseif(MSVC AND CMAKE_CXX_COMPILER_ARCHITECTURE_ID)
+    # MSVC: the compiler's target (X86, x64, ARM64). CMAKE_SYSTEM_PROCESSOR is the host's in a native build, so a 32-bit
+    # build on 64-bit Windows would report AMD64.
+    set(target_processor "${CMAKE_CXX_COMPILER_ARCHITECTURE_ID}")
   else()
     set(target_processor "${CMAKE_SYSTEM_PROCESSOR}")
   endif()
