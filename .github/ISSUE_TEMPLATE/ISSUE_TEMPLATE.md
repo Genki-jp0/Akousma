@@ -7,9 +7,9 @@ assignees: ''
 
 ---
 
-- [ ] I have checked the [FAQ](https://wiki.strawberrymusicplayer.org/wiki/FAQ) for answers.
-- [ ] I have checked the [Changelog](https://github.com/strawberrymusicplayer/strawberry/blob/master/Changelog) that the issue is not already fixed. 
-- [ ] I believe this issue is a bug, and not a general technical issue, question or feature requests that can be discussed on the [forum](https://forum.strawberrymusicplayer.org/). 
+- [ ] I have searched the [existing issues](https://github.com/Genki-jp0/Akousma/issues) and this is not already reported.
+- [ ] I have checked that the issue still happens with the latest Akousma version.
+- [ ] I believe this issue is a bug in Akousma, and not a general technical issue, question or feature request.
 
 **Describe the bug**
 A clear and concise description of what the bug is.
@@ -25,7 +25,7 @@ If applicable, add screenshots to help explain your problem.
 
 **System Information:**
  - Operating system:
- - Strawberry Version:
+ - Akousma Version:
 
 **Additional context**
 Add any other context about the problem here.

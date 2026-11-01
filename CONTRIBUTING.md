@@ -1,25 +1,25 @@
 # Contribution guidelines
 
-Strawberry is an free and open-source project, it is possible and encouraged to participate in the development.
+Akousma is a free and open-source project, and it is possible and encouraged to participate in the development.
 You can also participate by answering questions, reporting bugs or helping with documentation.
 
 
 ## Submitting a pull request
 
-You should start by creating a fork of the Strawberry repository using the GitHub
+You should start by creating a fork of the Akousma repository using the GitHub
 fork button, after that you can clone the repository from your fork.
 Replace "username" with your own.
 
 
 ### Clone the repository
 
-    git clone git@github.com:username/strawberry.git
-    cd strawberry
+    git clone git@github.com:username/Akousma.git
+    cd Akousma
 
 
 ### Setup the remote
 
-    git remote add upstream git@github.com:strawberrymusicplayer/strawberry.git
+    git remote add upstream git@github.com:Genki-jp0/Akousma.git
 
 
 ### Create a new branch
@@ -111,5 +111,5 @@ branch to squash any commits, or to change the commit message.
 
 ### Delete your fork
 
-If you do not plan to work more on Strawberry, please delete your fork from GitHub
+If you do not plan to work more on Akousma, please delete your fork from GitHub
 once the pull requests are merged.
