@@ -56,9 +56,6 @@ class CoverProviders : public QObject {
 
   int NextId();
 
- private Q_SLOTS:
-  void ProviderDestroyed();
-
  private:
   Q_DISABLE_COPY(CoverProviders)
 

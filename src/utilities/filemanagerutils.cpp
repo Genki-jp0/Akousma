@@ -65,8 +65,9 @@ void OpenInFileManager(const QString &path, const QUrl &url) {
       static const QRegularExpression regex(u"[%][a-zA-Z]*( |$)"_s, QRegularExpression::CaseInsensitiveOption);
       cmd = cmd.remove(regex);
       command_params = cmd.split(u' ', Qt::SkipEmptyParts);
-      command = command_params.first();
-      command_params.removeFirst();
+      // Nothing left without the field codes, for example "Exec=%U".
+      if (command_params.isEmpty()) break;
+      command = command_params.takeFirst();
     }
     setting.endGroup();
     if (!command.isEmpty()) break;

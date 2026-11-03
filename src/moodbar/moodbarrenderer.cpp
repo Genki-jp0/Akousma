@@ -110,6 +110,9 @@ ColorVector MoodbarRenderer::Colors(const QByteArray &data, const MoodbarSetting
 
 void MoodbarRenderer::Render(const ColorVector &colors, QPainter *p, const QRect rect) {
 
+  // Nothing to draw in, and a rect without height would draw above itself.
+  if (rect.width() <= 0 || rect.height() <= 0) return;
+
   // Sample the colors and map them to screen pixels.
   ColorVector screen_colors;
   screen_colors.reserve(rect.width());
@@ -133,13 +136,16 @@ void MoodbarRenderer::Render(const ColorVector &colors, QPainter *p, const QRect
     screen_colors.append(QColor(r / n, g / n, b / n));
   }
 
+  // A moodbar one pixel high has no half height, don't divide by 0.
+  const int half_height = qMax(1, rect.height() / 2);
+
   // Draw the actual moodbar.
   for (int x = 0; x < rect.width(); x++) {
     int h = 0, s = 0, v = 0;
     screen_colors[x].getHsv(&h, &s, &v);
 
     for (int y = 0; y <= rect.height() / 2; ++y) {
-      float coeff = static_cast<float>(y) / static_cast<float>(rect.height() / 2);  // NOLINT(bugprone-integer-division)
+      float coeff = static_cast<float>(y) / static_cast<float>(half_height);
       float coeff2 = 1.0F - ((1.0F - coeff) * (1.0F - coeff));
       coeff = 1.0F - (1.0F - coeff) / 2.0F;
       coeff2 = 1.F - (1.F - coeff2) / 2.0F;

@@ -118,7 +118,8 @@ void CoverProviders::AddProvider(CoverProvider *provider) {
   {
     QMutexLocker locker(&mutex_);
     cover_providers_.insert(provider, provider->name());
-    QObject::connect(provider, &CoverProvider::destroyed, this, &CoverProviders::ProviderDestroyed);
+    // The provider is only a QObject when destroyed() is emitted, so remember the pointer here instead of casting sender() back to a CoverProvider later.
+    QObject::connect(provider, &CoverProvider::destroyed, this, [this, provider]() { RemoveProvider(provider); });
     // Increment under the mutex - NextOrderId is a plain static int shared by all registrations.
     provider->set_order(++NextOrderId);
   }
@@ -146,13 +147,6 @@ void CoverProviders::RemoveProvider(CoverProvider *provider) {
   else {
     qLog(Debug) << "Unregistered cover provider" << name;
   }
-
-}
-
-void CoverProviders::ProviderDestroyed() {
-
-  CoverProvider *provider = static_cast<CoverProvider*>(sender());
-  RemoveProvider(provider);
 
 }
 

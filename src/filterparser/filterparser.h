@@ -72,6 +72,8 @@ class FilterParser {
   QString::const_iterator iter_;
   QString::const_iterator end_;
   QString buf_;
+  // How deeply parentheses and negations are nested at the current position, see kMaxNestingDepth.
+  int depth_;
 };
 
 #endif  // FILTERPARSER_H

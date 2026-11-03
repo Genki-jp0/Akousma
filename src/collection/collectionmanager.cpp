@@ -266,7 +266,8 @@ void CollectionManager::UpdateWatcherPaused() {
 
 void CollectionManager::ReloadSettings() {
 
-  watcher_->ReloadSettingsAsync();
+  // Also called from the constructor, before Init() created the watcher, which reads its settings itself when it is created.
+  if (watcher_) watcher_->ReloadSettingsAsync();
   model_->ReloadSettings();
 
   Settings s;

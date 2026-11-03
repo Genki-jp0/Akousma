@@ -183,4 +183,32 @@ TEST(FilterParserTest, UnknownLength) {
 
 }
 
+// Regression test: every '(' and leading '-' recursed into the parser without a limit, so a long run of them typed or pasted into the search field overflowed the stack and crashed.
+TEST(FilterParserTest, DeeplyNestedParenthesesDontOverflowTheStack) {
+
+  const QString filter = QString(200000, u'(') + u"title"_s + QString(200000, u')');
+  const ScopedPtr<FilterTree> tree(FilterParser(filter).parse());
+  ASSERT_TRUE(tree);
+  tree->accept(SongWithTitle(u"title"_s));
+
+}
+
+TEST(FilterParserTest, DeeplyNestedNegationsDontOverflowTheStack) {
+
+  const QString filter = QString(200000, u'-') + u"title"_s;
+  const ScopedPtr<FilterTree> tree(FilterParser(filter).parse());
+  ASSERT_TRUE(tree);
+  tree->accept(SongWithTitle(u"title"_s));
+
+}
+
+TEST(FilterParserTest, ModeratelyNestedFiltersStillWork) {
+
+  EXPECT_TRUE(Accepts(QString(50, u'(') + u"title:abc"_s + QString(50, u')'), SongWithTitle(u"abc"_s)));
+  EXPECT_FALSE(Accepts(QString(50, u'(') + u"title:abc"_s + QString(50, u')'), SongWithTitle(u"xyz"_s)));
+  EXPECT_FALSE(Accepts(u"--- title:abc"_s, SongWithTitle(u"abc"_s)));
+  EXPECT_TRUE(Accepts(u"-- title:abc"_s, SongWithTitle(u"abc"_s)));
+
+}
+
 }  // namespace

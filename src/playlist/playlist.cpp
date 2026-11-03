@@ -43,6 +43,8 @@
 #include <QMap>
 #include <QHash>
 #include <QSet>
+#include <QMutex>
+#include <QMutexLocker>
 #include <QMimeData>
 #include <QVariant>
 #include <QString>
@@ -103,6 +105,19 @@
 using std::make_shared;
 using namespace std::chrono_literals;
 using namespace Qt::Literals::StringLiterals;
+
+namespace {
+
+// The playlists of this process, so the address of a source playlist in dragged rows can be checked before it's used.
+QMutex sLivePlaylistsMutex;
+QSet<const Playlist*> sLivePlaylists;
+
+bool IsLivePlaylist(const Playlist *playlist) {
+  QMutexLocker l(&sLivePlaylistsMutex);
+  return sLivePlaylists.contains(playlist);
+}
+
+}  // namespace
 
 const char *Playlist::kCddaMimeType = "x-content/audio-cdda";
 const char *Playlist::kRowsMimetype = "application/x-akousma-playlist-rows";
@@ -204,9 +219,18 @@ Playlist::Playlist(const SharedPtr<TaskManager> task_manager,
   timer_save_->setSingleShot(true);
   timer_save_->setInterval(900ms);
 
+  {
+    QMutexLocker l(&sLivePlaylistsMutex);
+    sLivePlaylists.insert(this);
+  }
+
 }
 
 Playlist::~Playlist() {
+  {
+    QMutexLocker l(&sLivePlaylistsMutex);
+    sLivePlaylists.remove(this);
+  }
   items_.clear();
   ClearCollectionItems();
 }
@@ -1127,9 +1151,25 @@ bool Playlist::dropMimeData(const QMimeData *data, Qt::DropAction action, const 
       pid = own_pid;
     }
 
-    std::stable_sort(source_rows.begin(), source_rows.end());  // Make sure we take them in order
+    // Anything can be in the data: another application can make it, and the source playlist can have been closed or changed during the drag.
+    // So only use a playlist of this process that still exists, and only the rows it has, each once.
+    if (source_playlist != this && (pid != own_pid || !IsLivePlaylist(source_playlist))) {
+      source_playlist = nullptr;
+    }
+    if (source_playlist) {
+      source_rows.removeIf([source_playlist](const int source_row) { return !source_playlist->has_item_at(source_row); });
+    }
+    else {
+      source_rows.clear();
+    }
 
-    if (source_playlist == this) {
+    std::stable_sort(source_rows.begin(), source_rows.end());  // Make sure we take them in order
+    source_rows.erase(std::unique(source_rows.begin(), source_rows.end()), source_rows.end());
+
+    if (source_rows.isEmpty()) {
+      // Nothing to move or copy.
+    }
+    else if (source_playlist == this) {
       // Dragged from this playlist - rearrange the items
       undo_stack_->push(new PlaylistUndoCommandMoveItems(this, source_rows, row));
     }

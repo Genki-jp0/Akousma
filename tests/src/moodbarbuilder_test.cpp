@@ -57,4 +57,29 @@ TEST(MoodbarBuilderTest, FramesGiveDataForWidth) {
 
 }
 
+// Regression test: the averaged color values (0 - 255) were converted from double to char, which is signed, so every value above 127 was out of range, which is undefined behavior.
+// Run with -fsanitize=float-cast-overflow (not part of GCC's -fsanitize=undefined) to see it.
+TEST(MoodbarBuilderTest, BrightFramesGiveFullByteValues) {
+
+  MoodbarBuilder builder;
+  builder.Init(kBands, kRate);
+
+  QList<double> magnitudes(kBands);
+  for (int frame = 0; frame < 100; ++frame) {
+    for (int band = 0; band < kBands; ++band) {
+      magnitudes[band] = static_cast<double>(frame);
+    }
+    builder.AddFrame(magnitudes.constData(), kBands);
+  }
+
+  const QByteArray data = builder.Finish(100);
+  ASSERT_EQ(300, data.size());
+  int maximum = 0;
+  for (const char c : data) {
+    maximum = qMax(maximum, static_cast<int>(static_cast<unsigned char>(c)));
+  }
+  EXPECT_GT(maximum, 127);
+
+}
+
 }  // namespace

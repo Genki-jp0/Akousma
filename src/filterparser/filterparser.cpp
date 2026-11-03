@@ -152,9 +152,13 @@ const QMap<FilterColumn, ColumnType> &GetColumnTypesMap() {
 
 }
 
+// Every '(' and leading '-' recurses into the parser, and the tree it builds is evaluated and deleted recursively too.
+// Limit the nesting, so a long run of them typed or pasted into a search field can't overflow the stack.
+constexpr int kMaxNestingDepth = 100;
+
 }  // namespace
 
-FilterParser::FilterParser(const QString &filter_string) : filter_string_(filter_string), iter_{}, end_{} {}
+FilterParser::FilterParser(const QString &filter_string) : filter_string_(filter_string), iter_{}, end_{}, depth_(0) {}
 
 FilterTree *FilterParser::parse() {
 
@@ -162,6 +166,7 @@ FilterTree *FilterParser::parse() {
   buf_.clear();
   iter_ = filter_string_.constBegin();
   end_ = filter_string_.constEnd();
+  depth_ = 0;
 
   return parseOrGroup();
 
@@ -281,10 +286,17 @@ FilterTree *FilterParser::parseSearchExpression() {
 
   advance();
   if (iter_ == end_) return new FilterTreeNop;
+  if ((*iter_ == u'(' || *iter_ == u'-') && depth_ >= kMaxNestingDepth) {
+    // Too deeply nested, ignore the rest of the filter.
+    iter_ = end_;
+    return new FilterTreeNop;
+  }
   if (*iter_ == u'(') {
     ++iter_;
     advance();
+    ++depth_;
     FilterTree *tree = parseOrGroup();
+    --depth_;
     advance();
     if (iter_ != end_) {
       if (*iter_ == u')') {
@@ -295,7 +307,9 @@ FilterTree *FilterParser::parseSearchExpression() {
   }
   else if (*iter_ == u'-') {
     ++iter_;
+    ++depth_;
     FilterTree *tree = parseSearchExpression();
+    --depth_;
     if (tree->type() != FilterTree::FilterType::Nop) return new FilterTreeNot(tree);
     return tree;
   }

@@ -189,9 +189,10 @@ QByteArray MoodbarBuilder::Finish(const int width) {
 
     const int n = end - start;
 
-    *(data++) = static_cast<char>(rgb.r / n);
-    *(data++) = static_cast<char>(rgb.g / n);
-    *(data++) = static_cast<char>(rgb.b / n);
+    // The values are 0 - 255, which doesn't fit in a (signed) char, convert them to unsigned char first.
+    *(data++) = static_cast<char>(static_cast<unsigned char>(qBound(0.0, rgb.r / n, 255.0)));
+    *(data++) = static_cast<char>(static_cast<unsigned char>(qBound(0.0, rgb.g / n, 255.0)));
+    *(data++) = static_cast<char>(static_cast<unsigned char>(qBound(0.0, rgb.b / n, 255.0)));
 
   }
 

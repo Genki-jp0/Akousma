@@ -66,7 +66,9 @@ TEST(CDDAUrlTest, LinuxUrlsAreUnchanged) {
 
 TEST(CDDAUrlTest, WindowsDriveUrls) {
 
-  for (const QString &device : QStringList() << u"D:"_s << u"\\\\.\\D:"_s << u"d:"_s) {
+  // A named list: operator<< returns a reference to the temporary list, which a range-based for loop doesn't keep alive, so iterating it read freed stack memory.
+  const QStringList devices = QStringList() << u"D:"_s << u"\\\\.\\D:"_s << u"d:"_s;
+  for (const QString &device : devices) {
     const QUrl device_url = CDDAUrl::DeviceUrl(device);
     EXPECT_TRUE(device_url.isValid()) << device.toStdString();
     EXPECT_EQ(device_url.scheme(), u"cdda"_s);
@@ -86,7 +88,8 @@ TEST(CDDAUrlTest, WindowsDriveUrls) {
 
 TEST(CDDAUrlTest, TrackUrlRoundTrip) {
 
-  for (const QString &device : QStringList() << u"/dev/sr0"_s << u"/dev/sr1"_s << u"D:"_s << u"\\\\.\\Z:"_s) {
+  const QStringList devices = QStringList() << u"/dev/sr0"_s << u"/dev/sr1"_s << u"D:"_s << u"\\\\.\\Z:"_s;
+  for (const QString &device : devices) {
     for (const int track : {1, 9, 10, 99}) {
       const QUrl track_url = CDDAUrl::TrackUrl(CDDAUrl::DeviceUrl(device), track);
       // As saved in a playlist and read back.
@@ -117,7 +120,8 @@ TEST(CDDAUrlTest, DefaultDriveTrack) {
 
 TEST(CDDAUrlTest, NotTrackUrls) {
 
-  for (const QString &url_str : QStringList() << u"file:///D:/3"_s << u"cdda:///D:"_s << u"cdda:///D:/x"_s << u"cdda:///D:/0"_s << u"cdda:///dev/sr0/-1"_s << u"cdda://xa"_s) {
+  const QStringList url_strs = QStringList() << u"file:///D:/3"_s << u"cdda:///D:"_s << u"cdda:///D:/x"_s << u"cdda:///D:/0"_s << u"cdda:///dev/sr0/-1"_s << u"cdda://xa"_s;
+  for (const QString &url_str : url_strs) {
     QString device;
     int track = 0;
     EXPECT_FALSE(CDDAUrl::ParseTrackUrl(QUrl(url_str), device, track)) << url_str.toStdString();

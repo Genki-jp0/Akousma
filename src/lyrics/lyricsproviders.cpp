@@ -103,7 +103,8 @@ void LyricsProviders::AddProvider(LyricsProvider *provider) {
   {
     QMutexLocker locker(&mutex_);
     lyrics_providers_.insert(provider, provider->name());
-    QObject::connect(provider, &LyricsProvider::destroyed, this, &LyricsProviders::ProviderDestroyed);
+    // The provider is only a QObject when destroyed() is emitted, so remember the pointer here instead of casting sender() back to a LyricsProvider later.
+    QObject::connect(provider, &LyricsProvider::destroyed, this, [this, provider]() { RemoveProvider(provider); });
   }
 
   provider->set_order(++NextOrderId);
@@ -131,13 +132,6 @@ void LyricsProviders::RemoveProvider(LyricsProvider *provider) {
   else {
     qLog(Debug) << "Unregistered lyrics provider" << name;
   }
-
-}
-
-void LyricsProviders::ProviderDestroyed() {
-
-  LyricsProvider *provider = static_cast<LyricsProvider*>(sender());
-  RemoveProvider(provider);
 
 }
 
