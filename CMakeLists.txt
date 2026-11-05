@@ -408,8 +408,17 @@ optional_component(EBUR128 ON "EBU R 128 loudness normalization"
 )
 
 if(APPLE)
-  optional_component(SPARKLE ON "Sparkle integration"
+  # Sparkle needs an update feed of Akousma's own (Info.plist SUFeedURL and SUPublicEDKey), so it is only on by default with one.
+  set(AKOUSMA_SPARKLE_FEED_URL "" CACHE STRING "Sparkle update feed (appcast) URL for the macOS app, @TARGET_ARCH@ is replaced with the architecture (empty: no Sparkle)")
+  set(AKOUSMA_SPARKLE_PUBLIC_ED_KEY "" CACHE STRING "Sparkle EdDSA public key (SUPublicEDKey) for the update feed")
+  if(AKOUSMA_SPARKLE_FEED_URL)
+    set(ENABLE_SPARKLE_DEFAULT ON)
+  else()
+    set(ENABLE_SPARKLE_DEFAULT OFF)
+  endif()
+  optional_component(SPARKLE ${ENABLE_SPARKLE_DEFAULT} "Sparkle integration"
     DEPENDS "Sparkle" SPARKLE
+    DEPENDS "an update feed (AKOUSMA_SPARKLE_FEED_URL)" AKOUSMA_SPARKLE_FEED_URL
   )
 endif()
 
