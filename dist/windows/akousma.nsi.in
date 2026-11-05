@@ -199,6 +199,10 @@ RequestExecutionLevel admin
 ; "1" when "Include saved passwords" is ticked on the finish page, read by ImportFromOtherPlayer.
 Var ImportPasswords
 
+; "1" when FinishPageShow ticked the import, read by FinishPageLeave, and when the user unticked it again, read by .onGUIEnd.
+Var ImportProposed
+Var ImportDeclined
+
 ; The "Launch Akousma" checkbox of the finish page, and "1" when it is ticked, read by .onGUIEnd.
 Var LaunchCheckbox
 Var LaunchAkousma
@@ -207,24 +211,33 @@ Var LaunchAkousma
 Var PreviousUninstaller
 Var PreviousInstallDir
 
-; Import the settings, collection and album covers of Strawberry or Clementine into the new installation, the existing Akousma settings and collection are backed up first.
+; Start akousma.exe with the command line options on the top of the stack as the logged in user, unelevated.
 ; The installer runs elevated, and with "over the shoulder" UAC elevation it even runs as a different administrator account than the logged in user.
 ; The settings are in HKCU and the collection is under %LOCALAPPDATA%, so the import has to run as the logged in user, unelevated, not as the installer.
 ; akousma.exe is therefore started through a shortcut opened by the desktop shell: explorer.exe runs as the logged in user without elevation,
 ; and an elevated process asking it to open a file hands the request to that running shell instead of starting an elevated one.
+Function StartAkousmaAsUser
+  Exch $0
+  CreateShortCut "$INSTDIR\akousma-import.lnk" "$INSTDIR\akousma.exe" "$0"
+  Exec '"$WINDIR\explorer.exe" "$INSTDIR\akousma-import.lnk"'
+  ; Give the shell time to open the shortcut before it is removed again.
+  Sleep 3000
+  Delete "$INSTDIR\akousma-import.lnk"
+  Pop $0
+FunctionEnd
+
+; Import the settings, collection and album covers of Strawberry or Clementine into the new installation, the existing Akousma settings and collection are backed up first.
+; Runs as the logged in user, see StartAkousmaAsUser.
 ; The finish page is not shown for silent installs, which may run without anybody logged in, Akousma then offers the import itself on its first start.
 ; Saved passwords and logins are only imported with --import-passwords, when "Include saved passwords" is ticked.
 Function ImportFromOtherPlayer
   ${If} ${FileExists} "$INSTDIR\akousma.exe"
     ${If} $ImportPasswords == "1"
-      CreateShortCut "$INSTDIR\akousma-import.lnk" "$INSTDIR\akousma.exe" "--import-from=auto --import-quiet --import-passwords"
+      Push "--import-from=auto --import-quiet --import-passwords"
     ${Else}
-      CreateShortCut "$INSTDIR\akousma-import.lnk" "$INSTDIR\akousma.exe" "--import-from=auto --import-quiet"
+      Push "--import-from=auto --import-quiet"
     ${EndIf}
-    Exec '"$WINDIR\explorer.exe" "$INSTDIR\akousma-import.lnk"'
-    ; Give the shell time to open the shortcut before it is removed again.
-    Sleep 3000
-    Delete "$INSTDIR\akousma-import.lnk"
+    Call StartAkousmaAsUser
   ${EndIf}
 FunctionEnd
 
@@ -247,8 +260,12 @@ Function FinishPageShow
   ${IfNot} ${Errors}
     StrCpy $0 "0"
   ${EndIf}
+  StrCpy $ImportProposed "0"
+  ; Not when a restart is needed: MUI2 shows the restart choice instead of the checkboxes then.
   ${If} $0 == "1"
+  ${AndIfNot} ${RebootFlag}
     SendMessage $mui.FinishPage.Run ${BM_SETCHECK} ${BST_CHECKED} 0
+    StrCpy $ImportProposed "1"
   ${EndIf}
   ; MUI2 has only two checkboxes, "Launch Akousma" goes below them, ticked by default.
   ; Not when a restart is needed (for the Visual C++ Runtime): MUI2 shows the restart choice instead of its checkboxes then.
@@ -267,6 +284,16 @@ Function FinishPageLeave
   ${If} $0 == ${BST_CHECKED}
     StrCpy $ImportPasswords "1"
   ${EndIf}
+  ; Unticking the proposed import declines it, Akousma then doesn't offer it again on its first start.
+  ; When it was not proposed, Strawberry and Clementine were not found, or Akousma has settings already, so Akousma would not offer it either,
+  ; unless the installer runs as another administrator ("over the shoulder" UAC), whose settings tell nothing about the logged in user's.
+  StrCpy $ImportDeclined "0"
+  ${If} $ImportProposed == "1"
+    SendMessage $mui.FinishPage.Run ${BM_GETCHECK} 0 0 $0
+    ${If} $0 != ${BST_CHECKED}
+      StrCpy $ImportDeclined "1"
+    ${EndIf}
+  ${EndIf}
   StrCpy $LaunchAkousma "0"
   ${IfNot} ${RebootFlag}
     ${NSD_GetState} $LaunchCheckbox $0
@@ -276,13 +303,19 @@ Function FinishPageLeave
   ${EndIf}
 FunctionEnd
 
-; Start Akousma when "Launch Akousma" was ticked, once the installer window is closed and after the import.
-; Like the import, it is started by the desktop shell, so it runs as the logged in user, unelevated, see ImportFromOtherPlayer.
-; Silent installs don't show the finish page, so they never start Akousma.
+; When the import was declined, tell Akousma not to offer it on its first start: akousma.exe --skip-import-prompt saves that in the settings of the logged in user and exits.
+; Start Akousma when "Launch Akousma" was ticked, once the installer window is closed and after the import or --skip-import-prompt.
+; Both are started by the desktop shell, so they run as the logged in user, unelevated, see StartAkousmaAsUser.
+; Silent installs don't show the finish page, so they never start Akousma, nor tell it anything.
 Function .onGUIEnd
+  ${If} $ImportDeclined == "1"
+  ${AndIf} ${FileExists} "$INSTDIR\akousma.exe"
+    Push "--skip-import-prompt"
+    Call StartAkousmaAsUser
+  ${EndIf}
   ${If} $LaunchAkousma == "1"
   ${AndIf} ${FileExists} "$INSTDIR\akousma.exe"
-    ; Akousma runs once per user: started while the import still runs, it would just exit. Wait for the import, up to 5 minutes.
+    ; Akousma runs once per user: started while the import or --skip-import-prompt still runs, it would just exit. Wait for them, up to 5 minutes.
     StrCpy $R1 0
     ${Do}
       LockedList::FindProcess /yesno akousma.exe
