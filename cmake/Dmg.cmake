@@ -30,10 +30,17 @@ if(MACDEPLOYTOOL_EXECUTABLE)
       set(CREATEDMG_SKIP_JENKINS_ARG "--skip-jenkins")
     endif()
     if(NOT DMG_NAME)
-      set(DMG_NAME akousma)
+      set(DMG_NAME Akousma)
+    endif()
+    # The architecture the build is for: a single CMAKE_OSX_ARCHITECTURES (e.g. x86_64 on Apple silicon), else the Mac's.
+    list(LENGTH CMAKE_OSX_ARCHITECTURES dmg_arch_count)
+    if(dmg_arch_count EQUAL 1)
+      set(DMG_ARCH "${CMAKE_OSX_ARCHITECTURES}")
+    else()
+      set(DMG_ARCH "${CMAKE_HOST_SYSTEM_PROCESSOR}")
     endif()
     add_custom_target(dmg
-      COMMAND ${CREATEDMG_EXECUTABLE} --volname Akousma --background "${CMAKE_SOURCE_DIR}/dist/macos/dmg_background.png" --app-drop-link 450 218 --icon akousma.app 150 218 --window-size 600 450 ${CREATEDMG_CODESIGN} ${CREATEDMG_SKIP_JENKINS_ARG} ${DMG_NAME}-${AKOUSMA_VERSION_PACKAGE}-${CMAKE_HOST_SYSTEM_PROCESSOR}.dmg akousma.app
+      COMMAND ${CREATEDMG_EXECUTABLE} --volname Akousma --background "${CMAKE_SOURCE_DIR}/dist/macos/dmg_background.png" --app-drop-link 450 218 --icon akousma.app 150 218 --window-size 600 450 ${CREATEDMG_CODESIGN} ${CREATEDMG_SKIP_JENKINS_ARG} ${DMG_NAME}-${AKOUSMA_VERSION_PACKAGE}-${DMG_ARCH}.dmg akousma.app
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     )
   endif()

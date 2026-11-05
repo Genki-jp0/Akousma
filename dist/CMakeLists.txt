@@ -31,7 +31,10 @@ if(RPM_DISTRO AND RPM_DATE)
 endif()
 
 if(APPLE)
-  if(DEFINED ENV{MACOSX_DEPLOYMENT_TARGET})
+  # The minimum macOS the build is for: CMAKE_OSX_DEPLOYMENT_TARGET (which CMake also takes from MACOSX_DEPLOYMENT_TARGET).
+  if(CMAKE_OSX_DEPLOYMENT_TARGET)
+    set(LSMinimumSystemVersion ${CMAKE_OSX_DEPLOYMENT_TARGET})
+  elseif(DEFINED ENV{MACOSX_DEPLOYMENT_TARGET})
     set(LSMinimumSystemVersion $ENV{MACOSX_DEPLOYMENT_TARGET})
   else()
     set(LSMinimumSystemVersion 12.0)
