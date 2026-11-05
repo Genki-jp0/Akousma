@@ -254,9 +254,6 @@
 #  include "core/sparkleupdater.h"
 #endif
 
-#ifdef HAVE_QTSPARKLE
-#  include <qtsparkle-qt6/Updater>
-#endif  // HAVE_QTSPARKLE
 
 #ifdef HAVE_DISCORD_RPC
 #  include "discord/discordrichpresence.h"
@@ -278,43 +275,6 @@ Playlist *PlaylistOfIndex(const QPersistentModelIndex &idx) {
 }
 
 }  // namespace
-
-#ifdef HAVE_QTSPARKLE
-namespace {
-
-#  if defined(__APPLE__)
-#    if defined(__x86_64__)
-constexpr char QTSPARKLE_URL[] = "https://www.strawberrymusicplayer.org/sparkle-macos-x86_64";
-#    elif defined(__aarch64__)
-constexpr char QTSPARKLE_URL[] = "https://www.strawberrymusicplayer.org/sparkle-macos-arm64";
-#    else
-#      error "Unsupported macOS arch for QtSparkle"
-#    endif
-
-#  elif defined(__MINGW32__)
-#    if defined(__x86_64__)
-constexpr char QTSPARKLE_URL[] = "https://www.strawberrymusicplayer.org/sparkle-windows-mingw-x64";
-#    elif defined(__i686__)
-constexpr char QTSPARKLE_URL[] = "https://www.strawberrymusicplayer.org/sparkle-windows-mingw-x86";
-#    else
-#      error "Unsupported MinGW arch for QtSparkle"
-#    endif
-
-#  elif defined(_MSC_VER)
-#    if defined(_WIN64)
-constexpr char QTSPARKLE_URL[] = "https://www.strawberrymusicplayer.org/sparkle-windows-msvc-x64";
-#    elif defined(_WIN32)
-constexpr char QTSPARKLE_URL[] = "https://www.strawberrymusicplayer.org/sparkle-windows-msvc-x86";
-#    else
-#      error "Unsupported MSVC arch for QtSparkle"
-#    endif
-
-#  else
-#    error "Unsupported OS for QtSparkle"
-#  endif  // OS
-
-}  // namespace
-#endif  // HAVE_QTSPARKLE
 
 MainWindow::MainWindow(Application *app,
                        SharedPtr<SystemTrayIcon> systemtrayicon, OSDBase *osd,
@@ -1004,7 +964,7 @@ MainWindow::MainWindow(Application *app,
   thumbbar_->SetActions(QList<QAction*>() << ui_->action_previous_track << ui_->action_play_pause << ui_->action_stop << ui_->action_next_track << nullptr << ui_->action_love);
 #endif
 
-#if defined(HAVE_SPARKLE) || defined(HAVE_QTSPARKLE)
+#ifdef HAVE_SPARKLE
   QAction *action_check_updates = ui_->menu_tools->addAction(tr("Check for updates..."));
   action_check_updates->setMenuRole(QAction::ApplicationSpecificRole);
 #endif
@@ -1252,17 +1212,6 @@ MainWindow::MainWindow(Application *app,
   QObject::connect(action_check_updates, &QAction::triggered, sparkle_updater, &SparkleUpdater::CheckForUpdates);
 #endif
 
-#ifdef HAVE_QTSPARKLE
-  QUrl sparkle_url(QString::fromLatin1(QTSPARKLE_URL));
-  if (!sparkle_url.isEmpty()) {
-    qLog(Debug) << "Creating Qt Sparkle updater";
-    qtsparkle::Updater *updater = new qtsparkle::Updater(sparkle_url, this);
-    // QtSparkle reads upstream Strawberry's feed, so it compares against the Strawberry version Akousma is based on.
-    updater->SetVersion(QStringLiteral(STRAWBERRY_VERSION_PACKAGE));
-    QObject::connect(action_check_updates, &QAction::triggered, updater, &qtsparkle::Updater::CheckNow);
-  }
-#endif
-
 #if defined(Q_OS_MACOS)
   if (Utilities::ProcessTranslated()) {
     Settings s;
@@ -1280,24 +1229,16 @@ MainWindow::MainWindow(Application *app,
 #endif
 
   {
-    bool asked_permission = true;
     Settings s;
-#ifdef HAVE_QTSPARKLE
-    s.beginGroup("QtSparkle");
-    asked_permission = s.value(MainWindowSettings::kAskedPermission, false).toBool();
+    s.beginGroup(MainWindowSettings::kSettingsGroup);
+    const bool do_not_show_sponsor_message = s.value(MainWindowSettings::kDoNotShowSponsorMessage, MainWindowSettings::kDefaultDoNotShowSponsorMessage).toBool();
     s.endGroup();
-#endif
-    if (asked_permission) {
-      s.beginGroup(MainWindowSettings::kSettingsGroup);
-      const bool do_not_show_sponsor_message = s.value(MainWindowSettings::kDoNotShowSponsorMessage, MainWindowSettings::kDefaultDoNotShowSponsorMessage).toBool();
-      s.endGroup();
-      if (!do_not_show_sponsor_message) {
-        MessageDialog *sponsor_message = new MessageDialog(this);
-        sponsor_message->set_settings_group(QLatin1String(MainWindowSettings::kSettingsGroup));
-        sponsor_message->set_do_not_show_message_again(QLatin1String(MainWindowSettings::kDoNotShowSponsorMessage));
-        sponsor_message->setAttribute(Qt::WA_DeleteOnClose);
-        sponsor_message->ShowMessage(tr("Sponsoring Strawberry"), tr("Strawberry is free and open source software. If you like Strawberry, please consider sponsoring the project. For more information about sponsorship see our website %1").arg(u"<a href= \"https://www.strawberrymusicplayer.org/\">www.strawberrymusicplayer.org</a>"_s), IconLoader::Load(u"dialog-information"_s));
-      }
+    if (!do_not_show_sponsor_message) {
+      MessageDialog *sponsor_message = new MessageDialog(this);
+      sponsor_message->set_settings_group(QLatin1String(MainWindowSettings::kSettingsGroup));
+      sponsor_message->set_do_not_show_message_again(QLatin1String(MainWindowSettings::kDoNotShowSponsorMessage));
+      sponsor_message->setAttribute(Qt::WA_DeleteOnClose);
+      sponsor_message->ShowMessage(tr("Sponsoring Strawberry"), tr("Strawberry is free and open source software. If you like Strawberry, please consider sponsoring the project. For more information about sponsorship see our website %1").arg(u"<a href= \"https://www.strawberrymusicplayer.org/\">www.strawberrymusicplayer.org</a>"_s), IconLoader::Load(u"dialog-information"_s));
     }
   }
 

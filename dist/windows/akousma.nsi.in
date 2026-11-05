@@ -8,11 +8,7 @@
   !define compiler "msvc"
 !endif
 
-; Files only some builds have, set by dist/CMakeLists.txt: QtSparkle (ENABLE_QTSPARKLE, off by default), Qt SVG and
-; Audio CD (libcdio and GStreamer's cdio plugin).
-!if "@NSIS_QTSPARKLE@" == "1"
-  !define qtsparkle
-!endif
+; Files only some builds have, set by dist/CMakeLists.txt: Qt SVG and Audio CD (libcdio and GStreamer's cdio plugin).
 !if "@NSIS_QTSVG@" == "1"
   !define qtsvg
 !endif
@@ -501,9 +497,6 @@ Section "Akousma" Akousma
   File "liborc-0.4-0.dll"
   File "libpng16-16.dll"
   File "libpsl-5.dll"
-!ifdef qtsparkle
-  File "libqtsparkle-qt6.dll"
-!endif
   File "libsoup-3.0-0.dll"
   File "libspeex-1.dll"
   File "libsqlite3-0.dll"
@@ -552,9 +545,6 @@ Section "Akousma" Akousma
   File "gstaudio-1.0-0.dll"
   File "kdsingleapplication-qt6.dll"
   File "tag.dll"
-!ifdef qtsparkle
-  File "qtsparkle-qt6.dll"
-!endif
   ; All other DLLs in this folder are the ones CopyDLLDependencies.ps1 found akousma.exe, the tools and the Qt and GStreamer
   ; plugins need, so take all of them, with no names of indirect or versioned DLLs (ICU, FFmpeg, OpenSSL, ...) that a build
   ; may not need or may have with another version number. Build-Akousma.ps1 stages them in an empty folder.
@@ -1008,7 +998,7 @@ Section "Uninstall"
   Delete "$INSTDIR\liborc-0.4-0.dll"
   Delete "$INSTDIR\libpng16-16.dll"
   Delete "$INSTDIR\libpsl-5.dll"
-  ; Deleted whether or not this build has QtSparkle, so an update from a build with it leaves nothing behind.
+  ; Left by older builds, which had QtSparkle.
   Delete "$INSTDIR\libqtsparkle-qt6.dll"
   Delete "$INSTDIR\libsoup-3.0-0.dll"
   Delete "$INSTDIR\libspeex-1.dll"
@@ -1121,7 +1111,7 @@ Section "Uninstall"
   Delete "$INSTDIR\opus.dll"
   Delete "$INSTDIR\orc-0.4-0.dll"
   Delete "$INSTDIR\psl-5.dll"
-  ; Deleted whether or not this build has QtSparkle, so an update from a build with it leaves nothing behind.
+  ; Left by older builds, which had QtSparkle.
   Delete "$INSTDIR\qtsparkle-qt6.dll"
   Delete "$INSTDIR\soup-3.0-0.dll"
   Delete "$INSTDIR\sqlite3.dll"

@@ -33,7 +33,6 @@ constexpr char kSplitterState[] = "splitter_state";
 constexpr char kDoNotShowSponsorMessage[] = "do_not_show_sponsor_message";
 constexpr char kFilePath[] = "file_path";
 constexpr char kIgnoreRosetta[] = "ignore_rosetta";
-constexpr char kAskedPermission[] = "asked_permission";
 constexpr char kAddMediaPath[] = "add_media_path";
 constexpr char kAddFolderPath[] = "add_folder_path";
 

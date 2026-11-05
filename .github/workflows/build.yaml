@@ -1420,7 +1420,6 @@ jobs:
           -DAPPLE_DEVELOPER_ID=$( (test '${{env.is_private}}' = 'true' || (test '${{github.repository}}' = 'strawberrymusicplayer/strawberry' && test '${{github.event.pull_request.base.repo.full_name}}' = '${{github.event.pull_request.head.repo.full_name}}')) && echo "383J84DVB6" || echo "")
           -DENABLE_SPOTIFY=$(test -f "${{env.prefix_path}}/lib/gstreamer-1.0/libgstspotify.dylib" && echo "ON" || echo "OFF")
           -DENABLE_SPARKLE=ON
-          -DENABLE_QTSPARKLE=OFF
           -DDMG_NAME=$(test '${{matrix.runner}}' = 'macos-intel' && echo "akousma-compat" || echo "akousma")
           -DCREATE_SOURCE_API_CREDENTIALS=OFF
           -DAPI_CREDENTIALS_ENCRYPTION_KEY="$(openssl rand -hex 32)"

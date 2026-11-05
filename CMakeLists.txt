@@ -295,13 +295,6 @@ if(WIN32)
   endif()
 endif()
 
-if(APPLE OR WIN32)
-  find_package(qtsparkle-qt${QT_VERSION_MAJOR})
-  if(TARGET "qtsparkle-qt${QT_VERSION_MAJOR}::qtsparkle")
-    set(QTSPARKLE_FOUND ON)
-  endif()
-endif()
-
 if(UNIX AND NOT APPLE)
   optional_component(ALSA ON "ALSA integration"
     DEPENDS "alsa" ALSA_FOUND
@@ -425,12 +418,6 @@ if(APPLE)
   optional_component(SPARKLE ${ENABLE_SPARKLE_DEFAULT} "Sparkle integration"
     DEPENDS "Sparkle" SPARKLE
     DEPENDS "an update feed (AKOUSMA_SPARKLE_FEED_URL)" AKOUSMA_SPARKLE_FEED_URL
-  )
-endif()
-
-if(APPLE OR WIN32)
-  optional_component(QTSPARKLE ON "QtSparkle integration"
-    DEPENDS "QtSparkle" QTSPARKLE_FOUND
   )
 endif()
 
@@ -1889,7 +1876,6 @@ target_link_libraries(strawberry_lib PUBLIC
   $<$<BOOL:${HAVE_WPD}>:ole32>
   $<$<BOOL:${HAVE_WPD}>:cfgmgr32>
   $<$<BOOL:${HAVE_GPOD}>:PkgConfig::LIBGPOD PkgConfig::GDK_PIXBUF>
-  $<$<BOOL:${HAVE_QTSPARKLE}>:qtsparkle-qt${QT_VERSION_MAJOR}::qtsparkle>
   $<$<BOOL:${WIN32}>:dsound dwmapi advapi32 ${GETOPT_LIBRARIES}>
   $<$<BOOL:${MSVC}>:WindowsApp>
   KDAB::kdsingleapplication

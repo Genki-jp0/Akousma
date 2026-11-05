@@ -88,10 +88,6 @@
   #include "core/unixsignalwatcher.h"
 #endif
 
-#ifdef HAVE_QTSPARKLE
-#  include <qtsparkle-qt6/Updater>
-#endif  // HAVE_QTSPARKLE
-
 #ifdef Q_OS_MACOS
 #  include "utilities/macosutils.h"
 #  include "core/mac_startup.h"
@@ -421,14 +417,6 @@ int main(int argc, char *argv[]) {
       break;
     }
   }
-
-#  ifdef HAVE_QTSPARKLE
-  for (const QString &language : as_const(languages)) {
-    if (qtsparkle::LoadTranslations(language)) {
-      break;
-    }
-  }
-#  endif  // HAVE_QTSPARKLE
 
 #endif  // HAVE_TRANSLATIONS
 
