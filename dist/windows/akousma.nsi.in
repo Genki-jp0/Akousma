@@ -174,6 +174,7 @@ Page Custom LockedListPageShow
 !define MUI_FINISHPAGE_SHOWREADME_TEXT "Include saved passwords"
 !define MUI_FINISHPAGE_SHOWREADME_FUNCTION ImportPasswordsChecked
 !define MUI_FINISHPAGE_SHOWREADME_NOTCHECKED
+; A third checkbox, "Launch Akousma", is added by FinishPageShow.
 !define MUI_PAGE_CUSTOMFUNCTION_SHOW FinishPageShow
 !define MUI_PAGE_CUSTOMFUNCTION_LEAVE FinishPageLeave
 !insertmacro MUI_PAGE_FINISH
@@ -199,6 +200,10 @@ RequestExecutionLevel admin
 
 ; "1" when "Include saved passwords" is ticked on the finish page, read by ImportFromOtherPlayer.
 Var ImportPasswords
+
+; The "Launch Akousma" checkbox of the finish page, and "1" when it is ticked, read by .onGUIEnd.
+Var LaunchCheckbox
+Var LaunchAkousma
 
 ; Import the settings, collection and album covers of Strawberry or Clementine into the new installation, the existing Akousma settings and collection are backed up first.
 ; The installer runs elevated, and with "over the shoulder" UAC elevation it even runs as a different administrator account than the logged in user.
@@ -243,6 +248,14 @@ Function FinishPageShow
   ${If} $0 == "1"
     SendMessage $mui.FinishPage.Run ${BM_SETCHECK} ${BST_CHECKED} 0
   ${EndIf}
+  ; MUI2 has only two checkboxes, "Launch Akousma" goes below them, ticked by default.
+  ; Not when a restart is needed (for the Visual C++ Runtime): MUI2 shows the restart choice instead of its checkboxes then.
+  ${IfNot} ${RebootFlag}
+    ${NSD_CreateCheckbox} 120u 130u 195u 10u "Launch ${PRODUCT_NAME}"
+    Pop $LaunchCheckbox
+    SetCtlColors $LaunchCheckbox "${MUI_TEXTCOLOR}" "${MUI_BGCOLOR}"
+    ${NSD_Check} $LaunchCheckbox
+  ${EndIf}
 FunctionEnd
 
 ; The finish page runs the import (the "run" function) before the function of the passwords checkbox, so its state is read here, before both.
@@ -251,6 +264,35 @@ Function FinishPageLeave
   SendMessage $mui.FinishPage.ShowReadme ${BM_GETCHECK} 0 0 $0
   ${If} $0 == ${BST_CHECKED}
     StrCpy $ImportPasswords "1"
+  ${EndIf}
+  StrCpy $LaunchAkousma "0"
+  ${IfNot} ${RebootFlag}
+    ${NSD_GetState} $LaunchCheckbox $0
+    ${If} $0 == ${BST_CHECKED}
+      StrCpy $LaunchAkousma "1"
+    ${EndIf}
+  ${EndIf}
+FunctionEnd
+
+; Start Akousma when "Launch Akousma" was ticked, once the installer window is closed and after the import.
+; Like the import, it is started by the desktop shell, so it runs as the logged in user, unelevated, see ImportFromOtherPlayer.
+; Silent installs don't show the finish page, so they never start Akousma.
+Function .onGUIEnd
+  ${If} $LaunchAkousma == "1"
+  ${AndIf} ${FileExists} "$INSTDIR\akousma.exe"
+    ; Akousma runs once per user: started while the import still runs, it would just exit. Wait for the import, up to 5 minutes.
+    StrCpy $R1 0
+    ${Do}
+      LockedList::FindProcess /yesno akousma.exe
+      Pop $R0
+      ${If} $R0 != "yes"
+      ${OrIf} $R1 >= 600
+        ${ExitDo}
+      ${EndIf}
+      Sleep 500
+      IntOp $R1 $R1 + 1
+    ${Loop}
+    Exec '"$WINDIR\explorer.exe" "$INSTDIR\akousma.exe"'
   ${EndIf}
 FunctionEnd
 
