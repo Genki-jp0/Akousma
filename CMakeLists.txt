@@ -453,8 +453,9 @@ if(NOT CMAKE_CROSSCOMPILING)
     "
     QT_SQLITE_TEST
   )
-  # Check that the Qt sqlite driver uses the same sqlite library as strawberry, since strawberry uses the sqlite functions on the database connections opened by Qt.
-  # An auto extension registered with the sqlite library linked to strawberry is only run for connections opened with that library, not when Qt has its own sqlite library.
+  # Check that the Qt sqlite driver uses the same sqlite library as akousma, since akousma uses the sqlite functions on the database connections opened by Qt.
+  # The soft heap limit is global to an sqlite library: one set with the sqlite library linked to akousma is only what "PRAGMA soft_heap_limit" reports on a connection opened by Qt when Qt uses that library, not when Qt has its own sqlite library.
+  # (This used to be checked with sqlite3_auto_extension, which macOS' own sqlite library doesn't support, and that is the one Homebrew's Qt uses.)
   if(QT_SQLITE_TEST)
     set(CMAKE_REQUIRED_LIBRARIES Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Sql PkgConfig::SQLITE)
     check_cxx_source_runs("
@@ -462,23 +463,17 @@ if(NOT CMAKE_CROSSCOMPILING)
       #include <QCoreApplication>
       #include <QSqlDatabase>
       #include <QSqlQuery>
-      static bool extension_loaded = false;
-      static int TestExtension(sqlite3 *db, char **error, const struct sqlite3_api_routines *api) {
-        (void)db;
-        (void)error;
-        (void)api;
-        extension_loaded = true;
-        return SQLITE_OK;
-      }
       int main(int argc, char *argv[]) {
         QCoreApplication app(argc, argv);
-        if (sqlite3_auto_extension(reinterpret_cast<void(*)(void)>(TestExtension)) != SQLITE_OK) return 1;
+        if (sqlite3_soft_heap_limit64(987654321) < 0) return 1;
+        const sqlite3_int64 limit = sqlite3_soft_heap_limit64(-1);
+        if (limit <= 0) return 1;
         QSqlDatabase db = QSqlDatabase::addDatabase(\"QSQLITE\");
         db.setDatabaseName(\":memory:\");
         if (!db.open()) return 1;
         QSqlQuery q(db);
-        if (!q.exec(\"SELECT 1;\")) return 1;
-        return extension_loaded ? 0 : 1;
+        if (!q.exec(\"PRAGMA soft_heap_limit;\") || !q.next()) return 1;
+        return q.value(0).toLongLong() == limit ? 0 : 1;
       }
       "
       QT_SQLITE_SAME_LIBRARY_TEST
