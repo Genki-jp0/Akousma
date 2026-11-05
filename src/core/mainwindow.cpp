@@ -1219,7 +1219,7 @@ MainWindow::MainWindow(Application *app,
   SparkleUpdater *sparkle_updater = new SparkleUpdater(action_check_updates, this);
   QObject::connect(action_check_updates, &QAction::triggered, sparkle_updater, &SparkleUpdater::CheckForUpdates);
 #elif defined(HAVE_UPDATE_CHECK)
-  UpdateChecker *update_checker = new UpdateChecker(app_->network(), QStringLiteral(AKOUSMA_UPDATE_CHECK_REPOSITORY), QStringLiteral(AKOUSMA_VERSION), this);
+  UpdateChecker *update_checker = new UpdateChecker(app_->network(), QStringLiteral(AKOUSMA_UPDATE_CHECK_REPOSITORY), QStringLiteral(AKOUSMA_VERSION), QStringLiteral(AKOUSMA_GIT_COMMIT), this);
   QObject::connect(action_check_updates, &QAction::triggered, update_checker, &UpdateChecker::CheckNow);
   update_checker->CheckOnStartup();
 #endif

@@ -79,6 +79,19 @@
     </widget>
    </item>
    <item>
+    <widget class="QCheckBox" name="checkbox_check_for_prereleases">
+     <property name="toolTip">
+      <string>Also offers pre-releases, for example builds of a git commit, on startup and in Help &gt; Check for updates.</string>
+     </property>
+     <property name="text">
+      <string>Include pre-releases</string>
+     </property>
+     <property name="checked">
+      <bool>false</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QGroupBox" name="groupbox_startup">
      <property name="title">
       <string>On startup</string>

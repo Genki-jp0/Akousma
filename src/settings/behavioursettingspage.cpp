@@ -91,6 +91,7 @@ BehaviourSettingsPage::BehaviourSettingsPage(SettingsDialog *dialog, QWidget *pa
 
 #ifndef HAVE_UPDATE_CHECK
   ui_->checkbox_check_for_updates->hide();
+  ui_->checkbox_check_for_prereleases->hide();
 #endif
 
 #ifdef HAVE_TRANSLATIONS
@@ -182,6 +183,7 @@ void BehaviourSettingsPage::Load() {
   ui_->checkbox_resumeplayback->setChecked(s.value(kResumePlayback, kDefaultResumePlayback).toBool());
   ui_->checkbox_playingwidget->setChecked(s.value(kPlayingWidget, kDefaultPlayingWidget).toBool());
   ui_->checkbox_check_for_updates->setChecked(s.value(kCheckForUpdates, kDefaultCheckForUpdates).toBool());
+  ui_->checkbox_check_for_prereleases->setChecked(s.value(kCheckForPreReleases, kDefaultCheckForPreReleases).toBool());
 
 #ifndef Q_OS_MACOS
   const StartupBehaviour startup_behaviour = static_cast<StartupBehaviour>(s.value(kStartupBehaviour, static_cast<int>(kDefaultStartupBehaviour)).toInt());
@@ -254,6 +256,7 @@ void BehaviourSettingsPage::Save() {
   s.setValue(kResumePlayback, ui_->checkbox_resumeplayback->isChecked());
   s.setValue(kPlayingWidget, ui_->checkbox_playingwidget->isChecked());
   s.setValue(kCheckForUpdates, ui_->checkbox_check_for_updates->isChecked());
+  s.setValue(kCheckForPreReleases, ui_->checkbox_check_for_prereleases->isChecked());
 
   StartupBehaviour startup_behaviour = StartupBehaviour::Remember;
   if (ui_->radiobutton_remember->isChecked()) startup_behaviour = StartupBehaviour::Remember;
