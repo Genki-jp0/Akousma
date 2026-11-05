@@ -49,6 +49,10 @@ MessageDialog::MessageDialog(QWidget *parent) : QDialog(parent), ui_(new Ui_Mess
 
 MessageDialog::~MessageDialog() { delete ui_; }
 
+void MessageDialog::set_do_not_show_message_again_text(const QString &text) {
+  ui_->checkbox_do_not_show_message_again->setText(text);
+}
+
 void MessageDialog::ShowMessage(const QString &title, const QString &message, const QIcon &icon) {
 
   setWindowTitle(title);

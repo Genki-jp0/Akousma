@@ -73,6 +73,7 @@ constexpr char kDoubleClickPlaylistAddMode[] = "doubleclick_playlist_addmode";
 constexpr char kSeekStepSec[] = "seek_step_sec";
 constexpr char kVolumeIncrement[] = "volume_increment";
 constexpr char kPlaylistLocking[] = "playlist_locking";
+constexpr char kCheckForUpdates[] = "check_for_updates";
 
 constexpr bool kDefaultKeepRunning = false;
 constexpr bool kDefaultShowTrayIcon = true;
@@ -89,6 +90,7 @@ constexpr PlaylistAddBehaviour kDefaultDoubleClickPlaylistAddMode = PlaylistAddB
 constexpr int kDefaultSeekStepSec = 10;
 constexpr uint kDefaultVolumeIncrement = 5;
 constexpr bool kDefaultPlaylistLocking = true;
+constexpr bool kDefaultCheckForUpdates = true;
 
 }  // namespace BehaviourSettings
 

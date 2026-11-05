@@ -252,6 +252,8 @@
 
 #ifdef HAVE_SPARKLE
 #  include "core/sparkleupdater.h"
+#elif defined(HAVE_UPDATE_CHECK)
+#  include "core/updatechecker.h"
 #endif
 
 
@@ -966,6 +968,12 @@ MainWindow::MainWindow(Application *app,
 
 #ifdef HAVE_SPARKLE
   QAction *action_check_updates = ui_->menu_tools->addAction(tr("Check for updates..."));
+#elif defined(HAVE_UPDATE_CHECK)
+  QAction *action_check_updates = new QAction(tr("Check for updates..."), this);
+  ui_->menu_help->insertAction(ui_->action_about_strawberry, action_check_updates);
+  ui_->menu_help->insertSeparator(ui_->action_about_strawberry);
+#endif
+#if defined(HAVE_SPARKLE) || defined(HAVE_UPDATE_CHECK)
   action_check_updates->setMenuRole(QAction::ApplicationSpecificRole);
 #endif
 
@@ -1210,6 +1218,10 @@ MainWindow::MainWindow(Application *app,
 #ifdef HAVE_SPARKLE
   SparkleUpdater *sparkle_updater = new SparkleUpdater(action_check_updates, this);
   QObject::connect(action_check_updates, &QAction::triggered, sparkle_updater, &SparkleUpdater::CheckForUpdates);
+#elif defined(HAVE_UPDATE_CHECK)
+  UpdateChecker *update_checker = new UpdateChecker(app_->network(), QStringLiteral(AKOUSMA_UPDATE_CHECK_REPOSITORY), QStringLiteral(AKOUSMA_VERSION), this);
+  QObject::connect(action_check_updates, &QAction::triggered, update_checker, &UpdateChecker::CheckNow);
+  update_checker->CheckOnStartup();
 #endif
 
 #if defined(Q_OS_MACOS)

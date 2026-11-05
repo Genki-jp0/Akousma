@@ -421,6 +421,13 @@ if(APPLE)
   )
 endif()
 
+# Help > Check for updates and the daily check on startup ask GitHub for the latest release of this repository, not with Sparkle.
+set(AKOUSMA_UPDATE_CHECK_REPOSITORY "Genki-jp0/Akousma" CACHE STRING "GitHub repository (owner/name) whose releases are checked for updates (empty: no update check)")
+if(AKOUSMA_UPDATE_CHECK_REPOSITORY AND NOT HAVE_SPARKLE)
+  set(HAVE_UPDATE_CHECK ON)
+endif()
+optional_component_summary_add("Update check (GitHub releases)" HAVE_UPDATE_CHECK)
+
 optional_component(QPA_QPLATFORMNATIVEINTERFACE ON "QPA Platform Native Interface"
   DEPENDS "Qt Gui Private" QT_GUI_PRIVATE_FOUND
 )
@@ -528,6 +535,7 @@ set(SOURCES
   src/core/signalchecker.cpp
   src/core/song.cpp
   src/core/songloader.cpp
+  src/core/updatechecker.cpp
   src/core/stylehelper.cpp
   src/core/stylesheetloader.cpp
   src/core/taskmanager.cpp
@@ -958,6 +966,7 @@ set(HEADERS
   src/core/networktimeouts.h
   src/core/settings.h
   src/core/songloader.h
+  src/core/updatechecker.h
   src/core/taskmanager.h
   src/core/thread.h
   src/core/urlhandlers.h

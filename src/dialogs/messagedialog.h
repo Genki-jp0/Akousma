@@ -35,6 +35,7 @@ class MessageDialog : public QDialog {
 
   void set_settings_group(const QString &settings_group) { settings_group_ = settings_group; }
   void set_do_not_show_message_again(const QString &do_not_show_message_again) { do_not_show_message_again_ = do_not_show_message_again; }
+  void set_do_not_show_message_again_text(const QString &text);
 
   void ShowMessage(const QString &title, const QString &message, const QIcon &icon = QIcon());
 

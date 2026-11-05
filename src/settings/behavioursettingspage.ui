@@ -66,6 +66,19 @@
     </widget>
    </item>
    <item>
+    <widget class="QCheckBox" name="checkbox_check_for_updates">
+     <property name="toolTip">
+      <string>Asks GitHub at most once a day whether there is a newer release of Akousma.</string>
+     </property>
+     <property name="text">
+      <string>Check for updates automatically on startup</string>
+     </property>
+     <property name="checked">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QGroupBox" name="groupbox_startup">
      <property name="title">
       <string>On startup</string>

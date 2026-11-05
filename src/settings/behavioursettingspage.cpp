@@ -89,6 +89,10 @@ BehaviourSettingsPage::BehaviourSettingsPage(SettingsDialog *dialog, QWidget *pa
   ui_->checkbox_taskbar_progress->hide();
 #endif
 
+#ifndef HAVE_UPDATE_CHECK
+  ui_->checkbox_check_for_updates->hide();
+#endif
+
 #ifdef HAVE_TRANSLATIONS
   // Populate the language combo box.  We do this by looking at all the compiled in translations.
   QDir dir1(u":/i18n"_s);
@@ -177,6 +181,7 @@ void BehaviourSettingsPage::Load() {
 
   ui_->checkbox_resumeplayback->setChecked(s.value(kResumePlayback, kDefaultResumePlayback).toBool());
   ui_->checkbox_playingwidget->setChecked(s.value(kPlayingWidget, kDefaultPlayingWidget).toBool());
+  ui_->checkbox_check_for_updates->setChecked(s.value(kCheckForUpdates, kDefaultCheckForUpdates).toBool());
 
 #ifndef Q_OS_MACOS
   const StartupBehaviour startup_behaviour = static_cast<StartupBehaviour>(s.value(kStartupBehaviour, static_cast<int>(kDefaultStartupBehaviour)).toInt());
@@ -248,6 +253,7 @@ void BehaviourSettingsPage::Save() {
 #endif
   s.setValue(kResumePlayback, ui_->checkbox_resumeplayback->isChecked());
   s.setValue(kPlayingWidget, ui_->checkbox_playingwidget->isChecked());
+  s.setValue(kCheckForUpdates, ui_->checkbox_check_for_updates->isChecked());
 
   StartupBehaviour startup_behaviour = StartupBehaviour::Remember;
   if (ui_->radiobutton_remember->isChecked()) startup_behaviour = StartupBehaviour::Remember;
