@@ -186,6 +186,13 @@ int main(int argc, char *argv[]) {
       std::cout << QObject::tr("%1 settings exported to %2, %3 passwords and logins left out.").arg(result.count).arg(options.export_settings()).arg(result.secrets).toLocal8Bit().constData() << std::endl;
       return 0;
     }
+    if (options.skip_import_prompt()) {
+      // The import from Strawberry or Clementine was declined in the Windows installer, don't offer it on the first start, and exit.
+      // Done before looking for a running instance: QSettings can be written by several processes at once, and the option is not sent to a running instance.
+      PlayerImporter::SetFirstRunPromptDone();
+      qLog(Info) << "The import from Strawberry or Clementine will not be offered on the first start.";
+      return 0;
+    }
     ScopedPtr<KDSingleApplication> single_app = make_unique<KDSingleApplication>(QCoreApplication::applicationName().toLower(), KDSingleApplication::Option::IncludeUsernameInSocketName);
     if (options.restarted()) {
       // Akousma started itself again, for example to import from Strawberry or Clementine. Wait until the previous instance has exited.

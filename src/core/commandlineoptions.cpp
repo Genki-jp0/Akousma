@@ -101,6 +101,7 @@ constexpr char kHelpText[] =
     "      --import-items <items>  %38\n"
     "      --import-quiet          %39\n"
     "      --import-passwords      %40\n"
+    "      --skip-import-prompt    %46\n"
     "\n"
     "%41:\n"
     "      --export-settings <file>  %42\n"
@@ -130,6 +131,7 @@ CommandlineOptions::CommandlineOptions(int argc, char **argv)
       log_levels_(QLatin1String(logging::kDefaultLogLevels)),
       import_quiet_(false),
       import_passwords_(false),
+      skip_import_prompt_(false),
       reset_settings_(false),
       restarted_(false) {
 
@@ -206,6 +208,7 @@ bool CommandlineOptions::Parse() {
       { OPTSTR("import-items"), required_argument, nullptr, LongOptions::ImportItems },
       { OPTSTR("import-quiet"), no_argument, nullptr, LongOptions::ImportQuiet },
       { OPTSTR("import-passwords"), no_argument, nullptr, LongOptions::ImportPasswords },
+      { OPTSTR("skip-import-prompt"), no_argument, nullptr, LongOptions::SkipImportPrompt },
       { OPTSTR("export-settings"), required_argument, nullptr, LongOptions::ExportSettings },
       { OPTSTR("import-settings"), required_argument, nullptr, LongOptions::ImportSettings },
       { OPTSTR("reset-settings"), no_argument, nullptr, LongOptions::ResetSettings },
@@ -270,7 +273,8 @@ bool CommandlineOptions::Parse() {
                      QObject::tr("Export the settings to a file, without passwords and logins, and exit"),
                      QObject::tr("Back up the settings, replace them with an exported file and exit, Akousma must not be running"),
                      QObject::tr("Back up the settings, reset them to the defaults and exit, Akousma must not be running"),
-                     QObject::tr("Also write the log to <file> (appended), e.g. on Windows, where Akousma has no console")
+                     QObject::tr("Also write the log to <file> (appended), e.g. on Windows, where Akousma has no console"),
+                     QObject::tr("Don't offer the import on the first start and exit, for installers when the import was declined")
                      );
 
         std::cout << translated_help_text.toLocal8Bit().constData();
@@ -387,6 +391,10 @@ bool CommandlineOptions::Parse() {
 
       case LongOptions::ImportPasswords:
         import_passwords_ = true;
+        break;
+
+      case LongOptions::SkipImportPrompt:
+        skip_import_prompt_ = true;
         break;
 
       case LongOptions::ExportSettings:

@@ -90,6 +90,8 @@ class CommandlineOptions {
   QString import_items() const { return import_items_; }
   bool import_quiet() const { return import_quiet_; }
   bool import_passwords() const { return import_passwords_; }
+  // The import was declined in the Windows installer: don't offer it on the first start. Handled before a running instance is looked for, not sent to it.
+  bool skip_import_prompt() const { return skip_import_prompt_; }
   // Settings export, import and reset from the command line. Import and reset need Akousma to be closed.
   QString export_settings() const { return export_settings_; }
   QString import_settings() const { return import_settings_; }
@@ -124,6 +126,7 @@ class CommandlineOptions {
     ResetSettings,
     Restarted,
     LogFile,
+    SkipImportPrompt,
   };
 
   void RemoveArg(const QString &starts_with, int count);
@@ -168,6 +171,7 @@ class CommandlineOptions {
   QString import_items_;
   bool import_quiet_;
   bool import_passwords_;
+  bool skip_import_prompt_;
   QString export_settings_;
   QString import_settings_;
   bool reset_settings_;
