@@ -378,7 +378,13 @@ if(WIN32)
   optional_component(WPD ON "Devices: MTP support through Windows Portable Devices")
 endif()
 
-optional_component(GPOD ON "Devices: iPod classic support"
+# libgpod has no macOS packages (Homebrew), so iPod classic support is only on by default there when it is found.
+if(APPLE AND NOT (LIBGPOD_FOUND AND GDK_PIXBUF_FOUND))
+  set(ENABLE_GPOD_DEFAULT OFF)
+else()
+  set(ENABLE_GPOD_DEFAULT ON)
+endif()
+optional_component(GPOD ${ENABLE_GPOD_DEFAULT} "Devices: iPod classic support"
   DEPENDS "libgpod" LIBGPOD_FOUND
   DEPENDS "gdk-pixbuf" GDK_PIXBUF_FOUND
 )
