@@ -161,7 +161,6 @@ SetCompressor /SOLID lzma
 ; Installer pages
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_LICENSE COPYING
-Page Custom LockedListPageShow
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
 ; Optional import from Strawberry / Clementine, a checkbox on the finish page, see ImportFromOtherPlayer.
@@ -181,7 +180,6 @@ Page Custom LockedListPageShow
 
 ; Uninstaller pages
 !insertmacro MUI_UNPAGE_CONFIRM
-UninstPage custom un.LockedListPageShow
 !insertmacro MUI_UNPAGE_INSTFILES
 !insertmacro MUI_UNPAGE_FINISH
 
@@ -204,6 +202,10 @@ Var ImportPasswords
 ; The "Launch Akousma" checkbox of the finish page, and "1" when it is ticked, read by .onGUIEnd.
 Var LaunchCheckbox
 Var LaunchAkousma
+
+; The uninstaller and the installation directory of the previous version, found by CheckPreviousInstall, removed by the "-Previous version" section.
+Var PreviousUninstaller
+Var PreviousInstallDir
 
 ; Import the settings, collection and album covers of Strawberry or Clementine into the new installation, the existing Akousma settings and collection are backed up first.
 ; The installer runs elevated, and with "over the shoulder" UAC elevation it even runs as a different administrator account than the logged in user.
@@ -300,27 +302,63 @@ FunctionEnd
 Function ImportPasswordsChecked
 FunctionEnd
 
-Function LockedListPageShow
-  LockedList::AddModule /NOUNLOAD \akousma.exe
-  LockedList::Dialog /heading "Checking for running programs:" /noprograms "No programs need to close." /searching "Searching for running programs..."
-FunctionEnd
+; The installer and the uninstaller close Akousma before they replace or remove its files, CloseAkousma and un.CloseAkousma.
+!macro CloseAkousmaFunctions un
 
-Function un.LockedListPageShow
-  LockedList::AddModule /NOUNLOAD \akousma.exe
-  LockedList::Dialog /heading "Checking for running programs:" /noprograms "No programs need to close." /searching "Searching for running programs..."
-FunctionEnd
-
-; Abort a silent (un)installation when Akousma is running, the LockedList page that asks the user to close it is not shown in silent mode.
-!macro AbortIfAkousmaRunning
-  ${If} ${Silent}
+; Ask Akousma to close, like closing its window (taskkill without /F sends WM_CLOSE), and wait up to 10 seconds for it to exit.
+; $R0 is "yes" when it still runs.
+Function ${un}AskAkousmaToClose
+  nsExec::Exec '"$SYSDIR\taskkill.exe" /IM akousma.exe'
+  Pop $R0
+  StrCpy $R1 0
+  ${Do}
+    Sleep 500
     LockedList::FindProcess /yesno akousma.exe
     Pop $R0
-    ${If} $R0 == "yes"
-      SetErrorLevel 1
-      Quit
+    IntOp $R1 $R1 + 1
+    ${If} $R1 >= 20
+      ${ExitDo}
     ${EndIf}
-  ${EndIf}
+  ${LoopWhile} $R0 == "yes"
+FunctionEnd
+
+; When Akousma is running, ask the user to close it, or to let the (un)installer close it: it is asked to close first, and only forced to after a second confirmation.
+; Cancel aborts the (un)installation.
+; Silent (un)installations only ask Akousma to close, they fail with error level 1 when it keeps running.
+Function ${un}CloseAkousma
+  ${Do}
+    LockedList::FindProcess /yesno akousma.exe
+    Pop $R0
+    ${If} $R0 != "yes"
+      ${ExitDo}
+    ${EndIf}
+    ${If} ${Silent}
+      Call ${un}AskAkousmaToClose
+      ${If} $R0 == "yes"
+        SetErrorLevel 1
+        Quit
+      ${EndIf}
+      ${ExitDo}
+    ${EndIf}
+    DetailPrint "Waiting for ${PRODUCT_NAME} to close..."
+    MessageBox MB_YESNOCANCEL|MB_ICONEXCLAMATION "${PRODUCT_NAME} is running. Close it to continue.$\n$\nClick `Yes` to close ${PRODUCT_NAME} now, `No` to check again once you closed it yourself, or `Cancel` to cancel." IDYES close IDNO retry
+    Abort
+    close:
+    Call ${un}AskAkousmaToClose
+    ${If} $R0 == "yes"
+      MessageBox MB_YESNO|MB_ICONEXCLAMATION|MB_DEFBUTTON2 "${PRODUCT_NAME} did not close, it may be waiting for an answer in one of its windows.$\n$\nForce it to close? What it has not saved yet is lost." IDNO retry
+      nsExec::Exec '"$SYSDIR\taskkill.exe" /F /IM akousma.exe'
+      Pop $R0
+      Sleep 1000
+    ${EndIf}
+    retry:
+  ${Loop}
+FunctionEnd
+
 !macroend
+
+!insertmacro CloseAkousmaFunctions ""
+!insertmacro CloseAkousmaFunctions "un."
 
 ; The installer and the uninstaller use the 64-bit registry view, the x86 one too (on 64-bit Windows), so x64 and x86
 ; Akousma share one uninstall entry: installing one architecture replaces the other, like an upgrade.
@@ -334,7 +372,7 @@ FunctionEnd
 !endif
 !macroend
 
-; Check for previous installation, and call the uninstaller if any
+; Check for a previous installation, it is removed by the "-Previous version" section, in the installer's window, not before the installer starts.
 Function CheckPreviousInstall
 
   ReadRegStr $R0 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "UninstallString"
@@ -380,37 +418,44 @@ Function CheckPreviousInstall
   ${EndIf}
 
   ${IfNot} ${Silent}
-    MessageBox MB_OKCANCEL|MB_ICONEXCLAMATION "${PRODUCT_NAME} is already installed. $\n$\nClick `OK` to remove the previous version or `Cancel` to cancel this upgrade." IDOK +2
+    MessageBox MB_OKCANCEL|MB_ICONEXCLAMATION "${PRODUCT_NAME} is already installed. $\n$\nClick `OK` to replace the previous version with ${PRODUCT_DISPLAY_VERSION}, your settings and collection are kept, or `Cancel` to cancel this upgrade." IDOK +2
     Abort
   ${EndIf}
 
-  ; Run the uninstaller from the installation directory with _?=, otherwise it copies itself to a temporary directory and returns before the previous version is removed.
-  ClearErrors
-  ${If} ${Silent}
-    ExecWait '"$R0" /S _?=$R1' $R2
-  ${Else}
-    ExecWait '"$R0" _?=$R1' $R2
-  ${EndIf}
-
-  ${If} ${Errors}
-  ${OrIf} $R2 != 0
-    MessageBox MB_OK|MB_ICONSTOP "The previous version of ${PRODUCT_NAME} was not removed, the installation is cancelled." /SD IDOK
-    SetErrorLevel 2
-    Quit
-  ${EndIf}
-
-  ; The uninstaller can't delete itself when it runs from the installation directory.
-  Delete "$R0"
-  RMDir "$R1"
+  StrCpy $PreviousUninstaller $R0
+  StrCpy $PreviousInstallDir $R1
 
 FunctionEnd
+
+; Close Akousma, then remove the previous version found by CheckPreviousInstall with its uninstaller, silently, so it all happens in this window.
+; The uninstaller removes the program files, the shortcuts and the registry entries of the installation, not the settings and the collection (HKCU, %LOCALAPPDATA%).
+; Nothing is removed until the installation starts, cancelling the installer before keeps the previous version.
+Section "-Previous version"
+
+  Call CloseAkousma
+
+  ${If} $PreviousUninstaller != ""
+    DetailPrint "Removing the previous version of ${PRODUCT_NAME} from $PreviousInstallDir..."
+    ; Run the uninstaller from the installation directory with _?=, otherwise it copies itself to a temporary directory and returns before the previous version is removed.
+    ClearErrors
+    ExecWait '"$PreviousUninstaller" /S _?=$PreviousInstallDir' $0
+    ${If} ${Errors}
+    ${OrIf} $0 != 0
+      DetailPrint "The uninstaller of the previous version failed (exit code $0)."
+      MessageBox MB_OK|MB_ICONSTOP "The previous version of ${PRODUCT_NAME} was not removed, the installation is cancelled." /SD IDOK
+      Abort
+    ${EndIf}
+    ; The uninstaller can't delete itself when it runs from the installation directory.
+    Delete "$PreviousUninstaller"
+    RMDir "$PreviousInstallDir"
+  ${EndIf}
+
+SectionEnd
 
 Function .onInit
 
   ; The 64-bit registry view, like 64-bit Akousma uses (see SetAkousmaRegView).
   !insertmacro SetAkousmaRegView
-
-  !insertmacro AbortIfAkousmaRunning
 
   Call CheckPreviousInstall
 
@@ -419,8 +464,6 @@ FunctionEnd
 Function un.onInit
 
   !insertmacro SetAkousmaRegView
-
-  !insertmacro AbortIfAkousmaRunning
 
 FunctionEnd
 
@@ -958,6 +1001,8 @@ Section "Uninstaller"
 SectionEnd
 
 Section "Uninstall"
+
+  Call un.CloseAkousma
 
   ; Delete all the files
 
