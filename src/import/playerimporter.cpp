@@ -602,6 +602,10 @@ QString PlayerImporter::AkousmaDatabaseFile() {
 bool PlayerImporter::AkousmaHasData() {
 
   Settings s;
+  // Only Akousma's own settings count. With fallbacks, allKeys() also lists the keys of the fallback locations:
+  // on macOS the global preferences every account has (AppleLanguages, AppleLocale...), so the first start prompt was never shown there,
+  // on Linux a system wide akousma.conf in XDG_CONFIG_DIRS, and the organization defaults on every platform.
+  s.setFallbacksEnabled(false);
   const QStringList keys = s.allKeys();
   for (const QString &key : keys) {
     if (!key.startsWith(QLatin1String(kSettingsGroup) + u'/')) return true;

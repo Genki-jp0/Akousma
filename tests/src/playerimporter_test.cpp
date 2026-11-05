@@ -24,9 +24,13 @@
 #include <QByteArray>
 #include <QCoreApplication>
 #include <QDateTime>
+#include <QFile>
 #include <QMap>
+#include <QSettings>
+#include <QStandardPaths>
 #include <QString>
 #include <QStringList>
+#include <QTemporaryDir>
 #include <QTimer>
 #include <QUrl>
 
@@ -275,6 +279,53 @@ TEST(PlayerImporterTest, PasswordsItem) {
   EXPECT_EQ(PlayerImporter::Item::Settings | PlayerImporter::Item::Passwords, PlayerImporter::ItemsFromString(u"settings,passwords"_s, &ok));
   EXPECT_TRUE(ok);
   EXPECT_EQ(u"settings,passwords"_s, PlayerImporter::ItemsToString(PlayerImporter::Item::Settings | PlayerImporter::Item::Passwords));
+
+}
+
+// The first start prompt is offered when Akousma has no settings and no collection.
+// Keys from the fallback locations don't count: on macOS those are the global preferences every account has, here a system wide file stands in for them.
+TEST(PlayerImporterTest, FirstStartIgnoresFallbackSettings) {
+
+  // Settings uses the organization name for the file name, the test main only sets the application name. The settings are in a temporary directory.
+  QCoreApplication::setOrganizationName(u"Akousma"_s);
+  QStandardPaths::setTestModeEnabled(true);
+  if (QFile::exists(PlayerImporter::AkousmaDatabaseFile())) {
+    GTEST_SKIP() << "An Akousma collection exists in the test data directory";
+  }
+
+  QTemporaryDir system_dir;
+  ASSERT_TRUE(system_dir.isValid());
+  QSettings::setPath(QSettings::IniFormat, QSettings::SystemScope, system_dir.path());
+  QSettings::setPath(QSettings::NativeFormat, QSettings::SystemScope, system_dir.path());
+
+  Settings s;
+  s.clear();
+  s.sync();
+  EXPECT_FALSE(PlayerImporter::AkousmaHasData());
+  EXPECT_FALSE(PlayerImporter::FirstRunPromptDone());
+
+  // The import's own bookkeeping is not Akousma data.
+  PlayerImporter::SetFirstRunPromptDone();
+  EXPECT_TRUE(PlayerImporter::FirstRunPromptDone());
+  EXPECT_FALSE(PlayerImporter::AkousmaHasData());
+
+  {
+    Settings system_settings(QSettings::SystemScope);
+    system_settings.setValue(u"Behaviour/language"_s, u"de"_s);
+    system_settings.sync();
+  }
+  EXPECT_TRUE(s.allKeys().contains(u"Behaviour/language"_s));
+  EXPECT_FALSE(PlayerImporter::AkousmaHasData());
+
+  s.setValue(u"Behaviour/language"_s, u"en"_s);
+  s.sync();
+  EXPECT_TRUE(PlayerImporter::AkousmaHasData());
+
+  s.clear();
+  s.sync();
+  Settings system_settings(QSettings::SystemScope);
+  system_settings.clear();
+  system_settings.sync();
 
 }
 
