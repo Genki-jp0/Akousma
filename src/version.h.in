@@ -10,7 +10,16 @@
 #define AKOUSMA_VERSION_DISPLAY "${AKOUSMA_VERSION_DISPLAY}"
 #define AKOUSMA_VERSION_PACKAGE "${AKOUSMA_VERSION_PACKAGE}"
 #define AKOUSMA_GIT_COMMIT "${AKOUSMA_GIT_COMMIT_SHORT}"
+
+// The Strawberry code Akousma is based on (cmake/AkousmaStrawberryBase.cmake). AKOUSMA_BASE_STRAWBERRY_VERSION is the
+// newest Strawberry release in it ("1.2.31"), AKOUSMA_BASE_STRAWBERRY_COMMIT the newest Strawberry commit ("d74ab4f", empty
+// when built without the git history) and AKOUSMA_BASE_STRAWBERRY_RELEASE is 1 when that commit is the release itself, 0 for
+// the development version after it. AKOUSMA_BASE_STRAWBERRY_DISPLAY says it in English for --version, the log and exported
+// settings: "Strawberry 1.2.31 (19d8c0b)", "Strawberry development version after 1.2.31 (d74ab4f)" or
+// "Strawberry 1.2.31 or later".
 #define AKOUSMA_BASE_STRAWBERRY_VERSION "${AKOUSMA_BASE_STRAWBERRY_VERSION}"
 #define AKOUSMA_BASE_STRAWBERRY_COMMIT "${AKOUSMA_BASE_STRAWBERRY_COMMIT}"
+#cmakedefine01 AKOUSMA_BASE_STRAWBERRY_RELEASE
+#define AKOUSMA_BASE_STRAWBERRY_DISPLAY "${AKOUSMA_BASE_STRAWBERRY_DISPLAY}"
 
 #endif  // VERSION_H_IN

@@ -133,7 +133,7 @@ SettingsTransfer::Result SettingsTransfer::Export(const QString &filename) {
   out.beginGroup(QLatin1String(kExportGroup));
   out.setValue(QLatin1String(kExportApplication), u"Akousma"_s);
   out.setValue(QLatin1String(kExportVersion), QLatin1String(AKOUSMA_VERSION_DISPLAY));
-  out.setValue(QLatin1String(kExportBasedOn), u"Strawberry %1 (%2)"_s.arg(QLatin1String(AKOUSMA_BASE_STRAWBERRY_VERSION), QLatin1String(AKOUSMA_BASE_STRAWBERRY_COMMIT)));
+  out.setValue(QLatin1String(kExportBasedOn), QLatin1String(AKOUSMA_BASE_STRAWBERRY_DISPLAY));
   out.setValue(QLatin1String(kExportDate), QDateTime::currentDateTime().toString(Qt::ISODate));
   out.setValue(QLatin1String(kExportFormat), kExportFormatVersion);
   out.endGroup();

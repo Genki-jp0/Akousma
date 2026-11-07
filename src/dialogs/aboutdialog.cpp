@@ -173,7 +173,19 @@ QString AboutDialog::MainHtml() const {
   ret += "<p>"_L1;
   ret += tr("Version %1").arg(QLatin1String(AKOUSMA_VERSION_DISPLAY));
   ret += "<br />"_L1;
-  ret += tr("Based on Strawberry %1 (%2)").arg(QLatin1String(AKOUSMA_BASE_STRAWBERRY_VERSION), QStringLiteral("<a style=\"color:%1;\" href=\"https://github.com/strawberrymusicplayer/strawberry/commit/%2\">%2</a>").arg(palette().text().color().name(), QLatin1String(AKOUSMA_BASE_STRAWBERRY_COMMIT)));
+  const QString base_version = QLatin1String(AKOUSMA_BASE_STRAWBERRY_VERSION);
+  const QString base_commit = QLatin1String(AKOUSMA_BASE_STRAWBERRY_COMMIT);
+  if (base_commit.isEmpty()) {
+    ret += tr("Based on Strawberry %1 or later").arg(base_version);
+  }
+  else {
+    const QString base_commit_link = QStringLiteral("<a style=\"color:%1;\" href=\"https://github.com/strawberrymusicplayer/strawberry/commit/%2\">%2</a>").arg(palette().text().color().name(), base_commit);
+#if AKOUSMA_BASE_STRAWBERRY_RELEASE
+    ret += tr("Based on Strawberry %1 (%2)").arg(base_version, base_commit_link);
+#else
+    ret += tr("Based on Strawberry development version after %1 (%2)").arg(base_version, base_commit_link);
+#endif
+  }
   ret += "</p>"_L1;
 
   ret += "<p>"_L1;

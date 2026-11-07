@@ -248,7 +248,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   // Output the version, so when people attach log output to bug reports they don't have to tell us which version they're using.
-  qLog(Info) << "Akousma" << AKOUSMA_VERSION_DISPLAY << "based on Strawberry" << AKOUSMA_BASE_STRAWBERRY_VERSION << AKOUSMA_BASE_STRAWBERRY_COMMIT << "Qt" << QLibraryInfo::version().toString();
+  qLog(Info) << "Akousma" << AKOUSMA_VERSION_DISPLAY << "based on" << AKOUSMA_BASE_STRAWBERRY_DISPLAY << "Qt" << QLibraryInfo::version().toString();
   qLog(Info) << QStringLiteral("%1 %2 - (%3 %4) [%5]").arg(QSysInfo::prettyProductName(), QSysInfo::productVersion(), QSysInfo::kernelType(), QSysInfo::kernelVersion(), QSysInfo::currentCpuArchitecture());
 
   // Seed the random number generators.
