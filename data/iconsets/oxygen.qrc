@@ -1,5 +1,7 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource prefix="/iconsets/oxygen">
+  <file alias="128/akousma.png">oxygen/128/akousma.png</file>
+  <file alias="16/akousma.png">oxygen/16/akousma.png</file>
   <file alias="16/albums.png">oxygen/16/albums.png</file>
   <file alias="16/application-exit.png">oxygen/16/application-exit.png</file>
   <file alias="16/applications-internet.png">oxygen/16/applications-internet.png</file>
@@ -79,6 +81,7 @@
   <file alias="16/view-refresh.png">oxygen/16/view-refresh.png</file>
   <file alias="16/zoom-in.png">oxygen/16/zoom-in.png</file>
   <file alias="16/zoom-out.png">oxygen/16/zoom-out.png</file>
+  <file alias="22/akousma.png">oxygen/22/akousma.png</file>
   <file alias="22/albums.png">oxygen/22/albums.png</file>
   <file alias="22/application-exit.png">oxygen/22/application-exit.png</file>
   <file alias="22/applications-internet.png">oxygen/22/applications-internet.png</file>
@@ -158,6 +161,8 @@
   <file alias="22/view-refresh.png">oxygen/22/view-refresh.png</file>
   <file alias="22/zoom-in.png">oxygen/22/zoom-in.png</file>
   <file alias="22/zoom-out.png">oxygen/22/zoom-out.png</file>
+  <file alias="256/akousma.png">oxygen/256/akousma.png</file>
+  <file alias="32/akousma.png">oxygen/32/akousma.png</file>
   <file alias="32/albums.png">oxygen/32/albums.png</file>
   <file alias="32/application-exit.png">oxygen/32/application-exit.png</file>
   <file alias="32/applications-internet.png">oxygen/32/applications-internet.png</file>
@@ -238,6 +243,7 @@
   <file alias="32/view-refresh.png">oxygen/32/view-refresh.png</file>
   <file alias="32/zoom-in.png">oxygen/32/zoom-in.png</file>
   <file alias="32/zoom-out.png">oxygen/32/zoom-out.png</file>
+  <file alias="48/akousma.png">oxygen/48/akousma.png</file>
   <file alias="48/albums.png">oxygen/48/albums.png</file>
   <file alias="48/application-exit.png">oxygen/48/application-exit.png</file>
   <file alias="48/applications-internet.png">oxygen/48/applications-internet.png</file>
@@ -317,6 +323,7 @@
   <file alias="48/view-refresh.png">oxygen/48/view-refresh.png</file>
   <file alias="48/zoom-in.png">oxygen/48/zoom-in.png</file>
   <file alias="48/zoom-out.png">oxygen/48/zoom-out.png</file>
+  <file alias="64/akousma.png">oxygen/64/akousma.png</file>
   <file alias="64/albums.png">oxygen/64/albums.png</file>
   <file alias="64/application-exit.png">oxygen/64/application-exit.png</file>
   <file alias="64/applications-internet.png">oxygen/64/applications-internet.png</file>

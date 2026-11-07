@@ -32,9 +32,12 @@
 #include <QPushButton>
 #include <QKeySequence>
 #include <QTextBrowser>
+#include <QIcon>
+#include <QSize>
 
 #include "aboutdialog.h"
 #include "ui_aboutdialog.h"
+#include "core/appicon.h"
 
 using namespace Qt::Literals::StringLiterals;
 
@@ -154,6 +157,13 @@ AboutDialog::AboutDialog(QWidget *parent) : QDialog(parent), ui_{} {
 
   ui_.buttonBox->button(QDialogButtonBox::Close)->setShortcut(QKeySequence::Close);
 
+  UpdateIcon();
+  QObject::connect(AppIcon::Instance(), &AppIcon::Changed, this, &AboutDialog::UpdateIcon);
+
+}
+
+void AboutDialog::UpdateIcon() {
+  ui_.label_icon->setPixmap(AppIcon::Icon().pixmap(QSize(kIconSize, kIconSize), devicePixelRatioF()));
 }
 
 QString AboutDialog::MainHtml() const {

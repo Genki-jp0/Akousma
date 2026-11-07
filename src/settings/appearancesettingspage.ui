@@ -116,6 +116,53 @@
        </widget>
       </item>
       <item>
+       <layout class="QHBoxLayout" name="layout_app_icon">
+        <item>
+         <widget class="QLabel" name="label_app_icon">
+          <property name="text">
+           <string>Application icon</string>
+          </property>
+          <property name="buddy">
+           <cstring>combobox_app_icon</cstring>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="combobox_app_icon">
+          <property name="toolTip">
+           <string>The icon of Akousma's windows, taskbar button and tray icon, also shown in the About dialog, the context view and the playlist background. The program file, shortcuts and the desktop's menu keep the default icon.</string>
+          </property>
+          <property name="sizeAdjustPolicy">
+           <enum>QComboBox::AdjustToContents</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="spacer_app_icon">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="checkbox_app_icon_from_iconset">
+        <property name="toolTip">
+         <string>The pomegranate drawn in the style of the icon set: Adwaita, Breeze, Breeze Dark, elementary, Oxygen, Papirus, Papirus Dark or Tango, also when following one of these icon themes. With other icon sets the application icon is the style chosen above.</string>
+        </property>
+        <property name="text">
+         <string>Use the icon set's Akousma icon</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QWidget" name="widget_window_backdrop" native="true">
         <layout class="QVBoxLayout" name="layout_window_backdrop">
          <property name="leftMargin">
@@ -962,6 +1009,8 @@
   <tabstop>checkbox_dark_mode</tabstop>
   <tabstop>combobox_icon_set</tabstop>
   <tabstop>button_icon_set_folder</tabstop>
+  <tabstop>combobox_app_icon</tabstop>
+  <tabstop>checkbox_app_icon_from_iconset</tabstop>
   <tabstop>combobox_window_backdrop</tabstop>
   <tabstop>checkbox_window_backdrop_translucent_content</tabstop>
   <tabstop>combobox_player_layout</tabstop>

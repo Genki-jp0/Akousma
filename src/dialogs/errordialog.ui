@@ -13,10 +13,6 @@
   <property name="windowTitle">
    <string>Akousma Error</string>
   </property>
-  <property name="windowIcon">
-   <iconset resource="../../data/icons.qrc">
-    <normaloff>:/icons/64x64/akousma.png</normaloff>:/icons/64x64/akousma.png</iconset>
-  </property>
   <layout class="QVBoxLayout" name="layout_errordialog">
    <item>
     <layout class="QHBoxLayout" name="container">

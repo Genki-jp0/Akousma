@@ -29,6 +29,10 @@
 #include <QString>
 #include <QStringList>
 #include <QTemporaryDir>
+#include <QList>
+#include <QPair>
+
+#include <algorithm>
 
 #include "core/settings.h"
 #include "core/iconloader.h"
@@ -215,8 +219,17 @@ TEST_F(IconLoaderTest, BundledSet) {
   ASSERT_EQ(IconLoader::IconSetType::Bundled, iconset.type);
   EXPECT_EQ(u"Oxygen"_s, iconset.name);
   EXPECT_EQ(u"LGPL-3+"_s, iconset.licence);
-  EXPECT_GT(iconset.icons, 70);
-  EXPECT_LE(iconset.icons, IconLoader::ThemableIconCount());
+  EXPECT_EQ(u"oxygen"_s, iconset.theme);
+  // All icons but radio; the set's application icon, Akousma's own drawing, doesn't count.
+  EXPECT_EQ(IconLoader::ThemableIconCount() - 1, iconset.icons);
+  EXPECT_EQ(u"oxygen"_s, IconLoader::BundledIconSetForTheme(u"Oxygen"_s));
+  QList<int> akousma_sizes;
+  const QList<QPair<int, QString>> akousma_files = IconLoader::BundledIconFiles(u"oxygen"_s, u"akousma"_s);
+  for (const QPair<int, QString> &file : akousma_files) akousma_sizes << file.first;
+  std::sort(akousma_sizes.begin(), akousma_sizes.end());
+  EXPECT_EQ(QList<int>() << 16 << 22 << 32 << 48 << 64 << 128 << 256, akousma_sizes);
+  EXPECT_TRUE(IconLoader::BundledIconFiles(u"oxygen"_s, u"no-such-icon"_s).isEmpty());
+  EXPECT_TRUE(IconLoader::BundledIconFiles(u"no-such-set"_s, u"akousma"_s).isEmpty());
 
   SetIconSet(u"oxygen"_s);
   EXPECT_EQ(u"oxygen"_s, IconLoader::CurrentIconSet());
@@ -230,6 +243,8 @@ TEST_F(IconLoaderTest, BundledSet) {
   EXPECT_FALSE(IconLoader::Load(u"media-playback-start"_s, true, 128).isNull());
   // Not chosen for icons that must stay Akousma's own.
   EXPECT_FALSE(HasSize(IconLoader::Load(u"media-playback-start"_s, false), 16));
+  // The application icon is still AppIcon's, the set's pomegranate only with that setting.
+  EXPECT_EQ(u"akousma"_s, IconLoader::Load(u"akousma"_s).name());
 
   EXPECT_FALSE(IconLoader::IconSetPixmap(u"oxygen"_s, u"document-edit"_s, 20).isNull());
   EXPECT_FALSE(IconLoader::IconSetPixmap(u"akousma"_s, u"document-edit"_s, 20).isNull());

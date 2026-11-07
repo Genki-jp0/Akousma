@@ -1,4 +1,9 @@
 akousma ICON "${CMAKE_SOURCE_DIR}/dist/windows/akousma.ico"
+// The other styles of the application icon, to choose for a shortcut. The first icon above is the program's icon.
+akousma_win10 ICON "${CMAKE_SOURCE_DIR}/data/icons/akousma/akousma-win10.ico"
+akousma_win81 ICON "${CMAKE_SOURCE_DIR}/data/icons/akousma/akousma-win81-desktop.ico"
+akousma_win8 ICON "${CMAKE_SOURCE_DIR}/data/icons/akousma/akousma-win8-tile.ico"
+akousma_aero ICON "${CMAKE_SOURCE_DIR}/data/icons/akousma/akousma-aero.ico"
 1 VERSIONINFO
 FILEVERSION     ${AKOUSMA_VERSION_MAJOR},${AKOUSMA_VERSION_MINOR},${AKOUSMA_VERSION_PATCH},0
 PRODUCTVERSION  ${AKOUSMA_VERSION_MAJOR},${AKOUSMA_VERSION_MINOR},${AKOUSMA_VERSION_PATCH},0

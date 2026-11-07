@@ -19,10 +19,6 @@
   <property name="windowTitle">
    <string>Export covers</string>
   </property>
-  <property name="windowIcon">
-   <iconset resource="../../data/icons.qrc">
-    <normaloff>:/icons/64x64/akousma.png</normaloff>:/icons/64x64/akousma.png</iconset>
-  </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QGroupBox" name="groupbox_output">

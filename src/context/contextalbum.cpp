@@ -41,6 +41,7 @@
 
 #include "includes/shared_ptr.h"
 #include "utilities/imageutils.h"
+#include "core/appicon.h"
 #include "covermanager/albumcoverchoicecontroller.h"
 
 #include "contextalbum.h"
@@ -52,6 +53,8 @@ using namespace Qt::Literals::StringLiterals;
 
 namespace {
 constexpr int kFadeTimeLineMs = 1000;
+// The size of the application icon shown when nothing plays.
+constexpr int kAppIconPictureSize = 512;
 // Rescaling the covers with smooth transformation is expensive for large covers, so it is delayed while the width keeps changing, for example when dragging a splitter.
 constexpr int kScaleDelayMs = 100;
 }
@@ -63,7 +66,7 @@ ContextAlbum::ContextAlbum(QWidget *parent)
       downloading_covers_(false),
       timeline_fade_(new QTimeLine(kFadeTimeLineMs, this)),
       timer_scale_(new QTimer(this)),
-      image_strawberry_(u":/pictures/strawberry.png"_s),
+      image_strawberry_(AppIcon::Picture(kAppIconPictureSize)),
       image_original_(image_strawberry_),
       pixmap_current_opacity_(1.0),
       desired_height_(width()) {
@@ -87,6 +90,21 @@ ContextAlbum::ContextAlbum(QWidget *parent)
   timer_scale_->setSingleShot(true);
   timer_scale_->setInterval(kScaleDelayMs);
   QObject::connect(timer_scale_, &QTimer::timeout, this, &ContextAlbum::ScaleCovers);
+
+  QObject::connect(AppIcon::Instance(), &AppIcon::Changed, this, &ContextAlbum::AppIconChanged);
+
+}
+
+void ContextAlbum::AppIconChanged() {
+
+  // Shown when nothing plays: the new application icon replaces the old one right away.
+  const bool showing = image_original_ == image_strawberry_;
+  image_strawberry_ = AppIcon::Picture(kAppIconPictureSize);
+  if (showing) {
+    image_original_ = image_strawberry_;
+    ScaleCover();
+    update();
+  }
 
 }
 

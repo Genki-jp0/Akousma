@@ -37,8 +37,14 @@
 
 #include "core/song.h"
 #include "core/iconloader.h"
+#include "core/appicon.h"
 
 using namespace Qt::Literals::StringLiterals;
+
+namespace {
+// The size of the application icon in the dock, with the playing or paused icon and the progress.
+constexpr int kDockIconSize = 128;
+}  // namespace
 
 @interface Target :NSObject {
   QAction *action_;
@@ -155,8 +161,8 @@ class MacSystemTrayIconPrivate {
 
 SystemTrayIcon::SystemTrayIcon(QObject *parent)
     : QObject(parent),
-      normal_icon_(QPixmap(u":/pictures/strawberry.png"_s).scaled(128, 128, Qt::KeepAspectRatio, Qt::SmoothTransformation)),
-      grey_icon_(QPixmap(u":/pictures/strawberry-grey.png"_s).scaled(128, 128, Qt::KeepAspectRatio, Qt::SmoothTransformation)),
+      normal_icon_(QPixmap::fromImage(AppIcon::Picture(kDockIconSize))),
+      grey_icon_(QPixmap::fromImage(AppIcon::Picture(kDockIconSize, true))),
       playing_icon_(u":/pictures/tiny-play.png"_s),
       paused_icon_(u":/pictures/tiny-pause.png"_s),
       device_pixel_ratio_(1.0),
@@ -164,6 +170,16 @@ SystemTrayIcon::SystemTrayIcon(QObject *parent)
       song_progress_(0) {
 
   QApplication::setWindowIcon(normal_icon_);
+
+  QObject::connect(AppIcon::Instance(), &AppIcon::Changed, this, &SystemTrayIcon::AppIconChanged);
+
+}
+
+void SystemTrayIcon::AppIconChanged() {
+
+  normal_icon_ = QPixmap::fromImage(AppIcon::Picture(kDockIconSize));
+  grey_icon_ = QPixmap::fromImage(AppIcon::Picture(kDockIconSize, true));
+  UpdateIcon();
 
 }
 

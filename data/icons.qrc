@@ -73,8 +73,6 @@
         <file>icons/128x128/speaker.png</file>
         <file>icons/128x128/star-grey.png</file>
         <file>icons/128x128/star.png</file>
-        <file>icons/128x128/akousma.png</file>
-        <file>icons/128x128/akousma-grey.png</file>
         <file>icons/128x128/tools-wizard.png</file>
         <file>icons/128x128/view-choose.png</file>
         <file>icons/128x128/view-fullscreen.png</file>
@@ -177,8 +175,6 @@
         <file>icons/64x64/speaker.png</file>
         <file>icons/64x64/star-grey.png</file>
         <file>icons/64x64/star.png</file>
-        <file>icons/64x64/akousma.png</file>
-        <file>icons/64x64/akousma-grey.png</file>
         <file>icons/64x64/tools-wizard.png</file>
         <file>icons/64x64/view-choose.png</file>
         <file>icons/64x64/view-fullscreen.png</file>
@@ -287,8 +283,6 @@
         <file>icons/48x48/speaker.png</file>
         <file>icons/48x48/star-grey.png</file>
         <file>icons/48x48/star.png</file>
-        <file>icons/48x48/akousma.png</file>
-        <file>icons/48x48/akousma-grey.png</file>
         <file>icons/48x48/tools-wizard.png</file>
         <file>icons/48x48/view-choose.png</file>
         <file>icons/48x48/view-fullscreen.png</file>
@@ -397,8 +391,6 @@
         <file>icons/32x32/speaker.png</file>
         <file>icons/32x32/star-grey.png</file>
         <file>icons/32x32/star.png</file>
-        <file>icons/32x32/akousma.png</file>
-        <file>icons/32x32/akousma-grey.png</file>
         <file>icons/32x32/tools-wizard.png</file>
         <file>icons/32x32/view-choose.png</file>
         <file>icons/32x32/view-fullscreen.png</file>
@@ -507,8 +499,6 @@
         <file>icons/22x22/speaker.png</file>
         <file>icons/22x22/star-grey.png</file>
         <file>icons/22x22/star.png</file>
-        <file>icons/22x22/akousma.png</file>
-        <file>icons/22x22/akousma-grey.png</file>
         <file>icons/22x22/tools-wizard.png</file>
         <file>icons/22x22/view-choose.png</file>
         <file>icons/22x22/view-fullscreen.png</file>
@@ -537,5 +527,15 @@
         <file>icons/22x22/radiobrowser.png</file>
         <file>icons/22x22/musicbrainz.png</file>
         <file>icons/22x22/waveform-config.png</file>
+        <file>icons/akousma/akousma-win11.ico</file>
+        <file>icons/akousma/akousma-win11-512.png</file>
+        <file>icons/akousma/akousma-win10.ico</file>
+        <file>icons/akousma/akousma-win10-512.png</file>
+        <file>icons/akousma/akousma-win81-desktop.ico</file>
+        <file>icons/akousma/akousma-win81-desktop-512.png</file>
+        <file>icons/akousma/akousma-win8-tile.ico</file>
+        <file>icons/akousma/akousma-win8-tile-512.png</file>
+        <file>icons/akousma/akousma-aero.ico</file>
+        <file>icons/akousma/akousma-aero-512.png</file>
     </qresource>
 </RCC>

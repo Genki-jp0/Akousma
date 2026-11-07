@@ -1,5 +1,7 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource prefix="/iconsets/elementary">
+  <file alias="128/akousma.svg">elementary/128/akousma.svg</file>
+  <file alias="16/akousma.svg">elementary/16/akousma.svg</file>
   <file alias="16/albums.svg">elementary/16/albums.svg</file>
   <file alias="16/applications-internet.svg">elementary/16/applications-internet.svg</file>
   <file alias="16/bluetooth.svg">elementary/16/bluetooth.svg</file>
@@ -63,6 +65,7 @@
   <file alias="16/view-refresh.svg">elementary/16/view-refresh.svg</file>
   <file alias="16/zoom-in.svg">elementary/16/zoom-in.svg</file>
   <file alias="16/zoom-out.svg">elementary/16/zoom-out.svg</file>
+  <file alias="24/akousma.svg">elementary/24/akousma.svg</file>
   <file alias="24/albums.svg">elementary/24/albums.svg</file>
   <file alias="24/applications-internet.svg">elementary/24/applications-internet.svg</file>
   <file alias="24/bluetooth.svg">elementary/24/bluetooth.svg</file>
@@ -133,6 +136,7 @@
   <file alias="24/view-refresh.svg">elementary/24/view-refresh.svg</file>
   <file alias="24/zoom-in.svg">elementary/24/zoom-in.svg</file>
   <file alias="24/zoom-out.svg">elementary/24/zoom-out.svg</file>
+  <file alias="32/akousma.svg">elementary/32/akousma.svg</file>
   <file alias="32/albums.svg">elementary/32/albums.svg</file>
   <file alias="32/application-exit.svg">elementary/32/application-exit.svg</file>
   <file alias="32/applications-internet.svg">elementary/32/applications-internet.svg</file>
@@ -191,6 +195,7 @@
   <file alias="32/speaker.svg">elementary/32/speaker.svg</file>
   <file alias="32/view-media-playlist.svg">elementary/32/view-media-playlist.svg</file>
   <file alias="32/view-refresh.svg">elementary/32/view-refresh.svg</file>
+  <file alias="48/akousma.svg">elementary/48/akousma.svg</file>
   <file alias="48/albums.svg">elementary/48/albums.svg</file>
   <file alias="48/application-exit.svg">elementary/48/application-exit.svg</file>
   <file alias="48/applications-internet.svg">elementary/48/applications-internet.svg</file>
@@ -257,6 +262,7 @@
   <file alias="48/speaker.svg">elementary/48/speaker.svg</file>
   <file alias="48/view-media-playlist.svg">elementary/48/view-media-playlist.svg</file>
   <file alias="48/view-refresh.svg">elementary/48/view-refresh.svg</file>
+  <file alias="64/akousma.svg">elementary/64/akousma.svg</file>
   <file alias="64/albums.svg">elementary/64/albums.svg</file>
   <file alias="64/applications-internet.svg">elementary/64/applications-internet.svg</file>
   <file alias="64/bluetooth.svg">elementary/64/bluetooth.svg</file>

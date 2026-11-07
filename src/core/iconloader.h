@@ -23,6 +23,7 @@
 
 #include <QList>
 #include <QMap>
+#include <QPair>
 #include <QString>
 #include <QStringList>
 #include <QIcon>
@@ -72,6 +73,7 @@ class IconLoader {
     QString path;      // The .rcc file of a bundled set, the folder of an installed or user theme.
     QString licence;
     QString source;
+    QString theme;     // A bundled set: the folder name of the icon theme it was made from.
     int icons = -1;    // How many of the themable icons a bundled set has.
     bool needs_svg = false;  // A bundled set with icons only in SVG, which need the Qt SVG module.
   };
@@ -86,6 +88,13 @@ class IconLoader {
   // All icon sets that can be chosen, built-in first.
   static QList<IconSet> IconSets();
   static IconSet FindIconSet(const QString &id);
+  // The bundled sets (iconsets/<id>.rcc), sorted by name.
+  static QList<IconSet> BundledIconSets();
+  // The bundled set made from the icon theme with that folder name (iconset.ini's theme), empty when there is none.
+  static QString BundledIconSetForTheme(const QString &theme_name);
+  // The files of an icon in a bundled set as (size, file), size 0 for a scalable SVG, also of icons the set has besides the
+  // themable ones (its akousma icon). Empty when the set or the icon isn't there; SVG files only with the Qt SVG module.
+  static QList<QPair<int, QString>> BundledIconFiles(const QString &id, const QString &name);
   // A pixmap of the icon in the given set, falling back to the built-in icon (previews in the settings).
   static QPixmap IconSetPixmap(const QString &id, const QString &name, const int size);
   static QPixmap IconSetPixmap(const IconSet &iconset, const QString &name, const int size);

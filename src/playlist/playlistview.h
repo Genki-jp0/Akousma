@@ -187,6 +187,8 @@ class PlaylistView : public QTreeView {
   void RestoreHeaderState();
 
   void ReloadBarPixmaps();
+  // The default background, the faded application icon.
+  static QPixmap DefaultBackground(const qreal device_pixel_ratio);
   QList<QPixmap> LoadBarPixmap(const QString &filename, const bool keep_aspect_ratio);
   void LoadTinyPlayPausePixmaps(const int desired_size);
   void UpdateCachedCurrentRowPixmap(QStyleOptionViewItem option, const QModelIndex &idx);
@@ -240,6 +242,7 @@ class PlaylistView : public QTreeView {
   QImage background_image_;
   QImage current_song_cover_art_;
   QPixmap cached_scaled_background_image_;
+  QPixmap default_background_;
 
   // For fading when image change
   QPixmap previous_background_image_;

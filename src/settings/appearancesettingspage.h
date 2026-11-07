@@ -81,6 +81,7 @@ class AppearanceSettingsPage : public SettingsPage {
   void PlaylistPlayingSongColorSystem(const bool checked);
   void PlaylistPlayingSongSelectColor();
   void IconSetChanged();
+  void UpdateAppIconControls();
   void OpenIconSetFolder();
 
  private:

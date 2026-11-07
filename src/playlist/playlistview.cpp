@@ -64,6 +64,7 @@
 #include "core/song.h"
 #include "core/settings.h"
 #include "core/player.h"
+#include "core/appicon.h"
 #include "playlistmanager.h"
 #include "playlist.h"
 #include "playlistdelegates.h"
@@ -89,6 +90,9 @@ constexpr int kAutoscrollGraceTimeout = 30;  // seconds
 constexpr int kDropIndicatorWidth = 2;
 constexpr int kDropIndicatorGradientWidth = 5;
 constexpr int kHeaderStateVersion = 2;
+// The default background: the application icon, faded, in the lower right corner.
+constexpr int kDefaultBackgroundSize = 512;
+constexpr qreal kDefaultBackgroundOpacity = 0.13;
 }  // namespace
 
 PlaylistView::PlaylistView(QWidget *parent)
@@ -180,6 +184,10 @@ PlaylistView::PlaylistView(QWidget *parent)
 
   // For fading
   QObject::connect(fade_animation_, &QTimeLine::valueChanged, this, &PlaylistView::FadePreviousBackgroundImage);
+  QObject::connect(AppIcon::Instance(), &AppIcon::Changed, this, [this]() {
+    default_background_ = QPixmap();
+    viewport()->update();
+  });
   fade_animation_->setDirection(QTimeLine::Direction::Backward);  // 1.0 -> 0.0
 
 }
@@ -1046,6 +1054,23 @@ void PlaylistView::JumpToLastPlayedTrack() {
 
 }
 
+QPixmap PlaylistView::DefaultBackground(const qreal device_pixel_ratio) {
+
+  const QImage image = AppIcon::Picture(qRound(kDefaultBackgroundSize * device_pixel_ratio));
+  if (image.isNull()) return QPixmap();
+
+  QPixmap pixmap(image.size());
+  pixmap.fill(Qt::transparent);
+  QPainter p(&pixmap);
+  p.setOpacity(kDefaultBackgroundOpacity);
+  p.drawImage(0, 0, image);
+  p.end();
+  pixmap.setDevicePixelRatio(device_pixel_ratio);
+
+  return pixmap;
+
+}
+
 void PlaylistView::paintEvent(QPaintEvent *event) {
 
   // Reimplemented to draw the background image.
@@ -1055,7 +1080,18 @@ void PlaylistView::paintEvent(QPaintEvent *event) {
   // The cached pixmap gets invalidated in dragLeaveEvent, dropEvent and scrollContentsBy.
 
   // Draw background
-  if (background_image_type_ == AppearanceSettings::BackgroundImageType::Custom || background_image_type_ == AppearanceSettings::BackgroundImageType::Album) {
+  if (background_image_type_ == AppearanceSettings::BackgroundImageType::Default) {
+    const qreal device_pixel_ratio = devicePixelRatioF();
+    if (default_background_.isNull() || !qFuzzyCompare(default_background_.devicePixelRatio(), device_pixel_ratio)) {
+      default_background_ = DefaultBackground(device_pixel_ratio);
+    }
+    if (!default_background_.isNull()) {
+      QPainter background_painter(viewport());
+      const QSize size = default_background_.deviceIndependentSize().toSize();
+      background_painter.drawPixmap(viewport()->width() - size.width(), viewport()->height() - size.height(), default_background_);
+    }
+  }
+  else if (background_image_type_ == AppearanceSettings::BackgroundImageType::Custom || background_image_type_ == AppearanceSettings::BackgroundImageType::Album) {
     if (!background_image_.isNull() || !previous_background_image_.isNull()) {
       QPainter background_painter(viewport());
 
@@ -1352,7 +1388,6 @@ void PlaylistView::ReloadSettings() {
       cached_scaled_background_image_ = QPixmap();
       previous_background_image_ = QPixmap();
     }
-    setProperty("default_background_enabled", background_image_type_ == AppearanceSettings::BackgroundImageType::Default);
     setProperty("strawbs_background_enabled", background_image_type_ == AppearanceSettings::BackgroundImageType::Strawbs);
     Q_EMIT BackgroundPropertyChanged();
     force_background_redraw_ = true;

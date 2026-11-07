@@ -13,10 +13,6 @@
   <property name="windowTitle">
    <string>Transcode Music</string>
   </property>
-  <property name="windowIcon">
-   <iconset>
-    <normaloff>:/icons/64x64/akousma.png</normaloff>:/icons/64x64/akousma.png</iconset>
-  </property>
   <layout class="QVBoxLayout" name="layout_transcodedialog">
    <item>
     <widget class="QGroupBox" name="input_group">

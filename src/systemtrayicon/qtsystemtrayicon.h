@@ -82,6 +82,7 @@ class SystemTrayIcon : public QSystemTrayIcon {
 
  private Q_SLOTS:
   void Clicked(const QSystemTrayIcon::ActivationReason activation_reason);
+  void AppIconChanged();
 
  private:
   QMenu *menu_;

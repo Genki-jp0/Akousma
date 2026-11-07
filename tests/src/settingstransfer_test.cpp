@@ -35,6 +35,7 @@
 #include "core/settingstransfer.h"
 #include "settings/tabbarthemes.h"
 #include "core/iconloader.h"
+#include "core/appicon.h"
 #include <QImage>
 
 using namespace Qt::Literals::StringLiterals;
@@ -196,6 +197,42 @@ TEST_F(SettingsTransferTest, IconSet) {
 
   ASSERT_TRUE(SettingsTransfer::Import(filename).success);
   EXPECT_EQ(u"breeze"_s, IconLoader::IconSetFromSettings());
+
+}
+
+// The application icon goes into an export, a reset goes back to the default style without the icon set's pomegranate and an import
+// brings both back.
+TEST_F(SettingsTransferTest, AppIcon) {
+
+  {
+    Settings s;
+    s.setValue(u"Appearance/app_icon"_s, u"aero"_s);
+    s.setValue(u"Appearance/app_icon_from_iconset"_s, true);
+    s.sync();
+  }
+  EXPECT_EQ(u"aero"_s, AppIcon::StyleFromSettings());
+  EXPECT_TRUE(AppIcon::FromIconSetFromSettings());
+
+  const QString filename = dir_.filePath(u"appicon.ini"_s);
+  ASSERT_TRUE(SettingsTransfer::Export(filename).success);
+  EXPECT_EQ(u"aero"_s, QSettings(filename, QSettings::IniFormat).value(u"Appearance/app_icon"_s).toString());
+  EXPECT_TRUE(QSettings(filename, QSettings::IniFormat).value(u"Appearance/app_icon_from_iconset"_s).toBool());
+
+  ASSERT_TRUE(SettingsTransfer::Reset().success);
+  EXPECT_EQ(u"win11"_s, AppIcon::StyleFromSettings());
+  EXPECT_FALSE(AppIcon::FromIconSetFromSettings());
+
+  ASSERT_TRUE(SettingsTransfer::Import(filename).success);
+  EXPECT_EQ(u"aero"_s, AppIcon::StyleFromSettings());
+  EXPECT_TRUE(AppIcon::FromIconSetFromSettings());
+
+  // A style this version doesn't have, e.g. from a newer version's export, means the default style.
+  {
+    QSettings file(filename, QSettings::IniFormat);
+    file.setValue(u"Appearance/app_icon"_s, u"winxp"_s);
+  }
+  ASSERT_TRUE(SettingsTransfer::Import(filename).success);
+  EXPECT_EQ(u"win11"_s, AppIcon::StyleFromSettings());
 
 }
 

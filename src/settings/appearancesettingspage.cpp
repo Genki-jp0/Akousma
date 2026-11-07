@@ -67,6 +67,7 @@
 #include "constants/filefilterconstants.h"
 #include "utilities/styleutils.h"
 #include "core/iconloader.h"
+#include "core/appicon.h"
 #include "core/stylehelper.h"
 #include "core/settings.h"
 #include "core/appearance.h"
@@ -94,6 +95,8 @@ constexpr int kTabBarPreviewHeight = 48;
 constexpr int kIconSetPreviewIconSize = 20;
 constexpr int kIconSetPreviewSpacing = 4;
 constexpr const char16_t *kIconSetPreviewIcons[] = { u"media-playback-start", u"media-skip-forward", u"media-playlist-shuffle", u"folder-sound", u"edit-find", u"configure", u"document-save" };
+// The size of each style's icon in the Application icon dropdown.
+constexpr int kAppIconPreviewSize = 32;
 // Where PlayingWidget keeps its album cover mode (0 small, 1 large).
 constexpr char kPlayingWidgetSettingsGroup[] = "PlayingWidget";
 constexpr char kPlayingWidgetMode[] = "mode";
@@ -248,6 +251,16 @@ AppearanceSettingsPage::AppearanceSettingsPage(SettingsDialog *dialog, SharedPtr
     QObject::connect(watcher, &IconThemeWatcher::IconThemeChanged, this, [this]() { UpdateIconSetItems(SelectedIconSet()); });
   }
 
+  // Application icon: a dropdown with each style's icon.
+  ui_->combobox_app_icon->setIconSize(QSize(kAppIconPreviewSize, kAppIconPreviewSize));
+  const QList<AppIcon::Style> app_icon_styles = AppIcon::Styles();
+  for (const AppIcon::Style &style : app_icon_styles) {
+    ui_->combobox_app_icon->addItem(AppIcon::StyleIcon(style.key), style.name, style.key);
+  }
+  // The icon set's pomegranate instead: the checkbox shows the one of the chosen set.
+  ui_->checkbox_app_icon_from_iconset->setIconSize(QSize(kAppIconPreviewSize, kAppIconPreviewSize));
+  QObject::connect(ui_->checkbox_app_icon_from_iconset, &QCheckBox::toggled, this, &AppearanceSettingsPage::UpdateAppIconControls);
+
   AppearanceSettingsPage::Load();
 
 }
@@ -267,6 +280,10 @@ void AppearanceSettingsPage::Load() {
   ComboBoxLoadFromSettings(s, ui_->combobox_style, QLatin1String(kStyle), u"default"_s);
 
   UpdateIconSetItems(IconLoader::IconSetFromSettings());
+
+  ui_->combobox_app_icon->setCurrentIndex(qMax(0, ui_->combobox_app_icon->findData(AppIcon::StyleFromSettings())));
+  ui_->checkbox_app_icon_from_iconset->setChecked(AppIcon::FromIconSetFromSettings());
+  UpdateAppIconControls();
 
 #ifdef Q_OS_WIN32
   {
@@ -466,6 +483,11 @@ void AppearanceSettingsPage::Save() {
   const QString icon_set = ui_->combobox_icon_set->currentData().toString().isEmpty() ? QLatin1String(IconLoader::kIconSetBuiltIn) : ui_->combobox_icon_set->currentData().toString();
   s.setValue(kIconSet, icon_set);
   s.setValue(kSystemThemeIcons, icon_set == QLatin1String(IconLoader::kIconSetSystem));
+
+  // The application icon changes when the settings are applied (MainWindow::ReloadSettings).
+  s.setValue(kAppIcon, AppIcon::ValidStyle(ui_->combobox_app_icon->currentData().toString()));
+  // Also the icon set's pomegranate, right away, though the set's other icons wait for the restart.
+  s.setValue(kAppIconFromIconSet, ui_->checkbox_app_icon_from_iconset->isChecked());
   // The icons are set when the windows are made, so another icon set needs a restart. Ask after all pages are saved.
   if (icon_set != IconLoader::CurrentIconSet() && icon_set != restart_asked_icon_set_) {
     restart_asked_icon_set_ = icon_set;
@@ -1412,6 +1434,17 @@ void AppearanceSettingsPage::IconSetChanged() {
 
   // The sidebar previews show the icons of the chosen set.
   UpdateTabBarBackgroundPreviews();
+
+  UpdateAppIconControls();
+
+}
+
+void AppearanceSettingsPage::UpdateAppIconControls() {
+
+  // The chosen icon set's pomegranate, if it has one. The style is used without one, so it can be chosen then.
+  const QString bundled_id = AppIcon::IconSetWithIcon(SelectedIconSet());
+  ui_->checkbox_app_icon_from_iconset->setIcon(bundled_id.isEmpty() ? QIcon() : AppIcon::IconSetIcon(bundled_id));
+  ui_->combobox_app_icon->setEnabled(!ui_->checkbox_app_icon_from_iconset->isChecked() || bundled_id.isEmpty());
 
 }
 

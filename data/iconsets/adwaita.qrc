@@ -10,6 +10,7 @@
   <file alias="16/headset.png">adwaita/16/headset.png</file>
   <file alias="16/library-music.png">adwaita/16/library-music.png</file>
   <file alias="iconset.ini">adwaita/iconset.ini</file>
+  <file alias="scalable/akousma.svg">adwaita/scalable/akousma.svg</file>
   <file alias="scalable/albums.svg">adwaita/scalable/albums.svg</file>
   <file alias="scalable/application-exit.svg">adwaita/scalable/application-exit.svg</file>
   <file alias="scalable/applications-internet.svg">adwaita/scalable/applications-internet.svg</file>

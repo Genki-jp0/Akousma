@@ -543,6 +543,7 @@ set(SOURCES
   src/core/urlhandler.cpp
   src/core/urlhandlers.cpp
   src/core/iconloader.cpp
+  src/core/appicon.cpp
   src/core/standarditemiconloader.cpp
   src/core/scopedtransaction.cpp
   src/core/translations.cpp
@@ -981,6 +982,7 @@ set(HEADERS
   src/core/oauthenticator.h
   src/core/appearance.h
   src/core/iconloader.h
+  src/core/appicon.h
 
   src/credentialsmanager/credentialsmanager.h
   src/credentialsmanager/credentialsreply.h
@@ -1804,7 +1806,9 @@ add_library(strawberry_lib STATIC ${SOURCES})
 target_sources(akousma PRIVATE src/main.cpp)
 
 if(WIN32)
-  target_sources(akousma PRIVATE windres.rc)
+  target_sources(akousma PRIVATE ${CMAKE_BINARY_DIR}/windres.rc)
+  # The resource compiler doesn't tell which files windres.rc reads, so it is compiled again when one of its icons changes.
+  set_source_files_properties(${CMAKE_BINARY_DIR}/windres.rc PROPERTIES OBJECT_DEPENDS "${CMAKE_SOURCE_DIR}/dist/windows/akousma.ico;${CMAKE_SOURCE_DIR}/data/icons/akousma/akousma-win10.ico;${CMAKE_SOURCE_DIR}/data/icons/akousma/akousma-win81-desktop.ico;${CMAKE_SOURCE_DIR}/data/icons/akousma/akousma-win8-tile.ico;${CMAKE_SOURCE_DIR}/data/icons/akousma/akousma-aero.ico")
 endif()
 
 add_subdirectory(src)

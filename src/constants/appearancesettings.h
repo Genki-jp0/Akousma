@@ -45,6 +45,13 @@ constexpr char kSystemThemeIcons[] = "system_icons";
 // The icon set (Settings > Appearance > Icon set): "akousma" (built-in), "system" (Linux), a bundled set such as "breeze",
 // or "theme:<folder>" for an icon theme in <data dir>/icons. Before it existed, system_icons=true meant "system".
 constexpr char kIconSet[] = "icon_set";
+// The style of the application icon (Settings > Appearance > Application icon), see core/appicon.h: "win11" (default), "win10", "win81", "win8"
+// or "aero". Another value means the default.
+constexpr char kAppIcon[] = "app_icon";
+// Whether the application icon is the pomegranate of the icon set (Settings > Appearance > Use the icon set's Akousma icon), see
+// core/appicon.h. Icon sets without one use the style of kAppIcon.
+constexpr char kAppIconFromIconSet[] = "app_icon_from_iconset";
+constexpr bool kDefaultAppIconFromIconSet = false;
 constexpr char kDarkMode[] = "dark_mode";
 constexpr char kUseCustomColorSet[] = "use-custom-color-set";
 

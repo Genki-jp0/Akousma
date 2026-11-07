@@ -93,6 +93,7 @@ class ContextAlbum : public QWidget {
   void FadeCurrentCoverFinished();
   void FadePreviousCover(SharedPtr<ContextAlbum::PreviousCover> previous_cover);
   void FadePreviousCoverFinished(SharedPtr<ContextAlbum::PreviousCover> previous_cover);
+  void AppIconChanged();
 
  public Q_SLOTS:
   void SearchCoverInProgress();

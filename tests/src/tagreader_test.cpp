@@ -3019,7 +3019,7 @@ TEST_F(TagReaderTest, TestASFAudioFileSaveSyncedLyricsUnsupported) {
 TEST_F(TagReaderTest, TestFLACAudioFileCover) {
 
   TemporaryResource r(u":/audio/strawberry.flac"_s);
-  const QString cover_filename = u":/pictures/strawberry.png"_s;
+  const QString cover_filename = u":/icons/akousma/akousma-win11-512.png"_s;
 
   QImage original_image;
   EXPECT_TRUE(original_image.load(cover_filename));
@@ -3036,7 +3036,7 @@ TEST_F(TagReaderTest, TestFLACAudioFileCover) {
 TEST_F(TagReaderTest, TestCoverThatCannotBeLoadedKeepsExistingCover) {
 
   TemporaryResource r(u":/audio/strawberry.flac"_s);
-  const QString cover_filename = u":/pictures/strawberry.png"_s;
+  const QString cover_filename = u":/icons/akousma/akousma-win11-512.png"_s;
 
   QImage original_image;
   EXPECT_TRUE(original_image.load(cover_filename));
@@ -3071,7 +3071,7 @@ TEST_F(TagReaderTest, TestCoverThatCannotBeLoadedKeepsExistingCover) {
 TEST_F(TagReaderTest, TestEmptyCoverRemovesCover) {
 
   TemporaryResource r(u":/audio/strawberry.flac"_s);
-  const QString cover_filename = u":/pictures/strawberry.png"_s;
+  const QString cover_filename = u":/icons/akousma/akousma-win11-512.png"_s;
 
   EXPECT_TRUE(WriteCoverToFile(r.fileName(), cover_filename).success());
   EXPECT_FALSE(ReadCoverFromFile(r.fileName()).isNull());
@@ -3084,7 +3084,7 @@ TEST_F(TagReaderTest, TestEmptyCoverRemovesCover) {
 TEST_F(TagReaderTest, TestOggVorbisAudioFileCover) {
 
   TemporaryResource r(u":/audio/strawberry.ogg"_s);
-  const QString cover_filename = u":/pictures/strawberry.png"_s;
+  const QString cover_filename = u":/icons/akousma/akousma-win11-512.png"_s;
 
   QImage original_image;
   EXPECT_TRUE(original_image.load(cover_filename));
@@ -3101,7 +3101,7 @@ TEST_F(TagReaderTest, TestOggVorbisAudioFileCover) {
 TEST_F(TagReaderTest, TestOggOpusAudioFileCover) {
 
   TemporaryResource r(u":/audio/strawberry.opus"_s);
-  const QString cover_filename = u":/pictures/strawberry.png"_s;
+  const QString cover_filename = u":/icons/akousma/akousma-win11-512.png"_s;
 
   QImage original_image;
   EXPECT_TRUE(original_image.load(cover_filename));
@@ -3118,7 +3118,7 @@ TEST_F(TagReaderTest, TestOggOpusAudioFileCover) {
 TEST_F(TagReaderTest, TestOggSpeexAudioFileCover) {
 
   TemporaryResource r(u":/audio/strawberry.spx"_s);
-  const QString cover_filename = u":/pictures/strawberry.png"_s;
+  const QString cover_filename = u":/icons/akousma/akousma-win11-512.png"_s;
 
   QImage original_image;
   EXPECT_TRUE(original_image.load(cover_filename));
@@ -3135,7 +3135,7 @@ TEST_F(TagReaderTest, TestOggSpeexAudioFileCover) {
 TEST_F(TagReaderTest, TestMP3AudioFileCover) {
 
   TemporaryResource r(u":/audio/strawberry.mp3"_s);
-  const QString cover_filename = u":/pictures/strawberry.png"_s;
+  const QString cover_filename = u":/icons/akousma/akousma-win11-512.png"_s;
 
   QImage original_image;
   EXPECT_TRUE(original_image.load(cover_filename));
@@ -3152,7 +3152,7 @@ TEST_F(TagReaderTest, TestMP3AudioFileCover) {
 TEST_F(TagReaderTest, TestMP3AudioFileWithoutID3v2TagCover) {
 
   TemporaryResource r(u":/audio/strawberry.mp3"_s);
-  const QString cover_filename = u":/pictures/strawberry.png"_s;
+  const QString cover_filename = u":/icons/akousma/akousma-win11-512.png"_s;
 
   {
     TagLib::MPEG::File file(TagLibFileName(r.fileName()).data());
@@ -3220,7 +3220,7 @@ TEST_F(TagReaderTest, TestMP3KeepsID3v2VersionWhenSaving) {
   EXPECT_TRUE(SaveLyricsToFile(u"strawberry lyrics"_s, r.fileName()).success());
   EXPECT_EQ(3, id3v2_version());
 
-  EXPECT_TRUE(WriteCoverToFile(r.fileName(), u":/pictures/strawberry.png"_s).success());
+  EXPECT_TRUE(WriteCoverToFile(r.fileName(), u":/icons/akousma/akousma-win11-512.png"_s).success());
   EXPECT_EQ(3, id3v2_version());
 
   // An explicit version is still used.
@@ -3238,7 +3238,7 @@ TEST_F(TagReaderTest, TestMP3KeepsID3v2VersionWhenSaving) {
 TEST_F(TagReaderTest, TestMP4AudioFileCover) {
 
   TemporaryResource r(u":/audio/strawberry.mp4"_s);
-  const QString cover_filename = u":/pictures/strawberry.png"_s;
+  const QString cover_filename = u":/icons/akousma/akousma-win11-512.png"_s;
 
   QImage original_image;
   EXPECT_TRUE(original_image.load(cover_filename));

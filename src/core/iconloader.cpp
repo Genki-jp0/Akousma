@@ -58,6 +58,7 @@
 #include "settings.h"
 #include "includes/iconmapper.h"
 #include "iconloader.h"
+#include "appicon.h"
 #include "constants/appearancesettings.h"
 
 using namespace Qt::Literals::StringLiterals;
@@ -480,40 +481,7 @@ QList<IconLoader::IconSet> IconLoader::IconSets() {
   iconsets << system;
 #endif
 
-  // Bundled sets, sorted by name. The first folder with a set wins. Sets with SVG icons need the Qt SVG module.
-  QList<IconSet> bundled;
-  QSet<QString> ids;
-  const QStringList dirs = IconSetDirs();
-  for (const QString &dir : dirs) {
-    const QFileInfoList files = QDir(dir).entryInfoList(QStringList() << u"*.rcc"_s, QDir::Files, QDir::Name);
-    for (const QFileInfo &fileinfo : files) {
-      IconSet iconset;
-      iconset.id = fileinfo.completeBaseName().toLower();
-      iconset.type = IconSetType::Bundled;
-      iconset.path = fileinfo.absoluteFilePath();
-      if (ids.contains(iconset.id) || iconset.id == QLatin1String(kIconSetBuiltIn) || iconset.id == QLatin1String(kIconSetSystem) || IsRemovedIconSet(iconset.id)) continue;
-      if (!RegisterIconSet(iconset)) continue;
-      const QMap<QString, QString> ini = ReadIniFile(IconSetRoot(iconset.id) + u"/iconset.ini"_s);
-      iconset.name = ini.value(u"IconSet/name"_s, iconset.id);
-      iconset.licence = ini.value(u"IconSet/licence"_s);
-      iconset.source = ini.value(u"IconSet/source"_s);
-      const QMap<QString, QList<QPair<int, QString>>> set_files = IconSetFiles().value(iconset.id);
-      iconset.icons = static_cast<int>(set_files.count());
-      // Needs Qt SVG when an icon has only SVG files; PNG files of an icon are enough without it.
-      for (const QList<QPair<int, QString>> &icon_files : set_files) {
-        const bool has_png = std::any_of(icon_files.cbegin(), icon_files.cend(), [](const QPair<int, QString> &icon_file) { return icon_file.second.endsWith(".png"_L1); });
-        if (!has_png) iconset.needs_svg = true;
-      }
-      if (iconset.needs_svg && !svg_supported_) {
-        qLog(Warning) << "Icon set" << iconset.name << "needs the Qt SVG module.";
-        continue;
-      }
-      ids.insert(iconset.id);
-      bundled << iconset;
-    }
-  }
-  std::sort(bundled.begin(), bundled.end(), [](const IconSet &a, const IconSet &b) { return a.name.compare(b.name, Qt::CaseInsensitive) < 0; });
-  iconsets << bundled;
+  iconsets << BundledIconSets();
 
   iconsets << SystemIconThemes();
 
@@ -532,6 +500,79 @@ QList<IconLoader::IconSet> IconLoader::IconSets() {
   }
 
   return iconsets;
+
+}
+
+QList<IconLoader::IconSet> IconLoader::BundledIconSets() {
+
+  // Sorted by name. The first folder with a set wins. Sets with SVG icons need the Qt SVG module.
+  if (!svg_supported_) svg_supported_ = QImageReader::supportedImageFormats().contains("svg");
+  QList<IconSet> bundled;
+  QSet<QString> ids;
+  const QMap<QString, QStringList> &icon_names = IconNames();
+  const QStringList dirs = IconSetDirs();
+  for (const QString &dir : dirs) {
+    const QFileInfoList files = QDir(dir).entryInfoList(QStringList() << u"*.rcc"_s, QDir::Files, QDir::Name);
+    for (const QFileInfo &fileinfo : files) {
+      IconSet iconset;
+      iconset.id = fileinfo.completeBaseName().toLower();
+      iconset.type = IconSetType::Bundled;
+      iconset.path = fileinfo.absoluteFilePath();
+      if (ids.contains(iconset.id) || iconset.id == QLatin1String(kIconSetBuiltIn) || iconset.id == QLatin1String(kIconSetSystem) || IsRemovedIconSet(iconset.id)) continue;
+      if (!RegisterIconSet(iconset)) continue;
+      const QMap<QString, QString> ini = ReadIniFile(IconSetRoot(iconset.id) + u"/iconset.ini"_s);
+      iconset.name = ini.value(u"IconSet/name"_s, iconset.id);
+      iconset.licence = ini.value(u"IconSet/licence"_s);
+      iconset.source = ini.value(u"IconSet/source"_s);
+      iconset.theme = ini.value(u"IconSet/theme"_s);
+      // Only the icons the set replaces count; the set's own application icon (akousma) is Akousma's artwork.
+      const QMap<QString, QList<QPair<int, QString>>> set_files = IconSetFiles().value(iconset.id);
+      iconset.icons = 0;
+      for (QMap<QString, QList<QPair<int, QString>>>::const_iterator it = set_files.constBegin(); it != set_files.constEnd(); ++it) {
+        if (icon_names.value(it.key()).isEmpty()) continue;
+        ++iconset.icons;
+        // Needs Qt SVG when an icon has only SVG files; PNG files of an icon are enough without it.
+        const bool has_png = std::any_of(it.value().cbegin(), it.value().cend(), [](const QPair<int, QString> &icon_file) { return icon_file.second.endsWith(".png"_L1); });
+        if (!has_png) iconset.needs_svg = true;
+      }
+      if (iconset.needs_svg && !svg_supported_) {
+        qLog(Warning) << "Icon set" << iconset.name << "needs the Qt SVG module.";
+        continue;
+      }
+      ids.insert(iconset.id);
+      bundled << iconset;
+    }
+  }
+  std::sort(bundled.begin(), bundled.end(), [](const IconSet &a, const IconSet &b) { return a.name.compare(b.name, Qt::CaseInsensitive) < 0; });
+  return bundled;
+
+}
+
+QString IconLoader::BundledIconSetForTheme(const QString &theme_name) {
+
+  if (theme_name.isEmpty()) return QString();
+  const QList<IconSet> bundled = BundledIconSets();
+  for (const IconSet &iconset : bundled) {
+    if (!iconset.theme.isEmpty() && iconset.theme.compare(theme_name, Qt::CaseInsensitive) == 0) return iconset.id;
+  }
+  return QString();
+
+}
+
+QList<QPair<int, QString>> IconLoader::BundledIconFiles(const QString &id, const QString &name) {
+
+  QList<QPair<int, QString>> files;
+  const QList<IconSet> bundled = BundledIconSets();
+  for (const IconSet &iconset : bundled) {
+    if (iconset.id != id || !RegisterIconSet(iconset)) continue;
+    const QList<QPair<int, QString>> set_files = IconSetFiles().value(iconset.id).value(name);
+    for (const QPair<int, QString> &file : set_files) {
+      if (file.second.endsWith(".svg"_L1) && !svg_supported_) continue;
+      files << file;
+    }
+    break;
+  }
+  return files;
 
 }
 
@@ -683,6 +724,11 @@ QIcon IconLoader::Load(const QString &name, const bool system_icon, const int fi
   if (name.isEmpty()) {
     qLog(Error) << "Icon name is empty!";
     return ret;
+  }
+
+  // The application icon is the style chosen in the settings, whatever the icon set or custom icons.
+  if (name == QLatin1String(AppIcon::kIconName) || name == QLatin1String(AppIcon::kGreyIconName)) {
+    return AppIcon::Icon(name == QLatin1String(AppIcon::kGreyIconName));
   }
 
   const QList<int> sizes = IconSizes(fixed_size);

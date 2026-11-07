@@ -76,6 +76,7 @@ class SystemTrayIcon : public QObject {
 
  private Q_SLOTS:
   void ActionChanged();
+  void AppIconChanged();
 
  Q_SIGNALS:
   void ChangeVolume(const int delta);

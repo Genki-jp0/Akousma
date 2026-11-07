@@ -16,10 +16,6 @@
   <property name="windowTitle">
    <string>About</string>
   </property>
-  <property name="windowIcon">
-   <iconset resource="../../data/icons.qrc">
-    <normaloff>:/icons/64x64/akousma.png</normaloff>:/icons/64x64/akousma.png</iconset>
-  </property>
   <property name="styleSheet">
    <string notr="true">#line {
   color: lightgrey;
@@ -39,9 +35,6 @@
       <layout class="QVBoxLayout" name="layout_left">
        <item>
         <widget class="QLabel" name="label_icon">
-         <property name="pixmap">
-          <pixmap resource="../../data/icons.qrc">:/icons/64x64/akousma.png</pixmap>
-         </property>
          <property name="scaledContents">
           <bool>false</bool>
          </property>

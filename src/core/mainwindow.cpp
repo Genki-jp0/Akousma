@@ -97,6 +97,7 @@
 #include "core/commandlineoptions.h"
 #include "core/mimedata.h"
 #include "core/iconloader.h"
+#include "core/appicon.h"
 #include "core/taskmanager.h"
 #include "core/song.h"
 #include "core/stylehelper.h"
@@ -1304,6 +1305,9 @@ void MainWindow::ReloadSettings() {
   s.endGroup();
 
   systemtrayicon_->SetTrayiconProgress(trayicon_progress);
+
+  // The windows, the tray icon and the pictures show another application icon right away.
+  AppIcon::ReloadSettings();
 
 #ifdef HAVE_DBUS
   if (taskbar_progress_ && !taskbar_progress) {

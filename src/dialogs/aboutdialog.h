@@ -39,7 +39,12 @@ class AboutDialog : public QDialog {
  public:
   explicit AboutDialog(QWidget *parent = nullptr);
 
+ private Q_SLOTS:
+  void UpdateIcon();
+
  private:
+  static constexpr int kIconSize = 64;
+
   struct Person {
     explicit Person(const QString &n, const QString &e = QString()) : name(n), email(e) {}
     bool operator<(const Person &other) const { return name < other.name; }

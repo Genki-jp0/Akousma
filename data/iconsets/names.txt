@@ -7,8 +7,6 @@
 # Format:  akousma-name: freedesktop-name freedesktop-name ...  (best match first)
 #          akousma-name: =   (logos, ratings and other Akousma artwork: always the built-in icon)
 
-akousma: =
-akousma-grey: =
 albums: media-optical-audio media-optical
 alsa: =
 application-exit: application-exit system-log-out

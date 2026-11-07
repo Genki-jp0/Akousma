@@ -13,10 +13,6 @@
   <property name="windowTitle">
    <string>QueueView</string>
   </property>
-  <property name="windowIcon">
-   <iconset>
-    <normaloff>:/icons/64x64/akousma.png</normaloff>:/icons/64x64/akousma.png</iconset>
-  </property>
   <layout class="QVBoxLayout" name="layout_queueview">
    <property name="spacing">
     <number>0</number>

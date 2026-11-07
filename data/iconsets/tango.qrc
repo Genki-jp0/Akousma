@@ -1,5 +1,6 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource prefix="/iconsets/tango">
+  <file alias="16/akousma.png">tango/16/akousma.png</file>
   <file alias="16/albums.png">tango/16/albums.png</file>
   <file alias="16/application-exit.png">tango/16/application-exit.png</file>
   <file alias="16/applications-internet.png">tango/16/applications-internet.png</file>
@@ -57,6 +58,7 @@
   <file alias="16/soundcard.png">tango/16/soundcard.png</file>
   <file alias="16/view-fullscreen.png">tango/16/view-fullscreen.png</file>
   <file alias="16/view-refresh.png">tango/16/view-refresh.png</file>
+  <file alias="22/akousma.png">tango/22/akousma.png</file>
   <file alias="22/albums.png">tango/22/albums.png</file>
   <file alias="22/application-exit.png">tango/22/application-exit.png</file>
   <file alias="22/applications-internet.png">tango/22/applications-internet.png</file>
@@ -114,6 +116,7 @@
   <file alias="22/soundcard.png">tango/22/soundcard.png</file>
   <file alias="22/view-fullscreen.png">tango/22/view-fullscreen.png</file>
   <file alias="22/view-refresh.png">tango/22/view-refresh.png</file>
+  <file alias="24/akousma.png">tango/24/akousma.png</file>
   <file alias="24/albums.png">tango/24/albums.png</file>
   <file alias="24/application-exit.png">tango/24/application-exit.png</file>
   <file alias="24/applications-internet.png">tango/24/applications-internet.png</file>
@@ -171,6 +174,7 @@
   <file alias="24/soundcard.png">tango/24/soundcard.png</file>
   <file alias="24/view-fullscreen.png">tango/24/view-fullscreen.png</file>
   <file alias="24/view-refresh.png">tango/24/view-refresh.png</file>
+  <file alias="32/akousma.png">tango/32/akousma.png</file>
   <file alias="32/albums.png">tango/32/albums.png</file>
   <file alias="32/application-exit.png">tango/32/application-exit.png</file>
   <file alias="32/applications-internet.png">tango/32/applications-internet.png</file>
@@ -229,6 +233,7 @@
   <file alias="32/view-fullscreen.png">tango/32/view-fullscreen.png</file>
   <file alias="32/view-refresh.png">tango/32/view-refresh.png</file>
   <file alias="iconset.ini">tango/iconset.ini</file>
+  <file alias="scalable/akousma.svg">tango/scalable/akousma.svg</file>
   <file alias="scalable/albums.svg">tango/scalable/albums.svg</file>
   <file alias="scalable/application-exit.svg">tango/scalable/application-exit.svg</file>
   <file alias="scalable/applications-internet.svg">tango/scalable/applications-internet.svg</file>

@@ -33,6 +33,7 @@
 
 #include "core/song.h"
 #include "core/iconloader.h"
+#include "core/appicon.h"
 #include "qtsystemtrayicon.h"
 
 using namespace Qt::Literals::StringLiterals;
@@ -65,6 +66,7 @@ SystemTrayIcon::SystemTrayIcon(QObject *parent)
   }
 
   QObject::connect(this, &QSystemTrayIcon::activated, this, &SystemTrayIcon::Clicked);
+  QObject::connect(AppIcon::Instance(), &AppIcon::Changed, this, &SystemTrayIcon::AppIconChanged);
 
 }
 
@@ -162,6 +164,15 @@ void SystemTrayIcon::Clicked(const QSystemTrayIcon::ActivationReason activation_
 
 void SystemTrayIcon::ShowPopup(const QString &summary, const QString &message, const int timeout) {
   if (available_) showMessage(summary, message, QSystemTrayIcon::NoIcon, timeout);
+}
+
+void SystemTrayIcon::AppIconChanged() {
+
+  // The icons show the new application icon, the pixmaps are made from them again.
+  pixmap_normal_ = QPixmap();
+  pixmap_grey_ = QPixmap();
+  UpdateIcon();
+
 }
 
 void SystemTrayIcon::UpdateIcon() {

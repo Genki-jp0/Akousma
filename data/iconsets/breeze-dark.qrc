@@ -1,5 +1,6 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource prefix="/iconsets/breeze-dark">
+  <file alias="16/akousma.svg">breeze-dark/16/akousma.svg</file>
   <file alias="16/albums.svg">breeze-dark/16/albums.svg</file>
   <file alias="16/application-exit.svg">breeze-dark/16/application-exit.svg</file>
   <file alias="16/bluetooth.svg">breeze-dark/16/bluetooth.svg</file>
@@ -74,6 +75,7 @@
   <file alias="16/view-refresh.svg">breeze-dark/16/view-refresh.svg</file>
   <file alias="16/zoom-in.svg">breeze-dark/16/zoom-in.svg</file>
   <file alias="16/zoom-out.svg">breeze-dark/16/zoom-out.svg</file>
+  <file alias="22/akousma.svg">breeze-dark/22/akousma.svg</file>
   <file alias="22/albums.svg">breeze-dark/22/albums.svg</file>
   <file alias="22/application-exit.svg">breeze-dark/22/application-exit.svg</file>
   <file alias="22/bluetooth.svg">breeze-dark/22/bluetooth.svg</file>
@@ -148,6 +150,7 @@
   <file alias="22/view-refresh.svg">breeze-dark/22/view-refresh.svg</file>
   <file alias="22/zoom-in.svg">breeze-dark/22/zoom-in.svg</file>
   <file alias="22/zoom-out.svg">breeze-dark/22/zoom-out.svg</file>
+  <file alias="32/akousma.svg">breeze-dark/32/akousma.svg</file>
   <file alias="32/application-exit.svg">breeze-dark/32/application-exit.svg</file>
   <file alias="32/applications-internet.svg">breeze-dark/32/applications-internet.svg</file>
   <file alias="32/bluetooth.svg">breeze-dark/32/bluetooth.svg</file>
@@ -189,12 +192,14 @@
   <file alias="32/view-refresh.svg">breeze-dark/32/view-refresh.svg</file>
   <file alias="32/zoom-in.svg">breeze-dark/32/zoom-in.svg</file>
   <file alias="32/zoom-out.svg">breeze-dark/32/zoom-out.svg</file>
+  <file alias="48/akousma.svg">breeze-dark/48/akousma.svg</file>
   <file alias="48/dialog-warning.svg">breeze-dark/48/dialog-warning.svg</file>
   <file alias="48/document-download.svg">breeze-dark/48/document-download.svg</file>
   <file alias="48/download.svg">breeze-dark/48/download.svg</file>
   <file alias="48/folder-sound.svg">breeze-dark/48/folder-sound.svg</file>
   <file alias="48/folder.svg">breeze-dark/48/folder.svg</file>
   <file alias="48/library-music.svg">breeze-dark/48/library-music.svg</file>
+  <file alias="64/akousma.svg">breeze-dark/64/akousma.svg</file>
   <file alias="64/albums.svg">breeze-dark/64/albums.svg</file>
   <file alias="64/cdcase.svg">breeze-dark/64/cdcase.svg</file>
   <file alias="64/device-ipod-nano.svg">breeze-dark/64/device-ipod-nano.svg</file>

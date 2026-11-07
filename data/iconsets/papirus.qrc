@@ -1,5 +1,6 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource prefix="/iconsets/papirus">
+  <file alias="16/akousma.svg">papirus/16/akousma.svg</file>
   <file alias="16/albums.svg">papirus/16/albums.svg</file>
   <file alias="16/application-exit.svg">papirus/16/application-exit.svg</file>
   <file alias="16/applications-internet.svg">papirus/16/applications-internet.svg</file>
@@ -80,6 +81,7 @@
   <file alias="16/view-refresh.svg">papirus/16/view-refresh.svg</file>
   <file alias="16/zoom-in.svg">papirus/16/zoom-in.svg</file>
   <file alias="16/zoom-out.svg">papirus/16/zoom-out.svg</file>
+  <file alias="22/akousma.svg">papirus/22/akousma.svg</file>
   <file alias="22/albums.svg">papirus/22/albums.svg</file>
   <file alias="22/application-exit.svg">papirus/22/application-exit.svg</file>
   <file alias="22/applications-internet.svg">papirus/22/applications-internet.svg</file>
@@ -157,6 +159,7 @@
   <file alias="22/view-refresh.svg">papirus/22/view-refresh.svg</file>
   <file alias="22/zoom-in.svg">papirus/22/zoom-in.svg</file>
   <file alias="22/zoom-out.svg">papirus/22/zoom-out.svg</file>
+  <file alias="24/akousma.svg">papirus/24/akousma.svg</file>
   <file alias="24/albums.svg">papirus/24/albums.svg</file>
   <file alias="24/application-exit.svg">papirus/24/application-exit.svg</file>
   <file alias="24/applications-internet.svg">papirus/24/applications-internet.svg</file>
@@ -234,6 +237,7 @@
   <file alias="24/view-refresh.svg">papirus/24/view-refresh.svg</file>
   <file alias="24/zoom-in.svg">papirus/24/zoom-in.svg</file>
   <file alias="24/zoom-out.svg">papirus/24/zoom-out.svg</file>
+  <file alias="32/akousma.svg">papirus/32/akousma.svg</file>
   <file alias="32/albums.svg">papirus/32/albums.svg</file>
   <file alias="32/applications-internet.svg">papirus/32/applications-internet.svg</file>
   <file alias="32/bluetooth.svg">papirus/32/bluetooth.svg</file>
@@ -256,6 +260,7 @@
   <file alias="32/media-optical.svg">papirus/32/media-optical.svg</file>
   <file alias="32/soundcard.svg">papirus/32/soundcard.svg</file>
   <file alias="32/speaker.svg">papirus/32/speaker.svg</file>
+  <file alias="48/akousma.svg">papirus/48/akousma.svg</file>
   <file alias="48/albums.svg">papirus/48/albums.svg</file>
   <file alias="48/applications-internet.svg">papirus/48/applications-internet.svg</file>
   <file alias="48/bluetooth.svg">papirus/48/bluetooth.svg</file>
@@ -278,6 +283,7 @@
   <file alias="48/media-optical.svg">papirus/48/media-optical.svg</file>
   <file alias="48/soundcard.svg">papirus/48/soundcard.svg</file>
   <file alias="48/speaker.svg">papirus/48/speaker.svg</file>
+  <file alias="64/akousma.svg">papirus/64/akousma.svg</file>
   <file alias="64/albums.svg">papirus/64/albums.svg</file>
   <file alias="64/applications-internet.svg">papirus/64/applications-internet.svg</file>
   <file alias="64/bluetooth.svg">papirus/64/bluetooth.svg</file>
