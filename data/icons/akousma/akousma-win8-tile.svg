@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Akousma app icon. Original pomegranate-wedge artwork built on the geometry of the Aero akousma_icon.svg; hand-authored. GPL-3.0-or-later (same as Akousma). -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+<defs>
+<clipPath id="fc"><path d="M52.0 26.0 C86.0 42.0 112.0 90.0 140.0 112.0 C172.0 126.0 212.0 140.0 244.0 162.0 C208.0 194.0 118.0 212.0 70.0 178.0 C40.0 156.0 28.0 96.0 52.0 26.0 Z"/></clipPath>
+<clipPath id="sc"><path d="M52.0 26.0 C86.0 42.0 112.0 90.0 140.0 112.0 C172.0 126.0 212.0 140.0 244.0 162.0 C254.0 172.0 246.0 198.0 222.0 212.0 C178.0 238.0 92.0 238.0 48.0 200.0 C8.0 168.0 2.0 96.0 20.0 58.0 C21.0 50.0 18.0 43.0 18.9 37.4 C17.5 34.0 13.5 32.5 10.4 30.7 C17.0 24.8 23.0 19.2 29.6 13.3 C31.5 17.0 32.5 20.0 35.1 22.6 C39.0 27.0 45.0 27.0 52.0 26.0 Z"/></clipPath>
+</defs>
+<rect width="256" height="256" fill="#B20D1B"/>
+<g transform="translate(47.6 50.0) scale(0.6)">
+<path d="M52.0 26.0 C86.0 42.0 112.0 90.0 140.0 112.0 C172.0 126.0 212.0 140.0 244.0 162.0 C254.0 172.0 246.0 198.0 222.0 212.0 C178.0 238.0 92.0 238.0 48.0 200.0 C8.0 168.0 2.0 96.0 20.0 58.0 C21.0 50.0 18.0 43.0 18.9 37.4 C17.5 34.0 13.5 32.5 10.4 30.7 C17.0 24.8 23.0 19.2 29.6 13.3 C31.5 17.0 32.5 20.0 35.1 22.6 C39.0 27.0 45.0 27.0 52.0 26.0 Z" fill="#FFFFFF"/>
+<path d="M-13 3 L-21 -12 L-6 -5 L0 -19 L6 -5 L21 -12 L13 3 Z" transform="translate(20 22) rotate(-42)" fill="#FFFFFF"/>
+<g clip-path="url(#sc)"><path d="M244.0 162.0 C208.0 194.0 118.0 212.0 70.0 178.0 C40.0 156.0 28.0 96.0 52.0 26.0" fill="none" stroke="#B20D1B" stroke-width="9" stroke-linecap="round"/></g>
+<g clip-path="url(#fc)"><circle cx="46.3" cy="96.9" r="8.7" fill="#B20D1B"/><circle cx="170.6" cy="182.2" r="9.2" fill="#B20D1B"/><circle cx="56.3" cy="44.0" r="11.4" fill="#B20D1B"/><circle cx="159.5" cy="131.2" r="11.3" fill="#B20D1B"/><circle cx="82.6" cy="78.1" r="17.7" fill="#B20D1B"/><circle cx="114.0" cy="117.7" r="17.5" fill="#B20D1B"/><circle cx="65.9" cy="129.6" r="17.5" fill="#B20D1B"/><circle cx="88.8" cy="172.7" r="17.4" fill="#B20D1B"/><circle cx="203.2" cy="157.0" r="17.9" fill="#B20D1B"/><circle cx="136.8" cy="166.1" r="17.8" fill="#B20D1B"/></g>
+</g>
+</svg>

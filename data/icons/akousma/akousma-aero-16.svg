@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Akousma app icon, 16/24 px redraw: simplified Aero pomegranate wedge (fewer, bigger arils; no shadow).
+     Original artwork, hand-authored SVG. v2b: glare reworked to Aero gloss conventions. GPL-3.0-or-later (same as Akousma). -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16">
+  <defs>
+<linearGradient id="g16" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0"/><stop offset="0.25" stop-color="#FFFFFF" stop-opacity="0.34"/><stop offset="0.65" stop-color="#FFFFFF" stop-opacity="0.14"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient>
+<radialGradient id="dotSoft" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#FFFFFF" stop-opacity="1"/><stop offset="0.35" stop-color="#FFFFFF" stop-opacity="0.85"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></radialGradient>
+
+    <radialGradient id="r" cx="0.3" cy="0.42" r="0.8">
+      <stop offset="0" stop-color="#F06A6A"/><stop offset="0.4" stop-color="#C44C4C"/>
+      <stop offset="0.85" stop-color="#860404"/><stop offset="1" stop-color="#5A0202"/>
+    </radialGradient>
+    <linearGradient id="p" x1="0" y1="0" x2="0.6" y2="1">
+      <stop offset="0" stop-color="#FFF4E0"/><stop offset="1" stop-color="#E9D3B0"/>
+    </linearGradient>
+    <radialGradient id="a" cx="0.42" cy="0.4" fx="0.32" fy="0.3" r="0.66">
+      <stop offset="0" stop-color="#F0304A"/><stop offset="0.6" stop-color="#B00822"/><stop offset="1" stop-color="#5A0014"/>
+    </radialGradient>
+    <radialGradient id="g" cx="0.66" cy="0.74" r="0.36">
+      <stop offset="0" stop-color="#FF7062" stop-opacity="0.75"/><stop offset="1" stop-color="#FF7062" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="fc"><path d="M52.0 26.0 C86.0 42.0 112.0 90.0 140.0 112.0 C172.0 126.0 212.0 140.0 244.0 162.0 C208.0 194.0 118.0 212.0 70.0 178.0 C40.0 156.0 28.0 96.0 52.0 26.0 Z"/></clipPath>
+  </defs>
+  <g transform="scale(0.0625) translate(4 14) scale(0.97)">
+    <path d="M52.0 26.0 C86.0 42.0 112.0 90.0 140.0 112.0 C172.0 126.0 212.0 140.0 244.0 162.0 C254.0 172.0 246.0 198.0 222.0 212.0 C178.0 238.0 92.0 238.0 48.0 200.0 C8.0 168.0 2.0 96.0 20.0 58.0 C21.0 50.0 18.0 43.0 18.9 37.4 C17.5 34.0 13.5 32.5 10.4 30.7 C17.0 24.8 23.0 19.2 29.6 13.3 C31.5 17.0 32.5 20.0 35.1 22.6 C39.0 27.0 45.0 27.0 52.0 26.0 Z" fill="url(#r)" stroke="#6E0303" stroke-width="14" stroke-linejoin="round"/>
+    <path d="M-13 3 L-21 -12 L-6 -5 L0 -19 L6 -5 L21 -12 L13 3 Z" transform="translate(20 22) rotate(-42)" fill="#860404" stroke="#6E0303" stroke-width="9" stroke-linejoin="round"/>
+    <path d="M52.0 26.0 C86.0 42.0 112.0 90.0 140.0 112.0 C172.0 126.0 212.0 140.0 244.0 162.0 C208.0 194.0 118.0 212.0 70.0 178.0 C40.0 156.0 28.0 96.0 52.0 26.0 Z" fill="url(#p)"/>
+    <g clip-path="url(#fc)"><circle cx="130" cy="128" r="25" fill="url(#a)" stroke="#4A0010" stroke-width="6"/><circle cx="130" cy="128" r="25" fill="url(#g)"/><circle cx="121.0" cy="118.5" r="11.2" fill="url(#dotSoft)"/><circle cx="192" cy="172" r="25" fill="url(#a)" stroke="#4A0010" stroke-width="6"/><circle cx="192" cy="172" r="25" fill="url(#g)"/><circle cx="183.0" cy="162.5" r="11.2" fill="url(#dotSoft)"/><circle cx="68" cy="84" r="26" fill="url(#a)" stroke="#4A0010" stroke-width="6"/><circle cx="68" cy="84" r="26" fill="url(#g)"/><circle cx="58.6" cy="74.1" r="11.8" fill="url(#dotSoft)"/><circle cx="134" cy="184" r="28" fill="url(#a)" stroke="#4A0010" stroke-width="6"/><circle cx="134" cy="184" r="28" fill="url(#g)"/><circle cx="123.9" cy="173.4" r="12.6" fill="url(#dotSoft)"/><circle cx="78" cy="146" r="30" fill="url(#a)" stroke="#4A0010" stroke-width="6"/><circle cx="78" cy="146" r="30" fill="url(#g)"/><circle cx="67.2" cy="134.6" r="13.5" fill="url(#dotSoft)"/></g>
+    <path d="M30 52 C12 96 10 150 42 190 C30 146 30 100 38 64 C36 58 33 54 30 52 Z" fill="url(#g16)"/>
+  </g>
+</svg>
