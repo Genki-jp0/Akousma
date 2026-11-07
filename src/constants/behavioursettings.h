@@ -75,6 +75,7 @@ constexpr char kVolumeIncrement[] = "volume_increment";
 constexpr char kPlaylistLocking[] = "playlist_locking";
 constexpr char kCheckForUpdates[] = "check_for_updates";
 constexpr char kCheckForPreReleases[] = "check_for_prereleases";
+constexpr char kInhibitSleep[] = "inhibit_sleep";
 
 constexpr bool kDefaultKeepRunning = false;
 constexpr bool kDefaultShowTrayIcon = true;
@@ -93,6 +94,7 @@ constexpr uint kDefaultVolumeIncrement = 5;
 constexpr bool kDefaultPlaylistLocking = true;
 constexpr bool kDefaultCheckForUpdates = true;
 constexpr bool kDefaultCheckForPreReleases = false;
+constexpr bool kDefaultInhibitSleep = true;
 
 }  // namespace BehaviourSettings
 

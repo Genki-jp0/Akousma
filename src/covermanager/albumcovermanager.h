@@ -168,6 +168,7 @@ class AlbumCoverManager : public QMainWindow {
 
   // Until the thumbnail is loaded, the album is checked for a cover instead of the thumbnail.
   bool ItemHasCover(const AlbumItem &album_item) const;
+  bool SaveEmbeddedCover(const AlbumItem *album_item) const;
 
  Q_SIGNALS:
   void Error(const QString &error);
@@ -249,6 +250,7 @@ class AlbumCoverManager : public QMainWindow {
 
   QMultiMap<AlbumItem*, QUrl> cover_save_tasks_;
   QHash<AlbumItem*, bool> cover_save_results_;
+  QHash<AlbumItem*, QList<QUrl>> cover_saved_urls_;
 
   QListWidgetItem *all_artists_;
 

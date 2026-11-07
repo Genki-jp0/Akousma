@@ -1248,6 +1248,8 @@ Section "Uninstall"
   Delete "$INSTDIR\libspeex.dll"
   Delete "$INSTDIR\pcre2-8.dll"
   Delete "$INSTDIR\pcre2-16.dll"
+  Delete "$INSTDIR\libz.dll"
+  ; Left by older builds, which had zlib as z.dll.
   Delete "$INSTDIR\z.dll"
   Delete "$INSTDIR\tiff.dll"
 !endif
@@ -1258,6 +1260,8 @@ Section "Uninstall"
   Delete "$INSTDIR\libspeexd.dll"
   Delete "$INSTDIR\pcre2-8d.dll"
   Delete "$INSTDIR\pcre2-16d.dll"
+  Delete "$INSTDIR\libzd.dll"
+  ; Left by older builds, which had zlib as zd.dll.
   Delete "$INSTDIR\zd.dll"
   Delete "$INSTDIR\tiffd.dll"
 !endif

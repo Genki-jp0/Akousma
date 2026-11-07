@@ -654,6 +654,7 @@ set(SOURCES
   src/engine/audiodevicelister.cpp
   src/engine/gststartup.cpp
   src/engine/gstengine.cpp
+  src/engine/streammetadataparser.cpp
   src/engine/gstenginepipeline.cpp
   src/engine/gstbusmessageevent.cpp
 
@@ -1508,8 +1509,8 @@ if(HAVE_EBUR128)
 endif()
 
 if(HAVE_DBUS)
-  list(APPEND SOURCES src/osd/osddbus.cpp)
-  list(APPEND HEADERS src/osd/osddbus.h)
+  list(APPEND SOURCES src/core/sleepinhibitor.cpp src/osd/osddbus.cpp)
+  list(APPEND HEADERS src/core/sleepinhibitor.h src/osd/osddbus.h)
   qt_add_dbus_interface(SOURCES src/osd/org.freedesktop.Notifications.xml notification)
 endif()
 

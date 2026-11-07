@@ -502,7 +502,8 @@ void AppearanceSettingsPage::Save() {
     });
   }
 
-  s.setValue(kDarkMode, Utilities::StyleHasDarkModeSupport(selected_style) ? ui_->checkbox_dark_mode->isChecked() : false);
+  const bool dark_mode = Utilities::StyleHasDarkModeSupport(selected_style) && ui_->checkbox_dark_mode->isChecked();
+  s.setValue(kDarkMode, dark_mode);
 
 #ifdef Q_OS_WIN32
   s.setValue(kWindowBackdrop, ui_->combobox_window_backdrop->currentData().toInt());
@@ -615,6 +616,15 @@ void AppearanceSettingsPage::Save() {
   s.endGroup();
 
   appearance_->set_system_palette(system_palette_);
+
+  // Cancel restores the look of the saved settings, these are the saved settings now, so clicking Cancel after Apply doesn't change the look back to how it was when the dialog was opened while keeping the settings.
+  original_style_ = QApplication::style() ? QApplication::style()->objectName() : QString();
+  original_dark_mode_ = dark_mode;
+  original_use_custom_color_set_ = use_custom_color_set;
+  original_colors_ = current_colors_;
+  original_tabbar_bg_color_ = current_tabbar_bg_color_;
+  original_background_image_filename_ = background_image_filename_;
+  original_playlist_playing_song_color_ = current_playlist_playing_song_color_;
 
 }
 

@@ -1295,6 +1295,191 @@ TEST_F(CollectionBackendTest, AddOrUpdateSongsInSeveralDirectories) {
 }
 
 // Regression test: CUE sheet songs share the URL of the file, each of them must be marked as a compilation and reported changed once only.
+// Regression test: the cover manager lists compilation albums and albums without an artist without an album artist, and saving their covers updated the songs with an empty album artist, so no songs were updated.
+TEST_F(CollectionBackendTest, AlbumArtOfAlbumsWithoutAlbumArtist) {
+
+  backend_->AddDirectory(u"/tmp"_s);
+
+  SongList songs;
+  const QList<std::pair<QString, bool>> artists = { { u"Artist 1"_s, true }, { u"Artist 2"_s, true }, { u"Artist 3"_s, false }, { QString(), false } };
+  for (qsizetype i = 0; i < artists.count(); ++i) {
+    Song song = MakeDummySong(1);
+    song.set_title(QStringLiteral("Title %1").arg(i));
+    song.set_artist(artists[i].first);
+    song.set_album(artists[i].first.isEmpty() ? u"No Artist"_s : u"Album"_s);
+    song.set_compilation(artists[i].second);
+    song.set_url(QUrl::fromLocalFile(QStringLiteral("/tmp/%1.flac").arg(i)));
+    songs << song;
+  }
+  backend_->AddOrUpdateSongs(songs);
+
+  // The albums are updated with the album artist they are listed with in the cover manager.
+  const CollectionBackend::AlbumList compilation_albums = backend_->GetCompilationAlbums();
+  ASSERT_EQ(1, compilation_albums.count());
+  ASSERT_TRUE(compilation_albums.first().album_artist.isEmpty());
+  ASSERT_EQ(u"Album"_s, compilation_albums.first().album);
+
+  const QUrl cover_url = QUrl::fromLocalFile(u"/tmp/cover.jpg"_s);
+  QSignalSpy changed_spy(&*backend_, &CollectionBackend::SongsChanged);
+  backend_->UpdateManualAlbumArt(QString(), u"Album"_s, cover_url);
+  ASSERT_EQ(1, changed_spy.count());
+  EXPECT_EQ(2, changed_spy.first().first().value<SongList>().count());
+
+  // The songs of the compilation are updated, the album with the same name by another artist is not.
+  EXPECT_EQ(cover_url, backend_->GetSongById(1).art_manual());
+  EXPECT_EQ(cover_url, backend_->GetSongById(2).art_manual());
+  EXPECT_TRUE(backend_->GetSongById(3).art_manual().isEmpty());
+
+  backend_->UpdateEmbeddedAlbumArt(QString(), u"Album"_s, true);
+  EXPECT_TRUE(backend_->GetSongById(1).art_embedded());
+  EXPECT_TRUE(backend_->GetSongById(2).art_embedded());
+  EXPECT_FALSE(backend_->GetSongById(3).art_embedded());
+
+  backend_->UnsetAlbumArt(QString(), u"Album"_s);
+  EXPECT_TRUE(backend_->GetSongById(1).art_unset());
+  EXPECT_TRUE(backend_->GetSongById(2).art_unset());
+  EXPECT_FALSE(backend_->GetSongById(3).art_unset());
+
+  backend_->ClearAlbumArt(QString(), u"Album"_s, false);
+  EXPECT_FALSE(backend_->GetSongById(1).art_unset());
+  EXPECT_FALSE(backend_->GetSongById(2).art_unset());
+
+  // An album without an artist is listed without an album artist too.
+  backend_->UpdateManualAlbumArt(QString(), u"No Artist"_s, cover_url);
+  EXPECT_EQ(cover_url, backend_->GetSongById(4).art_manual());
+  EXPECT_TRUE(backend_->GetSongById(3).art_manual().isEmpty());
+
+}
+
+// Regression test: embedding a cover in one copy of an album in the cover manager also marked the songs of the copy in another file type as having an embedded cover.
+TEST_F(CollectionBackendTest, UpdateEmbeddedAlbumArtByUrlsOnlyUpdatesThoseSongs) {
+
+  backend_->AddDirectory(u"/tmp"_s);
+
+  SongList songs;
+  int i = 0;
+  for (const QString &extension : {u"flac"_s, u"mp3"_s}) {
+    for (const QString &artist : {u"Artist 1"_s, u"Artist 2"_s}) {
+      Song song = MakeDummySong(1);
+      song.set_title(QStringLiteral("Title %1").arg(++i));
+      song.set_artist(artist);
+      song.set_album(u"Album"_s);
+      song.set_compilation(true);
+      song.set_art_unset(true);
+      song.set_url(QUrl::fromLocalFile(QStringLiteral("/tmp/%1.%2").arg(i).arg(extension)));
+      songs << song;
+    }
+  }
+  backend_->AddOrUpdateSongs(songs);
+
+  QSignalSpy changed_spy(&*backend_, &CollectionBackend::SongsChanged);
+  backend_->UpdateEmbeddedAlbumArtByUrls(QList<QUrl>() << QUrl::fromLocalFile(u"/tmp/1.flac"_s) << QUrl::fromLocalFile(u"/tmp/2.flac"_s), true);
+  ASSERT_EQ(1, changed_spy.count());
+  const SongList changed_songs = changed_spy.first().first().value<SongList>();
+  ASSERT_EQ(2, changed_songs.count());
+  for (const Song &song : changed_songs) {
+    EXPECT_TRUE(song.art_embedded());
+    EXPECT_FALSE(song.art_unset());
+  }
+
+  // The FLAC songs have the embedded cover, the MP3 songs of the same album are not changed.
+  EXPECT_TRUE(backend_->GetSongById(1).art_embedded());
+  EXPECT_TRUE(backend_->GetSongById(2).art_embedded());
+  EXPECT_FALSE(backend_->GetSongById(1).art_unset());
+  for (const int id : {3, 4}) {
+    EXPECT_FALSE(backend_->GetSongById(id).art_embedded());
+    EXPECT_TRUE(backend_->GetSongById(id).art_unset());
+  }
+
+  // Removing the embedded cover only changes the songs in that file.
+  backend_->UpdateEmbeddedAlbumArtByUrls(QList<QUrl>() << QUrl::fromLocalFile(u"/tmp/2.flac"_s), false);
+  EXPECT_TRUE(backend_->GetSongById(1).art_embedded());
+  EXPECT_FALSE(backend_->GetSongById(2).art_embedded());
+  EXPECT_FALSE(backend_->GetSongById(1).art_unset());
+  EXPECT_FALSE(backend_->GetSongById(2).art_unset());
+
+  // Removing the embedded cover keeps art_unset.
+  backend_->UnsetAlbumArt(QString(), u"Album"_s);
+  backend_->UpdateEmbeddedAlbumArtByUrls(QList<QUrl>() << QUrl::fromLocalFile(u"/tmp/1.flac"_s), false);
+  EXPECT_FALSE(backend_->GetSongById(1).art_embedded());
+  EXPECT_TRUE(backend_->GetSongById(1).art_unset());
+
+}
+
+// Regression test: songs from a CUE sheet and songs in their own files with the same tags and file type were listed as one album, with the CUE sheet of the first song, so the cover manager embedded the cover in the CUE sheet file, or not in the other files.
+TEST_F(CollectionBackendTest, CueSheetSongsAreListedAsSeparateAlbum) {
+
+  backend_->AddDirectory(u"/tmp"_s);
+
+  SongList songs;
+  for (int i = 1; i <= 4; ++i) {
+    Song song = MakeDummySong(1);
+    song.set_title(QStringLiteral("Title %1").arg(i));
+    song.set_artist(u"Artist"_s);
+    song.set_album(u"Album"_s);
+    song.set_filetype(Song::FileType::FLAC);
+    // The first two songs are in their own files, the last two are from a CUE sheet sharing one file.
+    if (i <= 2) {
+      song.set_url(QUrl::fromLocalFile(QStringLiteral("/tmp/%1.flac").arg(i)));
+    }
+    else {
+      song.set_url(QUrl::fromLocalFile(u"/tmp/cue.flac"_s));
+      song.set_cue_path(u"/tmp/cue.cue"_s);
+      song.set_beginning_nanosec((i - 3) * 60 * kNsecPerSec);
+      song.set_end_nanosec((i - 2) * 60 * kNsecPerSec);
+    }
+    songs << song;
+  }
+  backend_->AddOrUpdateSongs(songs);
+
+  const CollectionBackend::AlbumList albums = backend_->GetAllAlbums();
+  ASSERT_EQ(2, albums.count());
+  for (const CollectionBackend::Album &album : albums) {
+    EXPECT_EQ(u"Artist"_s, album.album_artist);
+    EXPECT_EQ(u"Album"_s, album.album);
+    if (album.cue_path.isEmpty()) {
+      EXPECT_EQ(QList<QUrl>() << QUrl::fromLocalFile(u"/tmp/1.flac"_s) << QUrl::fromLocalFile(u"/tmp/2.flac"_s), album.urls);
+    }
+    else {
+      EXPECT_EQ(QList<QUrl>() << QUrl::fromLocalFile(u"/tmp/cue.flac"_s) << QUrl::fromLocalFile(u"/tmp/cue.flac"_s), album.urls);
+    }
+  }
+
+}
+
+// Regression test: the songs of a CUE sheet were updated once for every song, the album has the URL of the shared file once for every song, and each URL returns all the songs of the file.
+TEST_F(CollectionBackendTest, UpdateEmbeddedAlbumArtByUrlsUpdatesEachSongOnce) {
+
+  backend_->AddDirectory(u"/tmp"_s);
+
+  SongList songs;
+  for (int i = 1; i <= 3; ++i) {
+    Song song = MakeDummySong(1);
+    song.set_title(QStringLiteral("Title %1").arg(i));
+    song.set_artist(u"Artist"_s);
+    song.set_album(u"Album"_s);
+    song.set_url(QUrl::fromLocalFile(u"/tmp/cue.flac"_s));
+    song.set_cue_path(u"/tmp/cue.cue"_s);
+    song.set_beginning_nanosec((i - 1) * 60 * kNsecPerSec);
+    song.set_end_nanosec(i * 60 * kNsecPerSec);
+    song.set_art_embedded(true);
+    songs << song;
+  }
+  backend_->AddOrUpdateSongs(songs);
+  const QUrl url = QUrl::fromLocalFile(u"/tmp/cue.flac"_s);
+  ASSERT_EQ(3, backend_->GetSongsByUrl(url).count());
+
+  QSignalSpy changed_spy(&*backend_, &CollectionBackend::SongsChanged);
+  backend_->UpdateEmbeddedAlbumArtByUrls(QList<QUrl>() << url << url << url, false);
+  ASSERT_EQ(1, changed_spy.count());
+  const SongList changed_songs = changed_spy.first().first().value<SongList>();
+  EXPECT_EQ(3, changed_songs.count());
+  for (const Song &song : changed_songs) {
+    EXPECT_FALSE(song.art_embedded());
+  }
+
+}
+
 TEST_F(CollectionBackendTest, CompilationsNeedUpdatingSharedUrl) {
 
   backend_->AddDirectory(u"/tmp"_s);
