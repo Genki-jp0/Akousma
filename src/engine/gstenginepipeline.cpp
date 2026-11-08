@@ -1942,6 +1942,17 @@ void GstEnginePipeline::ErrorMessageReceived(GstMessage *msg) {
   QString debugstr = Utilities::RedactUrls(QString::fromLocal8Bit(debugs));
   g_free(debugs);
 
+#ifdef Q_OS_WIN32
+  // wasapisink resets its audio client from another thread when a seek flushes it (and when pausing), while its write() can be between waiting for space and IAudioRenderClient::GetBuffer() / ReleaseBuffer().
+  // Those then fail with AUDCLNT_E_BUFFER_OPERATION_PENDING (0x8889000B, "a stream reset is in progress") and wasapisink posts it as an error, but the write it failed is flushed anyway and the sink starts the audio client again on the next write, so playback goes on.
+  // Checked here, before the next track check below, which would take it for a next track that can't be played.
+  // Matched by the HRESULT, since the text after it can come from Windows in the user's language.
+  if (domain == GST_RESOURCE_ERROR && code == GST_RESOURCE_ERROR_WRITE && message.contains("(8889000b)"_L1)) {
+    qLog(Info) << "Ignoring" << message << "from a reset of the WASAPI audio client";
+    return;
+  }
+#endif
+
   if (pipeline_active_.load() && next_uri_set_.load() && (domain == GST_CORE_ERROR || domain == GST_RESOURCE_ERROR || domain == GST_STREAM_ERROR)) {
     // A track is still playing and the next uri is not playable. We ignore the error here so it can play until the end.
     // But there is no message sent to the bus when the current track finishes, we have to add an EOS ourself.
