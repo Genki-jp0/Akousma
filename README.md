@@ -3,9 +3,7 @@
 Akousma is a **music player and music collection organizer**, a fork of [Strawberry Music Player](https://github.com/strawberrymusicplayer/strawberry), developed by Genki (genki_jp0).
 It’s written in **C++ using the Qt framework**, designed for **audiophiles and music collectors**.
 
-![Screenshot of Strawberry Music Player, the upstream project Akousma is based on](https://raw.githubusercontent.com/strawberrymusicplayer/strawberry/master/data/screenshot/screenshot.png)
-
-*Screenshot of upstream Strawberry Music Player.*
+![Screenshot of Akousma](data/screenshot/screenshot.png)
 
 ---
 
