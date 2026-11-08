@@ -1279,9 +1279,6 @@ void MainWindow::ReloadSettings() {
   if (systemtray_available) {
     systemtrayicon_->setVisible(showtrayicon);
   }
-  if ((!showtrayicon || !systemtray_available) && !isVisible()) {
-    show();
-  }
 #endif
 
   s.beginGroup(BehaviourSettings::kSettingsGroup);
@@ -1425,6 +1422,15 @@ void MainWindow::ReloadSettings() {
 
 #ifdef Q_OS_WIN32
   window_backdrop_->ReloadSettings();
+#endif
+
+#ifndef Q_OS_MACOS
+  // Without a tray icon there is no other way to bring the window back, so show it.
+  // Only once everything above is applied: showing it earlier paints the default settings (all sidebar tabs, the default layout and playlist background) for a few frames before the saved ones.
+  // At startup the constructor shows the window itself after this, following the startup behaviour.
+  if (initialized_ && !keeprunning_available && !isVisible()) {
+    show();
+  }
 #endif
 
 }
