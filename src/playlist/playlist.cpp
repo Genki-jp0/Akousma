@@ -82,6 +82,7 @@
 #include "playlistbackend.h"
 #include "playlistfilter.h"
 #include "playlistitemmimedata.h"
+#include "playlistrowsmimedata.h"
 #include "songloaderinserter.h"
 #include "songplaylistitem.h"
 #include "playlistundocommandinsertitems.h"
@@ -148,6 +149,35 @@ QHash<const PlaylistItem*, int> FirstRowsOfItems(const PlaylistItemPtrList &item
     if (!rows.contains(item)) rows.insert(item, i);
   }
   return rows;
+
+}
+
+// Reads the playlist rows dragged from a playlist, the source playlist is only valid when the process ID is the ID of this process.
+// Returns false if the data is incomplete, Playlist::mimeData() always writes the process ID, so data without it could be from another instance, and the source playlist is not valid.
+bool ReadRowsMimeData(const QMimeData *data, Playlist **source_playlist, QList<int> *source_rows, qint64 *pid) {
+
+  QDataStream stream(data->data(QLatin1String(Playlist::kRowsMimetype)));
+  if (stream.readRawData(reinterpret_cast<char*>(source_playlist), sizeof(*source_playlist)) != static_cast<int>(sizeof(*source_playlist))) {
+    return false;
+  }
+  stream >> *source_rows;
+  if (stream.status() != QDataStream::Ok) {
+    return false;
+  }
+
+  if (stream.readRawData(reinterpret_cast<char*>(pid), sizeof(*pid)) != static_cast<int>(sizeof(*pid))) {
+    return false;
+  }
+
+  // The rows can have changed during the drag, use the rows of the dragged items now, and the source playlist only if it's still open.
+  if (*pid == QCoreApplication::applicationPid()) {
+    if (const PlaylistRowsMimeData *rows_mimedata = qobject_cast<const PlaylistRowsMimeData*>(data)) {
+      *source_playlist = rows_mimedata->playlist();
+      *source_rows = rows_mimedata->rows();
+    }
+  }
+
+  return true;
 
 }
 
@@ -1139,17 +1169,8 @@ bool Playlist::dropMimeData(const QMimeData *data, Qt::DropAction action, const 
     QList<int> source_rows;
     Playlist *source_playlist = nullptr;
     qint64 pid = 0;
-    qint64 own_pid = QCoreApplication::applicationPid();
-
-    QDataStream stream(data->data(QLatin1String(kRowsMimetype)));
-    stream.readRawData(reinterpret_cast<char*>(&source_playlist), sizeof(&source_playlist));
-    stream >> source_rows;
-    if (!stream.atEnd()) {
-      stream.readRawData(reinterpret_cast<char*>(&pid), sizeof(pid));
-    }
-    else {
-      pid = own_pid;
-    }
+    const qint64 own_pid = QCoreApplication::applicationPid();
+    if (!ReadRowsMimeData(data, &source_playlist, &source_rows, &pid)) return false;
 
     // Anything can be in the data: another application can make it, and the source playlist can have been closed or changed during the drag.
     // So only use a playlist of this process that still exists, and only the rows it has, each once.
@@ -1166,14 +1187,14 @@ bool Playlist::dropMimeData(const QMimeData *data, Qt::DropAction action, const 
     std::stable_sort(source_rows.begin(), source_rows.end());  // Make sure we take them in order
     source_rows.erase(std::unique(source_rows.begin(), source_rows.end()), source_rows.end());
 
-    if (source_rows.isEmpty()) {
-      // Nothing to move or copy.
-    }
-    else if (source_playlist == this) {
+    // Nothing to move or copy.
+    if (source_rows.isEmpty()) return false;
+
+    if (source_playlist == this) {
       // Dragged from this playlist - rearrange the items
       undo_stack_->push(new PlaylistUndoCommandMoveItems(this, source_rows, row));
     }
-    else if (pid == own_pid) {
+    else if (pid == own_pid && source_playlist) {
       // Drag from a different playlist
       // Insert copies, so the items are not shared between the playlists.
       PlaylistItemPtrList items;
@@ -1203,6 +1224,19 @@ bool Playlist::dropMimeData(const QMimeData *data, Qt::DropAction action, const 
   }
 
   return true;
+
+}
+
+bool Playlist::IsDraggedFromThisPlaylist(const QMimeData *data) const {
+
+  if (!data->hasFormat(QLatin1String(kRowsMimetype))) return false;
+
+  Playlist *source_playlist = nullptr;
+  QList<int> source_rows;
+  qint64 pid = 0;
+  if (!ReadRowsMimeData(data, &source_playlist, &source_rows, &pid)) return false;
+
+  return source_playlist == this && pid == QCoreApplication::applicationPid();
 
 }
 
@@ -1348,6 +1382,9 @@ void Playlist::MoveItemsWithoutUndo(const QList<int> &source_rows, int pos) {
 
   Q_EMIT layoutChanged();
 
+  // The next and previous songs can be different now.
+  Q_EMIT PlaylistChanged();
+
   ScheduleSave();
 
 }
@@ -1422,6 +1459,9 @@ void Playlist::MoveItemsWithoutUndo(int start, const QList<int> &dest_rows) {
   }
 
   Q_EMIT layoutChanged();
+
+  // The next and previous songs can be different now.
+  Q_EMIT PlaylistChanged();
 
   ScheduleSave();
 
@@ -1752,11 +1792,13 @@ QMimeData *Playlist::mimeData(const QModelIndexList &indexes) const {
 
   QList<QUrl> urls;
   QList<int> rows;
+  QModelIndexList row_indexes;
   for (const QModelIndex &idx : indexes) {
     if (idx.column() != first_column) continue;
 
     urls << items_[idx.row()]->OriginalUrl();
     rows << idx.row();
+    row_indexes << idx;
   }
 
   QBuffer buffer;
@@ -1773,7 +1815,8 @@ QMimeData *Playlist::mimeData(const QModelIndexList &indexes) const {
   stream.writeRawData(reinterpret_cast<const char*>(&pid), sizeof(pid));
   buffer.close();
 
-  QMimeData *mimedata = new QMimeData;
+  // The rows are also kept as persistent indexes, the rows can change during the drag.
+  QMimeData *mimedata = new PlaylistRowsMimeData(const_cast<Playlist*>(this), row_indexes);
   mimedata->setUrls(urls);
   mimedata->setData(QLatin1String(kRowsMimetype), buffer.data());
 

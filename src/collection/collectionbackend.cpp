@@ -60,6 +60,18 @@
 
 using namespace Qt::Literals::StringLiterals;
 
+namespace {
+
+// The path is the directory itself, or a path in it.
+bool PathInDirectory(const QString &path, const QString &directory_path) {
+
+  if (path == directory_path) return true;
+  return path.startsWith(directory_path.endsWith(u'/') ? directory_path : directory_path + u'/');
+
+}
+
+}  // namespace
+
 CollectionBackend::CollectionBackend(QObject *parent)
     : CollectionBackendInterface(parent),
       db_(nullptr),
@@ -542,6 +554,8 @@ void CollectionBackend::AddOrUpdateSubdirs(const CollectionSubdirectoryList &sub
   QSqlDatabase db(db_->Connect());
 
   // Prepare the queries once, and only bind the values for each subdirectory.
+  SqlQuery q_dir_path(db);
+  q_dir_path.prepare(QStringLiteral("SELECT path FROM %1 WHERE ROWID = :id").arg(dirs_table_));
   SqlQuery q_exists(db);
   q_exists.prepare(QStringLiteral("SELECT ROWID FROM %1 WHERE directory_id = :id AND path = :path").arg(subdirs_table_));
   SqlQuery q_update(db);
@@ -549,8 +563,27 @@ void CollectionBackend::AddOrUpdateSubdirs(const CollectionSubdirectoryList &sub
   SqlQuery q_insert(db);
   q_insert.prepare(QStringLiteral("INSERT INTO %1 (directory_id, path, mtime) VALUES (:id, :path, :mtime)").arg(subdirs_table_));
 
+  // Subdirectories are usually added in batches from the same directory, so remember the directory paths, the path is null when the directory doesn't exist.
+  QHash<int, QString> directory_paths;
+
   ScopedTransaction transaction(&db);
   for (const CollectionSubdirectory &subdir : subdirs) {
+
+    // A scan can finish after the directory is removed, then the subdirectories would be added for a directory which doesn't exist.
+    // The directory IDs are also reused, so another directory added before the scan finishes can have the same ID, the subdirectories would then be added for that directory.
+    // The subdirectories are found from the directory path, so they're only added when they're in the path of the directory with the ID.
+    QHash<int, QString>::const_iterator directory_it = directory_paths.constFind(subdir.directory_id);
+    if (directory_it == directory_paths.constEnd()) {
+      q_dir_path.BindValue(u":id"_s, subdir.directory_id);
+      if (!q_dir_path.Exec()) {
+        db_->ReportErrors(q_dir_path);
+        return;
+      }
+      directory_it = directory_paths.insert(subdir.directory_id, q_dir_path.next() ? q_dir_path.value(0).toString() : QString());
+      q_dir_path.finish();
+    }
+    if (directory_it.value().isNull() || !PathInDirectory(subdir.path, directory_it.value())) continue;
+
     // See if this subdirectory already exists in the database
     q_exists.BindValue(u":id"_s, subdir.directory_id);
     q_exists.BindValue(u":path"_s, subdir.path);
@@ -625,6 +658,23 @@ void CollectionBackend::AddOrUpdateSongsAsync(const SongList &songs) {
 
 void CollectionBackend::AddOrUpdateSongs(const SongList &songs) {
 
+  AddOrUpdateSongsInternal(songs, QHash<int, Song>());
+
+}
+
+void CollectionBackend::AddOrUpdateScannedSongs(const SongList &songs, const SongList &previous_songs) {
+
+  QHash<int, Song> previous_songs_by_id;
+  for (const Song &previous_song : previous_songs) {
+    if (previous_song.id() != -1) previous_songs_by_id.insert(previous_song.id(), previous_song);
+  }
+
+  AddOrUpdateSongsInternal(songs, previous_songs_by_id);
+
+}
+
+void CollectionBackend::AddOrUpdateSongsInternal(const SongList &songs, const QHash<int, Song> &previous_songs) {
+
   QMutexLocker l(db_->Mutex());
   QSqlDatabase db(db_->Connect());
 
@@ -641,6 +691,10 @@ void CollectionBackend::AddOrUpdateSongs(const SongList &songs) {
   }
   SqlQuery q_song_exists(db);
   q_song_exists.prepare(QStringLiteral("SELECT ROWID FROM %1 WHERE ROWID = :id").arg(songs_table_));
+  SqlQuery q_current_song(db);
+  if (!previous_songs.isEmpty()) {
+    q_current_song.prepare(QStringLiteral("SELECT %1 FROM %2 WHERE ROWID = :id").arg(Song::kRowIdColumnSpec, songs_table_));
+  }
   SqlQuery q_find_url(db);
   // The CUE sheet is matched too, the media file of a CUE sheet can also have a song for the whole media file, for example while the CUE sheet can't be read, which starts at the same position as the first CUE song.
   q_find_url.prepare(QStringLiteral("SELECT %1 FROM %2 WHERE (url = :url1 OR url = :url2 OR url = :url3 OR url = :url4) AND beginning = :beginning AND IFNULL(cue_path, '') = :cue_path ORDER BY unavailable ASC LIMIT 1").arg(Song::kRowIdColumnSpec, songs_table_));
@@ -687,24 +741,46 @@ void CollectionBackend::AddOrUpdateSongs(const SongList &songs) {
 
     if (song.id() != -1) {  // This song exists in the DB.
 
-      // Make sure it still exists
-      q_song_exists.BindValue(u":id"_s, song.id());
-      if (!q_song_exists.Exec()) {
-        db_->ReportErrors(q_song_exists);
-        if (!transaction.active()) return;
-        continue;
+      Song updated_song = song;
+
+      QHash<int, Song>::const_iterator previous_song_it = previous_songs.constFind(song.id());
+      if (previous_song_it == previous_songs.constEnd()) {
+        // Make sure it still exists
+        q_song_exists.BindValue(u":id"_s, song.id());
+        if (!q_song_exists.Exec()) {
+          db_->ReportErrors(q_song_exists);
+          if (!transaction.active()) return;
+          continue;
+        }
+        const bool song_exists = q_song_exists.next();
+        q_song_exists.finish();
+        if (!song_exists) continue;
       }
-      const bool song_exists = q_song_exists.next();
-      q_song_exists.finish();
-      if (!song_exists) continue;
+      else {
+        // The song was made from the previous song, which can be from long ago, a scan only updates the songs when it's finished.
+        // The current song is read in this transaction, so changes made since then, for example playing the song during the scan, are not reverted.
+        q_current_song.BindValue(u":id"_s, song.id());
+        if (!q_current_song.Exec()) {
+          db_->ReportErrors(q_current_song);
+          if (!transaction.active()) return;
+          continue;
+        }
+        Song current_song(source_);
+        if (q_current_song.next()) {
+          current_song.InitFromQuery(q_current_song, true);
+        }
+        q_current_song.finish();
+        if (!current_song.is_valid()) continue;
+        updated_song.MergeUserSetDataChangedSince(previous_song_it.value(), current_song);
+      }
 
       // Update
-      if (!update_song(song)) {
+      if (!update_song(updated_song)) {
         if (!transaction.active()) return;
         continue;
       }
 
-      changed_songs << song;
+      changed_songs << updated_song;
 
       continue;
 
@@ -977,12 +1053,24 @@ void CollectionBackend::MarkSongsUnavailable(const SongList &songs, const bool u
   QMutexLocker l(db_->Mutex());
   QSqlDatabase db(db_->Connect());
 
+  // Songs are expired by when they were last seen, which is only updated for available songs after a scan.
+  // A song which becomes unavailable is last seen now, otherwise the scan which marks it unavailable expires it right away when the previous scan was long ago, for example when Strawberry wasn't started for a long time and the drive with the music isn't mounted yet.
+  // A song which was already unavailable keeps when it was last seen.
   SqlQuery query(db);
-  query.prepare(QStringLiteral("UPDATE %1 SET unavailable = %2 WHERE ROWID = :id").arg(songs_table_).arg(static_cast<int>(unavailable)));
+  if (unavailable) {
+    query.prepare(QStringLiteral("UPDATE %1 SET lastseen = CASE WHEN unavailable = 0 THEN :lastseen ELSE lastseen END, unavailable = 1 WHERE ROWID = :id").arg(songs_table_));
+  }
+  else {
+    query.prepare(QStringLiteral("UPDATE %1 SET unavailable = 0 WHERE ROWID = :id").arg(songs_table_));
+  }
 
+  const qint64 lastseen = QDateTime::currentSecsSinceEpoch();
   ScopedTransaction transaction(&db);
   for (const Song &song : songs) {
     query.BindValue(u":id"_s, song.id());
+    if (unavailable) {
+      query.BindValue(u":lastseen"_s, lastseen);
+    }
     if (!query.Exec()) {
       db_->ReportErrors(query);
       return;

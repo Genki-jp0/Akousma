@@ -430,8 +430,9 @@ void CollectionWatcher::ScanTransaction::CommitNewOrUpdatedSongs() {
   }
 
   if (!new_songs.isEmpty()) {
-    Q_EMIT watcher_->NewOrUpdatedSongs(new_songs);
+    Q_EMIT watcher_->NewOrUpdatedSongs(new_songs, previous_songs);
     new_songs.clear();
+    previous_songs.clear();
     song_changes.clear();
   }
 
@@ -1625,6 +1626,7 @@ void CollectionWatcher::AddChangedSong(const Song &matching_song, const Song &ne
 
   if (notify_new) {
     t->new_songs << new_song;
+    t->previous_songs << matching_song;
   }
   else {
     t->touched_songs << new_song;
