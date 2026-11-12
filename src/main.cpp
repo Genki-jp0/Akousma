@@ -231,6 +231,14 @@ int main(int argc, char *argv[]) {
         return 1;
       }
       std::cout << (options.reset_settings() ? QObject::tr("All settings were reset to the defaults.") : QObject::tr("%1 settings imported from %2.").arg(result.count).arg(options.import_settings())).toLocal8Bit().constData() << std::endl;
+      // No one is asked here, so the connection settings in the file (server addresses, user names, proxy, certificate checks) are not
+      // imported: the saved passwords and logins would be sent to them. Importing in Akousma shows them and asks.
+      if (!result.held_back.isEmpty()) {
+        std::cout << QObject::tr("These connection settings were not imported, the current ones were kept: %1. Import the file in Akousma to review and accept them.").arg(result.held_back.join(u", "_s)).toLocal8Bit().constData() << std::endl;
+      }
+      if (!result.refused.isEmpty()) {
+        std::cout << QObject::tr("These parts of the file are unknown to this version of Akousma and were not imported: %1").arg(result.refused.join(u", "_s)).toLocal8Bit().constData() << std::endl;
+      }
       std::cout << QObject::tr("The previous settings were backed up to %1.").arg(QDir::toNativeSeparators(result.backup_dir)).toLocal8Bit().constData() << std::endl;
       return 0;
     }

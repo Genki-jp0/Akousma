@@ -27,6 +27,7 @@
 #include <QSettings>
 #include <QStandardPaths>
 #include <QString>
+#include <QStringList>
 #include <QTemporaryDir>
 #include <QColor>
 #include <QByteArray>
@@ -41,6 +42,18 @@
 using namespace Qt::Literals::StringLiterals;
 
 namespace {
+
+// The ids of all connection changes an import of filename would make, as if the user accepted all of them in the import dialog.
+QStringList AcceptAllConnectionChanges(const QString &filename) {
+  Settings s;
+  QSettings in(filename, QSettings::IniFormat);
+  QStringList ids;
+  const QList<SettingsTransfer::ConnectionChange> changes = SettingsTransfer::PlanImport(SettingsTransfer::SettingsValues(s), SettingsTransfer::SettingsValues(in)).connection_changes;
+  for (const SettingsTransfer::ConnectionChange &change : changes) {
+    ids << change.id;
+  }
+  return ids;
+}
 
 class SettingsTransferTest : public ::testing::Test {
  protected:
@@ -145,9 +158,12 @@ TEST_F(SettingsTransferTest, ExportResetImportRoundTrip) {
     s.setValue(u"Analyzer/type"_s, u"BlockAnalyzer"_s);
   }
 
-  const SettingsTransfer::Result result = SettingsTransfer::Import(filename);
+  // The reset removed the Subsonic user name, setting it again is a connection change the user accepts.
+  const SettingsTransfer::Result result = SettingsTransfer::Import(filename, AcceptAllConnectionChanges(filename));
   ASSERT_TRUE(result.success) << result.error.toStdString();
   EXPECT_FALSE(result.version.isEmpty());
+  EXPECT_TRUE(result.held_back.isEmpty());
+  EXPECT_TRUE(result.refused.isEmpty());
 
   Settings s;
   EXPECT_EQ(1, s.value(u"Appearance/player_layout"_s).toInt());
@@ -169,8 +185,13 @@ TEST_F(SettingsTransferTest, PendingAction) {
   EXPECT_EQ(SettingsTransfer::Action::None, SettingsTransfer::PendingAction());
   SettingsTransfer::SetPendingAction(SettingsTransfer::Action::Import, u"/some/file.ini"_s);
   QString filename;
-  EXPECT_EQ(SettingsTransfer::Action::Import, SettingsTransfer::PendingAction(&filename));
+  QStringList accepted;
+  EXPECT_EQ(SettingsTransfer::Action::Import, SettingsTransfer::PendingAction(&filename, &accepted));
   EXPECT_EQ(u"/some/file.ini"_s, filename);
+  EXPECT_TRUE(accepted.isEmpty());
+  SettingsTransfer::SetPendingAction(SettingsTransfer::Action::Import, u"/some/file.ini"_s, QStringList() << u"aa01"_s << u"bb02"_s);
+  EXPECT_EQ(SettingsTransfer::Action::Import, SettingsTransfer::PendingAction(&filename, &accepted));
+  EXPECT_EQ(QStringList() << u"aa01"_s << u"bb02"_s, accepted);
   SettingsTransfer::SetPendingAction(SettingsTransfer::Action::Reset);
   EXPECT_EQ(SettingsTransfer::Action::Reset, SettingsTransfer::PendingAction());
   SettingsTransfer::SetPendingAction(SettingsTransfer::Action::None);
@@ -344,5 +365,71 @@ TEST_F(SettingsTransferTest, TabBarThemes) {
 
   TabBarThemes::RemoveImage(themes[0].image);
   TabBarThemes::Save(QList<TabBarThemes::Theme>());
+
+}
+
+// A file that repoints the servers and the proxy while the saved passwords are kept: the import keeps the current connection settings
+// unless the changes were accepted, and refuses groups it doesn't know.
+TEST_F(SettingsTransferTest, ImportHoldsBackConnectionSettings) {
+
+  {
+    Settings s;
+    s.setValue(u"Jellyfin/enabled"_s, true);
+    s.setValue(u"Jellyfin/url"_s, u"https://home.example/"_s);
+    s.setValue(u"Jellyfin/username"_s, u"genki"_s);
+    s.setValue(u"NetworkProxy/mode"_s, 0);
+    s.setValue(u"NetworkProxy/password"_s, u"dummy-proxy-password"_s);
+    s.sync();
+  }
+
+  const QString filename = dir_.filePath(u"hostile.ini"_s);
+  ASSERT_TRUE(SettingsTransfer::Export(filename).success);
+  {
+    QSettings file(filename, QSettings::IniFormat);
+    file.setValue(u"Jellyfin/url"_s, u"https://evil.example/"_s);
+    file.setValue(u"Jellyfin/verifycertificate"_s, false);
+    file.setValue(u"NetworkProxy/mode"_s, 2);
+    file.setValue(u"NetworkProxy/hostname"_s, u"proxy.evil.example"_s);
+    file.setValue(u"Subsonic/authmethod"_s, 0);
+    file.setValue(u"Evil/key"_s, u"value"_s);
+    file.setValue(u"Appearance/player_layout"_s, 2);
+  }
+
+  const SettingsTransfer::Result result = SettingsTransfer::Import(filename);
+  ASSERT_TRUE(result.success) << result.error.toStdString();
+  QStringList held_back = result.held_back;
+  held_back.sort();
+  EXPECT_EQ(QStringList() << u"Jellyfin/url"_s << u"Jellyfin/verifycertificate"_s << u"NetworkProxy/hostname"_s << u"NetworkProxy/mode"_s << u"Subsonic/authmethod"_s, held_back);
+  EXPECT_EQ(QStringList() << u"Evil"_s, result.refused);
+
+  {
+    Settings s;
+    EXPECT_EQ(u"https://home.example/"_s, s.value(u"Jellyfin/url"_s).toString());
+    EXPECT_FALSE(s.contains(u"Jellyfin/verifycertificate"_s));
+    EXPECT_EQ(0, s.value(u"NetworkProxy/mode"_s).toInt());
+    EXPECT_FALSE(s.contains(u"NetworkProxy/hostname"_s));
+    EXPECT_FALSE(s.contains(u"Subsonic/authmethod"_s));
+    EXPECT_FALSE(s.contains(u"Evil/key"_s));
+    // The rest of the file is imported, the secrets are kept.
+    EXPECT_EQ(2, s.value(u"Appearance/player_layout"_s).toInt());
+    EXPECT_TRUE(s.value(u"Jellyfin/enabled"_s).toBool());
+    EXPECT_EQ(u"genki"_s, s.value(u"Jellyfin/username"_s).toString());
+    EXPECT_EQ(u"dummy-proxy-password"_s, s.value(u"NetworkProxy/password"_s).toString());
+    EXPECT_EQ(u"dummy-password"_s, s.value(u"Subsonic/password"_s).toString());
+  }
+
+  // Accepted in the import dialog: imported.
+  const QStringList accepted = AcceptAllConnectionChanges(filename);
+  EXPECT_EQ(5, accepted.count());
+  const SettingsTransfer::Result accepted_result = SettingsTransfer::Import(filename, accepted);
+  ASSERT_TRUE(accepted_result.success) << accepted_result.error.toStdString();
+  EXPECT_TRUE(accepted_result.held_back.isEmpty());
+  {
+    Settings s;
+    EXPECT_EQ(u"https://evil.example/"_s, s.value(u"Jellyfin/url"_s).toString());
+    EXPECT_FALSE(s.value(u"Jellyfin/verifycertificate"_s).toBool());
+    EXPECT_EQ(u"proxy.evil.example"_s, s.value(u"NetworkProxy/hostname"_s).toString());
+    EXPECT_FALSE(s.contains(u"Evil/key"_s));
+  }
 
 }
