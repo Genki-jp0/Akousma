@@ -36,6 +36,7 @@
 #include "core/logging.h"
 #include "core/settings.h"
 #include "utilities/xmlutils.h"
+#include "utilities/urlpolicy.h"
 #include "constants/timeconstants.h"
 #include "constants/playlistsettings.h"
 #include "xmlparser.h"
@@ -198,8 +199,15 @@ return_song:
     if (!artist.isEmpty()) song.set_artist(artist);
     if (!album.isEmpty()) song.set_album(album);
     if (!art.isEmpty()) {
-      // Local images are saved as filenames, which can be relative to the playlist, and a URL without a scheme is never loaded.
-      song.set_art_manual(HasUrlScheme(art) ? QUrl(art) : QUrl::fromLocalFile(QDir::cleanPath(dir.absoluteFilePath(art))));
+      // Only a web URL, or an image file next to the playlist, the cover loader reads a local file whole.
+      // Local images are saved as filenames, which can be relative to the playlist, they are decoded by DecodeLocation().
+      const QUrl art_url = UrlPolicy::PlaylistCoverUrl(art, dir);
+      if (art_url.isEmpty()) {
+        qLog(Warning) << "Ignoring image" << art << "in XSPF playlist";
+      }
+      else {
+        song.set_art_manual(art_url);
+      }
     }
     if (nanosec > 0) song.set_length_nanosec(nanosec);
     if (track_num > 0) song.set_track(track_num);

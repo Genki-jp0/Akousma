@@ -54,6 +54,7 @@
 #  include "core/sleepinhibitor.h"
 #endif
 #include "utilities/strutils.h"
+#include "utilities/urlpolicy.h"
 
 #include "engine/enginebase.h"
 #include "engine/gstengine.h"
@@ -359,6 +360,13 @@ void Player::HandleLoadResult(const UrlHandler::LoadResult &result) {
       Song song;
       if (is_current) song = current_item->EffectiveMetadata();
       else if (is_next) song = next_item->EffectiveMetadata();
+
+      // The stream URL comes from the reply of the service, check it like the URL of the song before it reaches the engine.
+      if (!UrlPolicy::IsEngineUrlAllowed(result.stream_url_, song.source())) {
+        qLog(Error) << "URL handler for" << result.media_url_ << "returned a stream URL that is not allowed for a song from" << Song::TextForSource(song.source()) << Utilities::UrlForLog(result.stream_url_);
+        HandleLoadResult(UrlHandler::LoadResult(result.media_url_, UrlHandler::LoadResult::Type::Error, tr("Refusing to play %1, the stream URL is not allowed for the source of the song.").arg(Utilities::UrlForLog(result.stream_url_))));
+        return;
+      }
 
       bool update = false;
 
@@ -892,6 +900,8 @@ void Player::PlayAt(const int index, const bool pause, const quint64 offset_nano
     url = current_item_->OriginalUrl();
   }
 
+  const Song::Source source = current_item_->EffectiveMetadata().source();
+
   if (url_handlers_->CanHandle(url)) {
     // HandleLoadResult() uses these when the URL finished loading, also when it's already loading, so it plays as requested now, for example not paused anymore.
     pause_ = pause;
@@ -904,8 +914,23 @@ void Player::PlayAt(const int index, const bool pause, const quint64 offset_nano
       return;
     }
 
+    // Only the URL handler of the service the song belongs to may load it, a radio station or a song of another service can't address it.
+    if (!UrlPolicy::IsUrlHandlerAllowed(url, source)) {
+      qLog(Error) << "Refusing to load" << Utilities::UrlForLog(url) << "with the URL handler for" << url.scheme() << "for a song from" << Song::TextForSource(source);
+      HandleLoadResult(UrlHandler::LoadResult(current_item_->OriginalUrl(), UrlHandler::LoadResult::Type::Error, tr("Refusing to play %1, the URL does not belong to the source of the song.").arg(Utilities::UrlForLog(url))));
+      return;
+    }
+
     UrlHandler *url_handler = url_handlers_->GetUrlHandler(url);
     HandleLoadResult(url_handler->StartLoading(url));
+  }
+  else if (!UrlPolicy::IsEngineUrlAllowed(url, source)) {
+    qLog(Error) << "Refusing to play" << Utilities::UrlForLog(url) << "for a song from" << Song::TextForSource(source);
+    // Reported like an URL handler error, which counts the error and continues with the next song.
+    pause_ = pause;
+    stream_change_type_ = change;
+    autoscroll_ = autoscroll;
+    HandleLoadResult(UrlHandler::LoadResult(current_item_->OriginalUrl(), UrlHandler::LoadResult::Type::Error, tr("Refusing to play %1, the URL is not allowed for the source of the song.").arg(Utilities::UrlForLog(url))));
   }
   else {
     qLog(Debug) << "Playing song" << current_item_->EffectiveMetadata().title() << Utilities::UrlForLog(url) << "position" << play_offset_nanosec_;
@@ -1106,10 +1131,13 @@ void Player::TrackAboutToEnd() {
   if (!has_next_row || !next_item) return;
 
   QUrl url = next_item->EffectiveUrl();
+  const Song::Source next_source = next_item->EffectiveMetadata().source();
 
   // Get the actual track URL rather than the stream URL.
   if (url_handlers_->CanHandle(url)) {
     if (loading_async_.contains(url)) return;
+    // Not preloaded, PlayAt() reports the error when the song is played.
+    if (!UrlPolicy::IsUrlHandlerAllowed(url, next_source)) return;
     autoscroll_ = Playlist::AutoScroll::Maybe;
     UrlHandler *url_handler = url_handlers_->GetUrlHandler(url);
     const UrlHandler::LoadResult result = url_handler->StartLoading(url);
@@ -1124,6 +1152,11 @@ void Player::TrackAboutToEnd() {
         return;
       case UrlHandler::LoadResult::Type::TrackAvailable:
         qLog(Debug) << "URL handler for" << result.media_url_ << "returned" << Utilities::UrlForLog(result.stream_url_);
+        // Not kept or preloaded, PlayAt() loads it again and reports the error when the song is played.
+        if (!UrlPolicy::IsEngineUrlAllowed(result.stream_url_, next_source)) {
+          qLog(Error) << "URL handler for" << result.media_url_ << "returned a stream URL that is not allowed for a song from" << Song::TextForSource(next_source) << Utilities::UrlForLog(result.stream_url_);
+          return;
+        }
         url = result.stream_url_;
         Song song = next_item->EffectiveMetadata();
         song.set_stream_url(url);
@@ -1135,6 +1168,12 @@ void Player::TrackAboutToEnd() {
   // Preloading any format while currently playing module music is broken in GStreamer.
   // See: https://gitlab.freedesktop.org/gstreamer/gstreamer/-/issues/769
   if (current_item_ && current_item_->EffectiveMetadata().is_module_music()) {
+    return;
+  }
+
+  // Not preloaded, PlayAt() or HandleLoadResult() reports the error when the song is played.
+  if (!UrlPolicy::IsEngineUrlAllowed(url, next_source)) {
+    qLog(Error) << "Not preloading" << Utilities::UrlForLog(url) << "for a song from" << Song::TextForSource(next_source);
     return;
   }
 

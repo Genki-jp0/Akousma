@@ -32,10 +32,12 @@
 #include <QJsonArray>
 #include <QRandomGenerator>
 
+#include "core/logging.h"
 #include "core/networkaccessmanager.h"
 #include "core/taskmanager.h"
 #include "core/iconloader.h"
 #include "settings/radiosettingspage.h"
+#include "utilities/urlpolicy.h"
 #include "radiobrowserservice.h"
 #include "radiochannel.h"
 
@@ -252,22 +254,27 @@ void RadioBrowserService::SearchReply(QNetworkReply *reply, const int task_id, c
     const QString name = obj["name"_L1].toString().trimmed();
     if (name.isEmpty()) continue;
 
-    // Prefer url_resolved over url
-    QString stream_url = obj["url_resolved"_L1].toString();
-    if (stream_url.isEmpty()) stream_url = obj["url"_L1].toString();
-    if (stream_url.isEmpty()) continue;
+    // Prefer url_resolved over url.
+    // The directory is community-edited, only accept http and https URLs with a host, not a local file, a UNC path or the URL of a streaming service.
+    QUrl stream_url(obj["url_resolved"_L1].toString());
+    if (!UrlPolicy::IsRadioStreamUrl(stream_url)) stream_url = QUrl(obj["url"_L1].toString());
+    if (!UrlPolicy::IsRadioStreamUrl(stream_url)) {
+      qLog(Debug) << "Radio Browser: Ignoring station" << name << "without an http or https stream URL";
+      continue;
+    }
 
     RadioChannel channel;
     channel.source = source_;
     channel.name = name;
-    channel.url.setUrl(stream_url);
+    channel.url = stream_url;
     channel.country = obj["country"_L1].toString().trimmed();
     channel.tags = obj["tags"_L1].toString().trimmed();
     channel.codec = obj["codec"_L1].toString().trimmed();
 
-    const QString favicon = obj["favicon"_L1].toString();
-    if (!favicon.isEmpty()) {
-      channel.thumbnail_url.setUrl(favicon);
+    // The favicon is loaded by the cover loader, which reads a local file whole.
+    const QUrl favicon(obj["favicon"_L1].toString());
+    if (UrlPolicy::IsRemoteCoverUrl(favicon)) {
+      channel.thumbnail_url = favicon;
     }
 
     channels << channel;

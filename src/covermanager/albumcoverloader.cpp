@@ -42,6 +42,7 @@
 #include "core/song.h"
 #include "utilities/mimeutils.h"
 #include "utilities/imageutils.h"
+#include "utilities/urlpolicy.h"
 #include "tagreader/tagreaderclient.h"
 #include "albumcoverloader.h"
 #include "albumcoverloaderoptions.h"
@@ -363,7 +364,8 @@ AlbumCoverLoader::LoadImageResult AlbumCoverLoader::LoadUrlImage(TaskPtr task, c
     if (cover_url.isLocalFile()) {
       return LoadLocalUrlImage(task, result_type, cover_url);
     }
-    if (network_->supportedSchemes().contains(cover_url.scheme())) {
+    // Only http and https, not the other schemes the network access manager supports, such as data: and qrc:.
+    if (UrlPolicy::IsRemoteCoverUrl(cover_url)) {
       return LoadRemoteUrlImage(task, result_type, cover_url);
     }
   }
@@ -397,14 +399,27 @@ AlbumCoverLoader::LoadImageResult AlbumCoverLoader::LoadLocalFileImage(TaskPtr t
     return LoadImageResult(result_type, LoadImageResult::Status::Failure);
   }
 
+  // A cover URL can come from a playlist or a server, don't read a device (/dev/zero never ends), a FIFO (blocks this thread) or a huge file.
+  if (!UrlPolicy::IsCoverFileAllowed(cover_file)) {
+    qLog(Error) << "Cover file" << cover_file << "is not a regular file of at most" << UrlPolicy::kMaxCoverFileSize << "bytes.";
+    return LoadImageResult(result_type, LoadImageResult::Status::Failure);
+  }
+
   QFile file(cover_file);
   if (!file.open(QIODevice::ReadOnly)) {
     qLog(Error) << "Unable to open cover file" << cover_file << "for reading:" << file.errorString();
     return LoadImageResult(result_type, LoadImageResult::Status::Failure);
   }
 
-  task->album_cover.image_data = file.readAll();
+  // Bounded also when the file grew after it was checked.
+  task->album_cover.image_data = file.read(UrlPolicy::kMaxCoverFileSize + 1);
   file.close();
+
+  if (task->album_cover.image_data.size() > UrlPolicy::kMaxCoverFileSize) {
+    qLog(Error) << "Cover file" << cover_file << "is larger than" << UrlPolicy::kMaxCoverFileSize << "bytes.";
+    task->album_cover.image_data.clear();
+    return LoadImageResult(result_type, LoadImageResult::Status::Failure);
+  }
 
   if (task->album_cover.image_data.isEmpty()) {
     qLog(Error) << "Cover file" << cover_file << "is empty.";
@@ -449,7 +464,14 @@ void AlbumCoverLoader::LoadRemoteImageFinished(QNetworkReply *reply, TaskPtr tas
       ProcessTask(task);
       return;
     }
-    const QUrl redirect_url = redirect.toUrl();
+    // The target can be relative, and must be http or https like the cover URL, a server must not redirect to a local file.
+    const QUrl redirect_url = cover_url.resolved(redirect.toUrl());
+    if (!UrlPolicy::IsRemoteCoverUrl(redirect_url)) {
+      qLog(Error) << "Not following the redirect of cover URL" << cover_url << "to" << redirect_url;
+      ClearImage(task);
+      ProcessTask(task);
+      return;
+    }
     qLog(Debug) << "Loading remote cover from redirected URL" << redirect_url;
     QNetworkRequest network_request = reply->request();
     network_request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);

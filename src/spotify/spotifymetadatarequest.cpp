@@ -31,6 +31,7 @@
 #include "core/logging.h"
 #include "core/networkaccessmanager.h"
 #include "core/song.h"
+#include "utilities/urlpolicy.h"
 #include "spotifyservice.h"
 #include "spotifymetadatarequest.h"
 
@@ -137,8 +138,9 @@ void SpotifyMetadataRequest::TrackMetadataReceived(QNetworkReply *reply, const Q
         if (!obj_image.contains("url"_L1) || !obj_image.contains("width"_L1) || !obj_image.contains("height"_L1)) continue;
         int width = obj_image["width"_L1].toInt();
         int height = obj_image["height"_L1].toInt();
-        if (width >= 300 && height >= 300) {
-          song.set_art_automatic(QUrl(obj_image["url"_L1].toString()));
+        const QUrl cover_url(obj_image["url"_L1].toString());
+        if (width >= 300 && height >= 300 && UrlPolicy::IsSecureWebUrl(cover_url)) {
+          song.set_art_automatic(cover_url);
           break;
         }
       }

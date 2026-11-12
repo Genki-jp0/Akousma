@@ -49,6 +49,8 @@
 
 #include "constants/timeconstants.h"
 #include "core/song.h"
+#include "utilities/strutils.h"
+#include "utilities/urlpolicy.h"
 #include "core/player.h"
 #include "engine/enginebase.h"
 #include "playlist/playlist.h"
@@ -292,11 +294,8 @@ QString Mpris2::DesktopEntry() const { return QGuiApplication::desktopFileName()
 
 QStringList Mpris2::SupportedUriSchemes() const {
 
-  static QStringList res = QStringList() << u"file"_s
-                                         << u"http"_s
-                                         << u"cdda"_s
-                                         << u"smb"_s
-                                         << u"sftp"_s;
+  // The schemes OpenUri and AddTrack accept.
+  static const QStringList res = UrlPolicy::MprisUriSchemes();
   return res;
 
 }
@@ -719,8 +718,15 @@ void Mpris2::SetPosition(const QDBusObjectPath &trackId, qint64 offset) {
 
 void Mpris2::OpenUri(const QString &uri) {
 
+  // Any session bus peer can call this, only accept web URLs and local files, not directories, other GStreamer sources or the schemes of the streaming services.
+  const QUrl url(uri);
+  if (!UrlPolicy::IsMprisUriAllowed(url)) {
+    qLog(Warning) << "MPRIS2: Refusing to open" << Utilities::UrlForLog(url);
+    return;
+  }
+
   if (playlist_manager_->active()) {
-    playlist_manager_->active()->InsertUrls(QList<QUrl>() << QUrl(uri), -1, true);
+    playlist_manager_->active()->InsertUrls(QList<QUrl>() << url, -1, true);
   }
 
 }
@@ -801,6 +807,11 @@ void Mpris2::AddTrack(const QString &uri, const QDBusObjectPath &afterTrack, boo
   if (!playlist_manager_->active() || playlist_manager_->active_id() < 0) {
     return;
   }
+  const QUrl url(uri);
+  if (!UrlPolicy::IsMprisUriAllowed(url)) {
+    qLog(Warning) << "MPRIS2: Refusing to add" << Utilities::UrlForLog(url);
+    return;
+  }
   int after_track_pos = playlist_manager_->active()->rowCount() - 1;
   const QString path = afterTrack.path();
   if (path == u"/"_s || path == QLatin1String(kNoTrack)) {
@@ -813,7 +824,7 @@ void Mpris2::AddTrack(const QString &uri, const QDBusObjectPath &afterTrack, boo
     }
   }
   const int insert_row = after_track_pos + 1;
-  playlist_manager_->InsertUrls(playlist_manager_->active_id(), QList<QUrl>() << QUrl(uri), insert_row, setAsCurrent, false, true);
+  playlist_manager_->InsertUrls(playlist_manager_->active_id(), QList<QUrl>() << url, insert_row, setAsCurrent, false, true);
 
 }
 

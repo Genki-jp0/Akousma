@@ -35,11 +35,13 @@
 
 #include "includes/shared_ptr.h"
 #include "core/logging.h"
+#include "utilities/strutils.h"
 #include "core/networkaccessmanager.h"
 #include "core/song.h"
 #include "constants/tidalsettings.h"
 #include "tidalservice.h"
 #include "tidalbaserequest.h"
+#include "utilities/urlpolicy.h"
 #include "tidalstreamurlrequest.h"
 
 using namespace Qt::Literals::StringLiterals;
@@ -159,7 +161,14 @@ QList<QUrl> TidalStreamURLRequest::ParseUrls(const QJsonObject &json_object) {
   QList<QUrl> urls;
   urls.reserve(json_array_urls.count());
   for (const QJsonValue &value : json_array_urls) {
-    urls << QUrl(value.toString());
+    // The URL is played by the engine, only accept https with a host, not a local file or the URL of another service.
+    const QUrl url(value.toString());
+    if (UrlPolicy::IsServiceStreamUrl(url)) {
+      urls << url;
+    }
+    else {
+      qLog(Warning) << "Tidal: Ignoring stream URL that is not https" << Utilities::UrlForLog(url);
+    }
   }
 
   return urls;
@@ -284,6 +293,10 @@ void TidalStreamURLRequest::StreamURLReceived() {
   }
   else if (json_object.contains("url"_L1)) {
     const QUrl new_url(json_object["url"_L1].toString());
+    if (!UrlPolicy::IsServiceStreamUrl(new_url)) {
+      Q_EMIT StreamURLFailure(id_, media_url_, u"Returned stream url is not an https URL."_s);
+      return;
+    }
     urls << new_url;
     if (filetype == Song::FileType::Stream) {
       // Guess filetype by filename extension in URL.

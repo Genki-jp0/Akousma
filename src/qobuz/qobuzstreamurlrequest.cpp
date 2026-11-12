@@ -39,6 +39,7 @@
 #include "constants/timeconstants.h"
 #include "qobuzservice.h"
 #include "qobuzbaserequest.h"
+#include "utilities/urlpolicy.h"
 #include "qobuzstreamurlrequest.h"
 
 using namespace Qt::Literals::StringLiterals;
@@ -184,8 +185,9 @@ void QobuzStreamURLRequest::StreamURLReceived() {
     filetype = Song::FileType::Stream;
   }
 
-  if (!url.isValid()) {
-    Q_EMIT StreamURLFailure(id_, media_url_, u"Returned stream url is invalid."_s);
+  // The URL is played by the engine, only accept https with a host, not a local file or the URL of another service.
+  if (!UrlPolicy::IsServiceStreamUrl(url)) {
+    Q_EMIT StreamURLFailure(id_, media_url_, u"Returned stream url is invalid or not an https URL."_s);
     return;
   }
 

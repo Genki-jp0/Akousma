@@ -111,35 +111,80 @@ TEST(XSPFParserTest, PlaylistTitleAfterTrackList) {
 
 }
 
+QUrl LoadImageIn(const QDir &dir, const QByteArray &image) {
+
+  XSPFParser parser(nullptr, nullptr);
+  QByteArray data = "<playlist version=\"1\" xmlns=\"http://xspf.org/ns/0/\"><trackList><track><location>http://example.com/one.mp3</location><image>" + image + "</image></track></trackList></playlist>";
+  QBuffer buffer(&data);
+  if (!buffer.open(QIODevice::ReadOnly)) return QUrl();
+  const ParserBase::LoadResult result = parser.Load(&buffer, QString(), dir, false);
+  return result.songs.size() == 1 ? result.songs[0].art_manual() : QUrl();
+
+}
+
+bool CreateFile(const QString &filename) {
+
+  QFile file(filename);
+  return QDir().mkpath(QFileInfo(filename).absolutePath()) && file.open(QIODevice::WriteOnly) && file.write("image") == 5;
+
+}
+
+QUrl CanonicalFileUrl(const QString &filename) {
+  return QUrl::fromLocalFile(QFileInfo(filename).canonicalFilePath());
+}
+
 // Regression test: a local image was loaded as a URL without a scheme, so the cover was never loaded.
+// Local images are only loaded from the directory of the playlist.
 TEST(XSPFParserTest, ImageWithAbsolutePathIsLocalFile) {
 
-  const QUrl url = LoadImage("/music/cover.jpg");
+  QTemporaryDir tmp;
+  ASSERT_TRUE(tmp.isValid());
+  const QString filename = tmp.filePath(u"cover.jpg"_s);
+  ASSERT_TRUE(CreateFile(filename));
+
+  const QUrl url = LoadImageIn(QDir(tmp.path()), filename.toUtf8());
   EXPECT_TRUE(url.isLocalFile());
-  // On Windows, the path is on the drive of the playlist directory.
-  EXPECT_EQ(QDir::cleanPath(QDir::temp().absoluteFilePath(u"/music/cover.jpg"_s)), url.toLocalFile());
+  EXPECT_EQ(CanonicalFileUrl(filename), url);
 
 }
 
 // Images are saved relative to the playlist, depending on the playlist path setting.
 TEST(XSPFParserTest, ImageWithRelativePathIsResolvedFromPlaylist) {
 
-  EXPECT_EQ(QUrl::fromLocalFile(QDir::temp().absoluteFilePath(u"covers/cover.jpg"_s)), LoadImage("covers/cover.jpg"));
-  EXPECT_EQ(QUrl::fromLocalFile(QDir::cleanPath(QDir::temp().absoluteFilePath(u"../cover.jpg"_s))), LoadImage("../cover.jpg"));
+  QTemporaryDir tmp;
+  ASSERT_TRUE(tmp.isValid());
+  const QString playlist_dir = tmp.filePath(u"playlists"_s);
+  const QString filename = playlist_dir + u"/covers/cover.jpg"_s;
+  ASSERT_TRUE(CreateFile(filename));
+  ASSERT_TRUE(CreateFile(tmp.filePath(u"cover.jpg"_s)));
+
+  EXPECT_EQ(CanonicalFileUrl(filename), LoadImageIn(QDir(playlist_dir), "covers/cover.jpg"));
+  // Outside the directory of the playlist.
+  EXPECT_TRUE(LoadImageIn(QDir(playlist_dir), "../cover.jpg").isEmpty());
 
 }
 
 // Saved filenames are percent encoded.
 TEST(XSPFParserTest, ImageFilenameIsDecoded) {
 
-  EXPECT_EQ(QDir::cleanPath(QDir::temp().absoluteFilePath(u"/music/a%b.jpg"_s)), LoadImage("/music/a%25b.jpg").toLocalFile());
+  QTemporaryDir tmp;
+  ASSERT_TRUE(tmp.isValid());
+  const QString filename = tmp.filePath(u"a%b.jpg"_s);
+  ASSERT_TRUE(CreateFile(filename));
+
+  EXPECT_EQ(CanonicalFileUrl(filename), LoadImageIn(QDir(tmp.path()), QUrl::toPercentEncoding(filename, "/")));
 
 }
 
 TEST(XSPFParserTest, ImageWithSchemeIsKept) {
 
   EXPECT_EQ(QUrl(u"https://example.com/cover.jpg"_s), LoadImage("https://example.com/cover.jpg"));
-  EXPECT_EQ(QUrl(u"file:///music/cover.jpg"_s), LoadImage("file:///music/cover.jpg"));
+
+  QTemporaryDir tmp;
+  ASSERT_TRUE(tmp.isValid());
+  const QString filename = tmp.filePath(u"cover.jpg"_s);
+  ASSERT_TRUE(CreateFile(filename));
+  EXPECT_EQ(CanonicalFileUrl(filename), LoadImageIn(QDir(tmp.path()), QUrl::fromLocalFile(filename).toEncoded()));
 
 }
 
@@ -213,7 +258,9 @@ TEST(XSPFParserTest, SaveRelativePathIsPercentEncoded) {
 // Regression test: a relative file name looking like a URL was loaded as a URL when the file was missing.
 TEST(XSPFParserTest, SaveRelativePathLookingLikeUrlHasPathInFront) {
 
-  const QDir dir = QDir::temp();
+  QTemporaryDir tmp;
+  ASSERT_TRUE(tmp.isValid());
+  const QDir dir(tmp.path());
   Song song = MakeSong(QUrl::fromLocalFile(dir.absoluteFilePath(u"ab:c.mp3"_s)));
   song.set_art_manual(QUrl::fromLocalFile(dir.absoluteFilePath(u"ab:c.jpg"_s)));
 
@@ -221,7 +268,11 @@ TEST(XSPFParserTest, SaveRelativePathLookingLikeUrlHasPathInFront) {
 
   EXPECT_TRUE(data.contains("<location>./ab%3Ac.mp3</location>")) << data.constData();
   EXPECT_TRUE(data.contains("<image>./ab%3Ac.jpg</image>")) << data.constData();
-  EXPECT_EQ(QUrl::fromLocalFile(dir.absoluteFilePath(u"ab:c.jpg"_s)), LoadImage("./ab%3Ac.jpg"));
+#ifndef Q_OS_WIN
+  // Local images are only loaded when the file is next to the playlist.
+  ASSERT_TRUE(CreateFile(dir.absoluteFilePath(u"ab:c.jpg"_s)));
+  EXPECT_EQ(CanonicalFileUrl(dir.absoluteFilePath(u"ab:c.jpg"_s)), LoadImageIn(dir, "./ab%3Ac.jpg"));
+#endif
 
 }
 
@@ -248,7 +299,12 @@ TEST(XSPFParserTest, LoadUrlSavedByOlderVersion) {
 // Regression test: decoding a file URL before it was parsed made the rest of the path after %23 a fragment.
 TEST(XSPFParserTest, ImageFileUrlIsKeptEncoded) {
 
-  EXPECT_EQ(u"/music/a#b.jpg"_s, LoadImage("file:///music/a%23b.jpg").toLocalFile());
+  QTemporaryDir tmp;
+  ASSERT_TRUE(tmp.isValid());
+  const QString filename = tmp.filePath(u"a#b.jpg"_s);
+  ASSERT_TRUE(CreateFile(filename));
+
+  EXPECT_EQ(QFileInfo(filename).canonicalFilePath(), LoadImageIn(QDir(tmp.path()), QUrl::fromLocalFile(filename).toEncoded()).toLocalFile());
 
 }
 
@@ -323,5 +379,41 @@ TEST_F(XSPFParserFileTest, FileNameWithColonIsLoadedBack) {
 
 }
 #endif
+
+// The cover loader reads a local cover file whole, a playlist must not choose a device, a file elsewhere or a UNC path.
+TEST(XSPFParserTest, ImageOnlyWebUrlOrFileNextToPlaylist) {
+
+  const QByteArray data = "<playlist version=\"1\" xmlns=\"http://xspf.org/ns/0/\"><trackList>"
+                          "<track><location>http://example.com/one.mp3</location><image>file:///dev/zero</image></track>"
+                          "<track><location>http://example.com/two.mp3</location><image>file://attacker.example/share/a.jpg</image></track>"
+                          "<track><location>http://example.com/three.mp3</location><image>//attacker.example/share/a.jpg</image></track>"
+                          "<track><location>http://example.com/four.mp3</location><image>https://example.com/cover.jpg</image></track>"
+                          "</trackList></playlist>";
+
+  const ParserBase::LoadResult result = LoadXSPF(data);
+  ASSERT_EQ(4, result.songs.size());
+  EXPECT_TRUE(result.songs[0].art_manual().isEmpty());
+  EXPECT_TRUE(result.songs[1].art_manual().isEmpty());
+  EXPECT_TRUE(result.songs[2].art_manual().isEmpty());
+  EXPECT_EQ(QUrl(u"https://example.com/cover.jpg"_s), result.songs[3].art_manual());
+
+}
+
+// A UNC path makes Windows authenticate to the host when the file is probed, such entries are skipped.
+TEST(XSPFParserTest, LocationOnAnotherHostIsSkipped) {
+
+  const QByteArray data = "<playlist version=\"1\" xmlns=\"http://xspf.org/ns/0/\"><trackList>"
+                          "<track><location>file://attacker.example/share/a.mp3</location></track>"
+                          "<track><location>file:////attacker.example/share/a.mp3</location></track>"
+                          "<track><location>//attacker.example/share/a.mp3</location></track>"
+                          "<track><location>\\\\attacker.example\\share\\a.mp3</location></track>"
+                          "<track><location>http://example.com/one.mp3</location></track>"
+                          "</trackList></playlist>";
+
+  const ParserBase::LoadResult result = LoadXSPF(data);
+  ASSERT_EQ(1, result.songs.size());
+  EXPECT_EQ(QUrl(u"http://example.com/one.mp3"_s), result.songs[0].url());
+
+}
 
 }  // namespace

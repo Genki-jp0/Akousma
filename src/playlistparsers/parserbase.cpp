@@ -32,6 +32,7 @@
 #include "tagreader/tagreaderclient.h"
 #include "collection/collectionbackend.h"
 #include "constants/playlistsettings.h"
+#include "utilities/urlpolicy.h"
 #include "parserbase.h"
 
 using namespace Qt::Literals::StringLiterals;
@@ -52,6 +53,12 @@ void ParserBase::LoadSong(const QString &filename_or_url, const qint64 beginning
     QUrl url(filename_or_url);
     song->set_source(Song::SourceFromURL(url));
     if (song->source() == Song::Source::LocalFile) {
+      // A file: URL with a host is a UNC path on Windows, which makes the machine authenticate to the host when it's opened.
+      if (UrlPolicy::IsRemoteFileUrl(url)) {
+        qLog(Error) << "Refusing to load" << url << "from a playlist, it names a file on another host";
+        Q_EMIT Error(tr("Refusing to load %1, it names a file on another host").arg(filename_or_url));
+        return;
+      }
       filename = url.toLocalFile();
     }
     else if (song->is_stream()) {
@@ -72,6 +79,13 @@ void ParserBase::LoadSong(const QString &filename_or_url, const qint64 beginning
       Q_EMIT Error(tr("Don't know how to handle %1").arg(filename_or_url));
       return;
     }
+  }
+
+  // \\host\share\a.mp3 or //host/share/a.mp3 is a UNC path on Windows, which makes the machine authenticate to the host when it's probed.
+  if (UrlPolicy::IsUncPath(filename)) {
+    qLog(Error) << "Refusing to load" << filename << "from a playlist, it names a file on another host";
+    Q_EMIT Error(tr("Refusing to load %1, it names a file on another host").arg(filename));
+    return;
   }
 
   filename = QDir::cleanPath(filename);

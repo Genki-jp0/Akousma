@@ -59,6 +59,7 @@
 #include "albumcoverloader.h"
 #include "albumcoverloaderresult.h"
 #include "albumcoverimageresult.h"
+#include "utilities/urlpolicy.h"
 #include "ui_albumcoversearcher.h"
 
 using namespace Qt::Literals::StringLiterals;
@@ -218,7 +219,8 @@ void AlbumCoverSearcher::SearchFinished(const quint64 id, const CoverProviderSea
 
   for (const CoverProviderSearchResult &result : results) {
 
-    if (result.image_url.isEmpty()) continue;
+    // The image URL comes from the reply of the provider, the cover loader would read a file: URL whole.
+    if (!UrlPolicy::IsRemoteCoverUrl(result.image_url)) continue;
 
     AlbumCoverLoaderOptions cover_options(AlbumCoverLoaderOptions::Option::RawImageData | AlbumCoverLoaderOptions::Option::OriginalImage | AlbumCoverLoaderOptions::Option::ScaledImage | AlbumCoverLoaderOptions::Option::PadScaledImage);
     cover_options.desired_scaled_size = ui_->covers->iconSize();

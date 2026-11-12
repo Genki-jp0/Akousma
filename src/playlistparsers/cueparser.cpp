@@ -37,6 +37,7 @@
 #include "constants/timeconstants.h"
 #include "core/logging.h"
 #include "utilities/textencodingutils.h"
+#include "utilities/urlpolicy.h"
 #include "constants/playlistsettings.h"
 #include "parserbase.h"
 #include "cueparser.h"
@@ -104,7 +105,15 @@ QList<CueParser::CueEntry> CueParser::ParseEntries(QIODevice *device, const QDir
       const QString &line_value = splitted[1];
 
       if (line_name.compare(QLatin1String(kFile), Qt::CaseInsensitive) == 0) {
-        file = QDir::isAbsolutePath(line_value) ? line_value : dir.absoluteFilePath(line_value);
+        // A UNC path makes Windows authenticate to the host when the file is probed, also when the collection watcher reads a CUE sheet in a scanned directory.
+        // The tracks of the FILE are skipped, like the tracks of a FILE that doesn't exist.
+        if (UrlPolicy::IsUncPath(line_value)) {
+          qLog(Warning) << "Ignoring FILE" << line_value << "in the .cue file from" << dir_path << ", it names a file on another host";
+          file.clear();
+        }
+        else {
+          file = QDir::isAbsolutePath(line_value) ? line_value : dir.absoluteFilePath(line_value);
+        }
         if (splitted.size() > 2) {
           file_type = splitted[2];
         }

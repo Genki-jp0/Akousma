@@ -45,6 +45,7 @@
 #include "core/song.h"
 #include "spotifyservice.h"
 #include "spotifybaserequest.h"
+#include "utilities/urlpolicy.h"
 #include "spotifyrequest.h"
 
 using namespace Qt::Literals::StringLiterals;
@@ -1195,7 +1196,12 @@ void SpotifyRequest::ParseSong(Song &song, const QJsonObject &json_obj, const Ar
   int track = json_obj["track_number"_L1].toInt();
   int disc = json_obj["disc_number"_L1].toInt();
 
-  QUrl url(uri);
+  // The URL is played by the engine, only accept spotify:track:<id>, not a web or local file URL, or a local file in the Spotify library (spotify:local:...).
+  const QUrl url(uri);
+  if (!UrlPolicy::IsSpotifyTrackUrl(url)) {
+    qLog(Warning) << "Spotify: Ignoring track" << song_id << "with URI" << uri;
+    return;
+  }
 
   if (service_->remove_remastered()) {
     title = Song::TitleRemoveMisc(title);

@@ -34,6 +34,7 @@
 #include "core/settings.h"
 #include "constants/somafmsettings.h"
 #include "playlistparsers/playlistparser.h"
+#include "utilities/urlpolicy.h"
 #include "somafmservice.h"
 #include "radiochannel.h"
 
@@ -131,10 +132,16 @@ void SomaFMService::GetChannelsReply(QNetworkReply *reply, const int task_id) {
       RadioChannel channel;
       QString quality = obj_playlist["quality"_L1].toString();
       if (quality != preferred_quality) continue;
+      // The playlist URL is fetched with the shared network access manager, which also opens file: URLs.
+      const QUrl playlist_url(obj_playlist["url"_L1].toString());
+      if (!UrlPolicy::IsRadioStreamUrl(playlist_url)) continue;
       channel.source = source_;
       channel.name = name;
-      channel.url.setUrl(obj_playlist["url"_L1].toString());
-      channel.thumbnail_url.setUrl(image);
+      channel.url = playlist_url;
+      const QUrl image_url(image);
+      if (UrlPolicy::IsRemoteCoverUrl(image_url)) {
+        channel.thumbnail_url = image_url;
+      }
       if (obj_playlist.contains("format"_L1)) {
         channel.name.append(QLatin1Char(' ') + obj_playlist[QLatin1String("format")].toString().toUpper());
       }
@@ -170,7 +177,7 @@ void SomaFMService::GetStreamUrlsReply(QNetworkReply *reply, const int task_id, 
 
   PlaylistParser parser(nullptr, nullptr);
   SongList songs = parser.LoadFromDevice(reply);
-  if (!songs.isEmpty()) {
+  if (!songs.isEmpty() && UrlPolicy::IsRadioStreamUrl(songs.first().url())) {
     channel.url = songs.first().url();
   }
 

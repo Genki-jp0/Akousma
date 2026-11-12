@@ -64,9 +64,10 @@ using namespace Qt::Literals::StringLiterals;
 namespace {
 
 // Records the URLs the player loads, which is the first thing it does when preloading the next track.
+// A URL handler is only used for the songs of its own service (UrlPolicy::IsUrlHandlerAllowed()), so it handles a service scheme, and the songs are from that service.
 class TestUrlHandler : public UrlHandler {
  public:
-  QString scheme() const override { return u"test"_s; }
+  QString scheme() const override { return u"subsonic"_s; }
   LoadResult StartLoading(const QUrl &url) override {
     started_urls << url;
     return LoadResult(url, load_asynchronously ? LoadResult::Type::WillLoadAsynchronously : LoadResult::Type::NoMoreTracks);
@@ -169,9 +170,9 @@ class PlayerTest : public ::testing::Test {
   }
 
   static PlaylistItemPtr MakeItem(const QString &title) {
-    Song song(Song::Source::Stream);
+    Song song(Song::Source::Subsonic);
     song.Init(title, u"Artist"_s, u"Album"_s, 123);
-    song.set_url(QUrl(u"test:"_s + title));
+    song.set_url(QUrl(u"subsonic:"_s + title));
     return PlaylistItem::NewFromSong(song);
   }
 
@@ -276,7 +277,7 @@ TEST_F(PlayerTest, PreloadsNextTrack) {
 
   TrackAboutToEnd();
 
-  EXPECT_EQ(QList<QUrl>() << QUrl(u"test:second"_s), url_handler_.started_urls);
+  EXPECT_EQ(QList<QUrl>() << QUrl(u"subsonic:second"_s), url_handler_.started_urls);
 
 }
 
@@ -323,7 +324,7 @@ TEST_F(PlayerTest, PreviousTrackAboutToEndDoesNotPreloadWhileLoading) {
 TEST_F(PlayerTest, TrackEndedChangesTrackAfterLoadFinished) {
 
   PlayTrackLoadingAsynchronously(0);
-  LoadFailed(QUrl(u"test:first"_s));
+  LoadFailed(QUrl(u"subsonic:first"_s));
 
   TrackEnded();
 
@@ -379,7 +380,7 @@ TEST_F(PlayerTest, AutoCrossfadeStartsNextTrack) {
   TrackAboutToEnd();
 
   EXPECT_EQ(1, playlist_manager_->active()->current_row());
-  EXPECT_EQ(QList<QUrl>() << QUrl(u"test:second"_s), url_handler_.started_urls);
+  EXPECT_EQ(QList<QUrl>() << QUrl(u"subsonic:second"_s), url_handler_.started_urls);
 
 }
 
@@ -422,7 +423,7 @@ TEST_F(PlayerTest, ResumesPlaybackOnPlaylistWhichIsNotCurrent) {
 
   EXPECT_EQ(second_id, playlist_manager_->current_id());
   EXPECT_EQ(second_id, playlist_manager_->active_id());
-  EXPECT_EQ(QList<QUrl>() << QUrl(u"test:other"_s), url_handler_.started_urls);
+  EXPECT_EQ(QList<QUrl>() << QUrl(u"subsonic:other"_s), url_handler_.started_urls);
 
 }
 
@@ -442,7 +443,7 @@ TEST_F(PlayerTest, DoesNotResumePlaybackOverRequestedPlaylist) {
 
   EXPECT_EQ(second_id, playlist_manager_->current_id());
   EXPECT_EQ(second_id, playlist_manager_->active_id());
-  EXPECT_EQ(QList<QUrl>() << QUrl(u"test:other"_s), url_handler_.started_urls);
+  EXPECT_EQ(QList<QUrl>() << QUrl(u"subsonic:other"_s), url_handler_.started_urls);
 
   // The saved playback is used up, so it isn't resumed the next time either.
   Settings s;
@@ -481,7 +482,7 @@ TEST_F(PlayerTest, ResumesPlaybackWhenRequestedPlaylistIsNotFound) {
   player_->PlayPlaylist(u"Missing"_s);
   player_->PlaylistsLoaded();
 
-  EXPECT_EQ(QList<QUrl>() << QUrl(u"test:first"_s), url_handler_.started_urls);
+  EXPECT_EQ(QList<QUrl>() << QUrl(u"subsonic:first"_s), url_handler_.started_urls);
 
 }
 
@@ -495,7 +496,7 @@ TEST_F(PlayerTest, PlayRequestDoesNotResumePaused) {
   player_->Play();
   player_->PlaylistsLoaded();
 
-  EXPECT_EQ(QList<QUrl>() << QUrl(u"test:first"_s), url_handler_.started_urls);
+  EXPECT_EQ(QList<QUrl>() << QUrl(u"subsonic:first"_s), url_handler_.started_urls);
   EXPECT_FALSE(PlaysPaused());
 
 }
@@ -508,7 +509,7 @@ TEST_F(PlayerTest, ResumesPausedPlayback) {
 
   player_->PlaylistsLoaded();
 
-  EXPECT_EQ(QList<QUrl>() << QUrl(u"test:first"_s), url_handler_.started_urls);
+  EXPECT_EQ(QList<QUrl>() << QUrl(u"subsonic:first"_s), url_handler_.started_urls);
   EXPECT_TRUE(PlaysPaused());
 
 }

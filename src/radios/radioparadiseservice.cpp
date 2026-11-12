@@ -28,6 +28,7 @@
 #include "core/taskmanager.h"
 #include "core/networkaccessmanager.h"
 #include "core/iconloader.h"
+#include "utilities/urlpolicy.h"
 #include "radioparadiseservice.h"
 #include "radiochannel.h"
 
@@ -121,10 +122,15 @@ void RadioParadiseService::GetChannelsReply(QNetworkReply *reply, const int task
       if (!url.contains(regex_url_schema)) {
         url.prepend("https://"_L1);
       }
+      // Any scheme passes the test above, only accept http and https URLs with a host.
+      const QUrl stream_url(url);
+      if (!UrlPolicy::IsRadioStreamUrl(stream_url)) {
+        continue;
+      }
       RadioChannel channel;
       channel.source = source_;
       channel.name = name + " - "_L1 + label;
-      channel.url.setUrl(url);
+      channel.url = stream_url;
       channels << channel;
     }
   }

@@ -31,6 +31,7 @@
 #include "core/logging.h"
 #include "core/networkaccessmanager.h"
 #include "core/song.h"
+#include "utilities/urlpolicy.h"
 #include "qobuzservice.h"
 #include "qobuzmetadatarequest.h"
 
@@ -180,9 +181,9 @@ void QobuzMetadataRequest::TrackMetadataReceived(QNetworkReply *reply, const QSt
         if (value_image.isObject()) {
           QJsonObject obj_image = value_image.toObject();
           if (obj_image.contains("large"_L1)) {
-            QString cover_url = obj_image["large"_L1].toString();
-            if (!cover_url.isEmpty()) {
-              song.set_art_automatic(QUrl(cover_url));
+            const QUrl cover_url(obj_image["large"_L1].toString());
+            if (UrlPolicy::IsSecureWebUrl(cover_url)) {
+              song.set_art_automatic(cover_url);
             }
           }
         }

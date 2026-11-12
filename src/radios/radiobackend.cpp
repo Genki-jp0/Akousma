@@ -28,6 +28,7 @@
 #include "core/scopedtransaction.h"
 #include "core/sqlquery.h"
 #include "core/song.h"
+#include "utilities/urlpolicy.h"
 #include "radiobackend.h"
 #include "radiochannel.h"
 
@@ -86,6 +87,11 @@ void RadioBackend::GetChannels() {
     channel.name = q.value(1).toString();
     channel.url.setUrl(q.value(2).toString());
     channel.thumbnail_url.setUrl(q.value(3).toString());
+    // The rows were stored from the replies of the radio directories, possibly by an older version which didn't check the URLs.
+    if (!UrlPolicy::IsRadioStreamUrl(channel.url)) continue;
+    if (!channel.thumbnail_url.isEmpty() && !UrlPolicy::IsRemoteCoverUrl(channel.thumbnail_url)) {
+      channel.thumbnail_url.clear();
+    }
     channels << channel;
   }
 

@@ -43,6 +43,7 @@
 #include "constants/opentidalsettings.h"
 #include "albumcoverfetcher.h"
 #include "jsoncoverprovider.h"
+#include "utilities/urlpolicy.h"
 #include "opentidalcoverprovider.h"
 
 using namespace Qt::Literals::StringLiterals;
@@ -609,7 +610,7 @@ void OpenTidalCoverProvider::HandleArtworkReply(QNetworkReply *reply, SearchRequ
     const int width = object_meta["width"_L1].toInt();
     const int height = object_meta["height"_L1].toInt();
     const QUrl url(href);
-    if (!url.isValid() || width < 640 || height < 640) continue;
+    if (!UrlPolicy::IsSecureWebUrl(url) || width < 640 || height < 640) continue;
     CoverProviderSearchResult cover_result;
     cover_result.artist = search_request->artist;
     cover_result.album = albumcover_request->album_title;

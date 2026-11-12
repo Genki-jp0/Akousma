@@ -572,6 +572,7 @@ set(SOURCES
   src/core/appearance.cpp
 
   src/utilities/strutils.cpp
+  src/utilities/urlpolicy.cpp
   src/utilities/envutils.cpp
   src/utilities/colorutils.cpp
   src/utilities/cryptutils.cpp

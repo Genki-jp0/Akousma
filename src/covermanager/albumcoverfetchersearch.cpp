@@ -49,6 +49,7 @@
 #include "coverprovider.h"
 #include "coverproviders.h"
 #include "albumcoverimageresult.h"
+#include "utilities/urlpolicy.h"
 
 using namespace Qt::Literals::StringLiterals;
 
@@ -211,7 +212,17 @@ void AlbumCoverFetcherSearch::ProviderSearchResults(const int id, const CoverPro
 
 void AlbumCoverFetcherSearch::ProviderSearchResults(CoverProvider *provider, const CoverProviderSearchResults &results) {
 
-  CoverProviderSearchResults results_copy(results);
+  // The image URLs come from the replies of the providers, only load http and https URLs.
+  CoverProviderSearchResults results_copy;
+  results_copy.reserve(results.count());
+  for (const CoverProviderSearchResult &result : results) {
+    if (!UrlPolicy::IsRemoteCoverUrl(result.image_url)) {
+      qLog(Debug) << "Ignoring cover" << result.image_url << "from" << provider->name();
+      continue;
+    }
+    results_copy << result;
+  }
+
   for (int i = 0; i < results_copy.count(); ++i) {
 
     results_copy[i].provider = provider->name();
