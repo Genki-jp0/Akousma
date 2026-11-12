@@ -71,6 +71,15 @@ class AlbumCoverChoiceController : public QWidget {
   explicit AlbumCoverChoiceController(QWidget *parent = nullptr);
   ~AlbumCoverChoiceController() override;
 
+  // Who chose the cover that is saved.
+  // Only a cover the user chose, from a file, an URL, the cover search dialog or drag and drop, is written into the tags of the music files.
+  // A cover found by the automatic cover search is a guess the user never saw, and embedding it rewrites every file of the album and replaces the embedded covers they already have,
+  // so it is only saved as a cover file, like the cache or album directory, which does not change the music files.
+  enum class SaveCoverOrigin {
+    Automatic,
+    User
+  };
+
   void Init(const SharedPtr<NetworkAccessManager> network,
             const SharedPtr<TagReaderClient> tagreader_client,
             const SharedPtr<CollectionBackend> collection_backend,
@@ -83,7 +92,7 @@ class AlbumCoverChoiceController : public QWidget {
 
   CoverOptions::CoverType get_save_album_cover_type() const { return (save_embedded_cover_override_ ? CoverOptions::CoverType::Embedded : cover_options_.cover_type); }
   CoverOptions::CoverType get_collection_save_album_cover_type() const { return cover_options_.cover_type; }
-  // Whether covers set from Akousma are also written into the music files' tags, the "save_embed_also" covers setting.
+  // Whether covers set by the user are also written into the music files' tags, the "save_embed_also" covers setting, covers found by the automatic cover search are never written into the files.
   bool save_embed_also() const { return save_embed_also_; }
 
   // Whether the cover of the song can be changed: songs in the collection need the album artist and album, since the cover is set for the whole album,
@@ -151,15 +160,17 @@ class AlbumCoverChoiceController : public QWidget {
   // Saves the chosen cover as manual cover path of this song in collection.
   void SaveArtEmbeddedToSong(Song *song, const bool art_embedded, const QList<QUrl> &urls = QList<QUrl>());
   void SaveArtAutomaticToSong(Song *song, const QUrl &art_automatic);
-  void SaveArtManualToSong(Song *song, const QUrl &art_manual);
+  // The cover is also embedded in the music files when the user chose it and the "save_embed_also" covers setting is enabled.
+  void SaveArtManualToSong(Song *song, const QUrl &art_manual, const SaveCoverOrigin origin);
   void ClearAlbumCoverForSong(Song *song);
   void UnsetAlbumCoverForSong(Song *song);
 
   // Saves the cover that the user picked through a drag and drop operation.
   void SaveCover(Song *song, const QDropEvent *e);
 
-  // Saves the given image in album directory or cache as a cover for 'album artist' - 'album'. The method returns path of the image.
-  QUrl SaveCoverAutomatic(Song *song, const AlbumCoverImageResult &result);
+  // Saves the given image in album directory or cache as a cover for 'album artist' - 'album', or embeds it when covers are saved as embedded covers. The method returns path of the image.
+  // A cover found by the automatic cover search is never embedded, it is saved to the cache or album directory also when covers are saved as embedded covers.
+  QUrl SaveCoverAutomatic(Song *song, const AlbumCoverImageResult &result, const SaveCoverOrigin origin);
 
   QUrl SaveCoverToFileAutomatic(const Song *song, const AlbumCoverImageResult &result, const bool force_overwrite = false);
   QUrl SaveCoverToFileAutomatic(const Song::Source source, const QString &artist, const QString &album, const QString &album_id, const QString &album_dir, const AlbumCoverImageResult &result, const bool force_overwrite = false);

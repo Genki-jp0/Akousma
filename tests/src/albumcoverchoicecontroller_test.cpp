@@ -36,6 +36,9 @@
 #include <QEventLoop>
 #include <QTimer>
 #include <QSignalSpy>
+#include <QByteArray>
+#include <QFileInfo>
+#include <QUrl>
 
 #include "includes/shared_ptr.h"
 #include "core/song.h"
@@ -43,6 +46,10 @@
 #include "core/memorydatabase.h"
 #include "core/taskmanager.h"
 #include "core/networkaccessmanager.h"
+#include "core/settings.h"
+#include "constants/coverssettings.h"
+#include "utilities/coveroptions.h"
+#include "tagreader/savetagcoverdata.h"
 #include "tagreader/tagreaderclient.h"
 #include "tagreader/tagreaderloadcoverimagereply.h"
 #include "collection/collectionbackend.h"
@@ -80,6 +87,60 @@ class AlbumCoverChoiceControllerTest : public ::testing::Test {
     tagreader_client_thread_->exit();
     tagreader_client_thread_->wait(5000);
     delete tagreader_client_thread_;
+    // Some tests change the covers settings.
+    Settings s;
+    s.remove(QLatin1String(CoversSettings::kSettingsGroup));
+  }
+
+  // The album songs are read from the collection in another thread, so use a database file, a memory database is empty in other threads.
+  void UseDatabaseFile(const QString &filename) {
+    collection_backend_.reset();
+    database_.reset();
+    database_ = make_shared<Database>(task_manager_, nullptr, filename);
+    collection_backend_ = make_shared<CollectionBackend>();
+    collection_backend_->Init(database_, task_manager_, Song::Source::Collection, QLatin1String(CollectionManager::kSongsTable), QLatin1String(CollectionManager::kDirsTable), QLatin1String(CollectionManager::kSubdirsTable));
+  }
+
+  // Adds two songs of the same album to the collection, the first without a cover, the second with the given embedded cover, like an album where only some files have a cover.
+  void AddAlbumSongs(const QTemporaryDir &temp_dir, const QByteArray &second_cover_data, SongList *songs) {
+    collection_backend_->AddDirectory(temp_dir.path());
+    for (const QString &name : {u"first.mp3"_s, u"second.mp3"_s}) {
+      const QString filename = temp_dir.filePath(name);
+      ASSERT_TRUE(QFile::copy(u":/audio/strawberry.mp3"_s, filename));
+      ASSERT_TRUE(QFile::setPermissions(filename, QFile::ReadOwner | QFile::WriteOwner | QFile::ReadUser | QFile::WriteUser));
+      const bool has_cover = !songs->isEmpty();
+      if (has_cover) {
+        ASSERT_TRUE(tagreader_client_->SaveCoverBlocking(filename, SaveTagCoverData(second_cover_data, u"image/jpeg"_s)).success());
+      }
+      Song song(Song::Source::LocalFile);
+      ASSERT_TRUE(tagreader_client_->ReadFileBlocking(filename, &song).success());
+      ASSERT_TRUE(song.save_embedded_cover_supported());
+      song.set_source(Song::Source::Collection);
+      song.set_directory_id(1);
+      song.set_artist(u"Artist"_s);
+      song.set_albumartist(QString());
+      song.set_album(u"Album"_s);
+      song.set_compilation(false);
+      song.set_art_embedded(has_cover);
+      *songs << song;
+    }
+    collection_backend_->AddOrUpdateSongs(*songs);
+    ASSERT_EQ(2, collection_backend_->GetAllSongs().count());
+  }
+
+  static QByteArray ReadFileData(const QString &filename) {
+    QFile file(filename);
+    if (!file.open(QIODevice::ReadOnly)) return QByteArray();
+    return file.readAll();
+  }
+
+  // Processes events for a while, to give asynchronous saves time to happen.
+  static void ProcessEvents(const int msec) {
+    QElapsedTimer timer;
+    timer.start();
+    while (timer.elapsed() < msec) {
+      QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+    }
   }
 
   // Processes events until the condition is true, returns false on timeout.
@@ -438,6 +499,189 @@ TEST_F(AlbumCoverChoiceControllerTest, DeletingAlbumCoverUnsetsCurrentAlbumSong)
   EXPECT_FALSE(current_albumcover_loader->last_song().art_embedded());
 
   database_->Close();
+
+}
+
+// Regression test: with the default settings, a cover found by the automatic cover search, which runs when a song without a cover is played, was written into the tags of every file of the album, without asking, and replaced the embedded covers the other files already had.
+TEST_F(AlbumCoverChoiceControllerTest, AutomaticCoverIsNotEmbedded) {
+
+  QTemporaryDir temp_dir;
+  ASSERT_TRUE(temp_dir.isValid());
+  UseDatabaseFile(temp_dir.filePath(u"strawberry.db"_s));
+
+  const QByteArray blue_image_data = ImageUtils::SaveImageToJpegData(CreateImage(Qt::blue));
+  ASSERT_FALSE(blue_image_data.isEmpty());
+  SongList songs;
+  ASSERT_NO_FATAL_FAILURE(AddAlbumSongs(temp_dir, blue_image_data, &songs));
+  const QString first_filename = songs.value(0).url().toLocalFile();
+  const QString second_filename = songs.value(1).url().toLocalFile();
+  ASSERT_TRUE(HasEmbeddedCoverColor(second_filename, Qt::blue));
+  const QByteArray first_file_data = ReadFileData(first_filename);
+  const QByteArray second_file_data = ReadFileData(second_filename);
+  ASSERT_FALSE(first_file_data.isEmpty());
+  ASSERT_FALSE(second_file_data.isEmpty());
+
+  AlbumCoverChoiceController controller;
+  controller.Init(make_shared<NetworkAccessManager>(), tagreader_client_, collection_backend_, albumcover_loader_, make_shared<CurrentAlbumCoverLoader>(albumcover_loader_), make_shared<CoverProviders>(), make_shared<StreamingServices>());
+  // The default settings.
+  ASSERT_TRUE(controller.save_embed_also());
+  ASSERT_EQ(CoverOptions::CoverType::Cache, controller.get_save_album_cover_type());
+  QSignalSpy spy_embedded_cover_saved(&controller, &AlbumCoverChoiceController::EmbeddedCoverSaved);
+
+  Song song = songs.value(0);
+  const QImage red_image = CreateImage(Qt::red);
+  const QByteArray red_image_data = ImageUtils::SaveImageToJpegData(red_image);
+  ASSERT_FALSE(red_image_data.isEmpty());
+  const QUrl cover_url = controller.SaveCoverAutomatic(&song, AlbumCoverImageResult(QUrl(), u"image/jpeg"_s, red_image_data, red_image), AlbumCoverChoiceController::SaveCoverOrigin::Automatic);
+
+  // The cover is saved to the cache, and used as the cover of the album.
+  ASSERT_TRUE(cover_url.isValid());
+  ASSERT_TRUE(cover_url.isLocalFile());
+  EXPECT_TRUE(QFileInfo::exists(cover_url.toLocalFile()));
+  EXPECT_TRUE(cover_url.toLocalFile().startsWith(Song::ImageCacheDir(Song::Source::Collection)));
+  EXPECT_EQ(cover_url, song.art_manual());
+  EXPECT_TRUE(WaitFor([this, &cover_url]() {
+    const SongList collection_songs = collection_backend_->GetAllSongs();
+    return collection_songs.count() == 2 && collection_songs.value(0).art_manual() == cover_url && collection_songs.value(1).art_manual() == cover_url;
+  }));
+
+  // The music files are not changed, give the saves time to happen.
+  ProcessEvents(1000);
+  EXPECT_EQ(0, spy_embedded_cover_saved.count());
+  EXPECT_TRUE(ReadFileData(first_filename) == first_file_data);
+  EXPECT_TRUE(ReadFileData(second_filename) == second_file_data);
+  EXPECT_TRUE(HasEmbeddedCoverColor(second_filename, Qt::blue));
+
+  database_->Close();
+
+}
+
+// Regression test: a cover found by the automatic cover search was written into the tags of every file of the album when covers are saved as embedded covers, it's saved to the cache instead.
+TEST_F(AlbumCoverChoiceControllerTest, AutomaticCoverIsNotEmbeddedWhenSavingEmbeddedCovers) {
+
+  {
+    Settings s;
+    s.beginGroup(QLatin1String(CoversSettings::kSettingsGroup));
+    s.setValue(QLatin1String(CoversSettings::kSaveType), static_cast<int>(CoverOptions::CoverType::Embedded));
+    s.endGroup();
+  }
+
+  QTemporaryDir temp_dir;
+  ASSERT_TRUE(temp_dir.isValid());
+  UseDatabaseFile(temp_dir.filePath(u"strawberry.db"_s));
+
+  const QByteArray blue_image_data = ImageUtils::SaveImageToJpegData(CreateImage(Qt::blue));
+  ASSERT_FALSE(blue_image_data.isEmpty());
+  SongList songs;
+  ASSERT_NO_FATAL_FAILURE(AddAlbumSongs(temp_dir, blue_image_data, &songs));
+  const QString first_filename = songs.value(0).url().toLocalFile();
+  const QString second_filename = songs.value(1).url().toLocalFile();
+  const QByteArray first_file_data = ReadFileData(first_filename);
+  const QByteArray second_file_data = ReadFileData(second_filename);
+  ASSERT_FALSE(first_file_data.isEmpty());
+  ASSERT_FALSE(second_file_data.isEmpty());
+
+  AlbumCoverChoiceController controller;
+  controller.Init(make_shared<NetworkAccessManager>(), tagreader_client_, collection_backend_, albumcover_loader_, make_shared<CurrentAlbumCoverLoader>(albumcover_loader_), make_shared<CoverProviders>(), make_shared<StreamingServices>());
+  ASSERT_EQ(CoverOptions::CoverType::Embedded, controller.get_save_album_cover_type());
+  QSignalSpy spy_embedded_cover_saved(&controller, &AlbumCoverChoiceController::EmbeddedCoverSaved);
+
+  Song song = songs.value(0);
+  const QImage red_image = CreateImage(Qt::red);
+  const QByteArray red_image_data = ImageUtils::SaveImageToJpegData(red_image);
+  ASSERT_FALSE(red_image_data.isEmpty());
+  const QUrl cover_url = controller.SaveCoverAutomatic(&song, AlbumCoverImageResult(QUrl(), u"image/jpeg"_s, red_image_data, red_image), AlbumCoverChoiceController::SaveCoverOrigin::Automatic);
+
+  ASSERT_TRUE(cover_url.isValid());
+  ASSERT_TRUE(cover_url.isLocalFile());
+  EXPECT_TRUE(QFileInfo::exists(cover_url.toLocalFile()));
+  EXPECT_TRUE(cover_url.toLocalFile().startsWith(Song::ImageCacheDir(Song::Source::Collection)));
+  EXPECT_EQ(cover_url, song.art_manual());
+
+  ProcessEvents(1000);
+  EXPECT_EQ(0, spy_embedded_cover_saved.count());
+  EXPECT_TRUE(ReadFileData(first_filename) == first_file_data);
+  EXPECT_TRUE(ReadFileData(second_filename) == second_file_data);
+
+  database_->Close();
+
+}
+
+// A cover the user chose is still written into the tags of the files of the album when the "save_embed_also" covers setting is enabled, which is the default.
+TEST_F(AlbumCoverChoiceControllerTest, UserCoverIsEmbedded) {
+
+  QTemporaryDir temp_dir;
+  ASSERT_TRUE(temp_dir.isValid());
+  UseDatabaseFile(temp_dir.filePath(u"strawberry.db"_s));
+
+  const QByteArray blue_image_data = ImageUtils::SaveImageToJpegData(CreateImage(Qt::blue));
+  ASSERT_FALSE(blue_image_data.isEmpty());
+  SongList songs;
+  ASSERT_NO_FATAL_FAILURE(AddAlbumSongs(temp_dir, blue_image_data, &songs));
+  const QString first_filename = songs.value(0).url().toLocalFile();
+  const QString second_filename = songs.value(1).url().toLocalFile();
+
+  AlbumCoverChoiceController controller;
+  controller.Init(make_shared<NetworkAccessManager>(), tagreader_client_, collection_backend_, albumcover_loader_, make_shared<CurrentAlbumCoverLoader>(albumcover_loader_), make_shared<CoverProviders>(), make_shared<StreamingServices>());
+  ASSERT_TRUE(controller.save_embed_also());
+  QSignalSpy spy_embedded_cover_saved(&controller, &AlbumCoverChoiceController::EmbeddedCoverSaved);
+
+  Song song = songs.value(0);
+  const QImage red_image = CreateImage(Qt::red);
+  const QByteArray red_image_data = ImageUtils::SaveImageToJpegData(red_image);
+  ASSERT_FALSE(red_image_data.isEmpty());
+  const QUrl cover_url = controller.SaveCoverAutomatic(&song, AlbumCoverImageResult(QUrl(), u"image/jpeg"_s, red_image_data, red_image), AlbumCoverChoiceController::SaveCoverOrigin::User);
+  ASSERT_TRUE(cover_url.isValid());
+  EXPECT_EQ(cover_url, song.art_manual());
+
+  ASSERT_TRUE(WaitFor([&spy_embedded_cover_saved]() { return spy_embedded_cover_saved.count() == 2; }));
+  EXPECT_TRUE(spy_embedded_cover_saved.at(0).at(1).toBool());
+  EXPECT_TRUE(spy_embedded_cover_saved.at(1).at(1).toBool());
+  EXPECT_TRUE(HasEmbeddedCoverColor(first_filename, Qt::red));
+  EXPECT_TRUE(HasEmbeddedCoverColor(second_filename, Qt::red));
+
+  database_->Close();
+
+}
+
+// Regression test: a cover found by the automatic cover search for a local file without an album artist or album, which can't have a cover file, was written into the tags of the file.
+TEST_F(AlbumCoverChoiceControllerTest, AutomaticCoverIsNotEmbeddedInLocalFileWithoutAlbum) {
+
+  QTemporaryDir temp_dir;
+  ASSERT_TRUE(temp_dir.isValid());
+  const QString filename = temp_dir.filePath(u"song.mp3"_s);
+  ASSERT_TRUE(QFile::copy(u":/audio/strawberry.mp3"_s, filename));
+  ASSERT_TRUE(QFile::setPermissions(filename, QFile::ReadOwner | QFile::WriteOwner | QFile::ReadUser | QFile::WriteUser));
+
+  Song song(Song::Source::LocalFile);
+  ASSERT_TRUE(tagreader_client_->ReadFileBlocking(filename, &song).success());
+  ASSERT_TRUE(song.save_embedded_cover_supported());
+  song.set_artist(QString());
+  song.set_albumartist(QString());
+  song.set_album(QString());
+  const QByteArray file_data = ReadFileData(filename);
+  ASSERT_FALSE(file_data.isEmpty());
+
+  AlbumCoverChoiceController controller;
+  controller.Init(make_shared<NetworkAccessManager>(), tagreader_client_, collection_backend_, albumcover_loader_, make_shared<CurrentAlbumCoverLoader>(albumcover_loader_), make_shared<CoverProviders>(), make_shared<StreamingServices>());
+  ASSERT_TRUE(controller.save_embed_also());
+  QSignalSpy spy_embedded_cover_saved(&controller, &AlbumCoverChoiceController::EmbeddedCoverSaved);
+
+  const QImage red_image = CreateImage(Qt::red);
+  const QByteArray red_image_data = ImageUtils::SaveImageToJpegData(red_image);
+  ASSERT_FALSE(red_image_data.isEmpty());
+  const AlbumCoverImageResult result(QUrl(), u"image/jpeg"_s, red_image_data, red_image);
+
+  EXPECT_TRUE(controller.SaveCoverAutomatic(&song, result, AlbumCoverChoiceController::SaveCoverOrigin::Automatic).isEmpty());
+  ProcessEvents(1000);
+  EXPECT_EQ(0, spy_embedded_cover_saved.count());
+  EXPECT_TRUE(ReadFileData(filename) == file_data);
+
+  // The same cover chosen by the user is embedded.
+  EXPECT_TRUE(controller.SaveCoverAutomatic(&song, result, AlbumCoverChoiceController::SaveCoverOrigin::User).isEmpty());
+  ASSERT_TRUE(WaitFor([&spy_embedded_cover_saved]() { return spy_embedded_cover_saved.count() == 1; }));
+  EXPECT_TRUE(spy_embedded_cover_saved.first().at(1).toBool());
+  EXPECT_TRUE(HasEmbeddedCoverColor(filename, Qt::red));
 
 }
 

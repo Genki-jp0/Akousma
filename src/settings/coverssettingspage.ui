@@ -297,7 +297,7 @@
          <item>
           <widget class="QCheckBox" name="checkbox_save_embed_also">
            <property name="toolTip">
-            <string>Covers set from file, URL, search or drag and drop are also written into the tags of the music files (ID3v2 APIC frame for MP3), so they are kept with the files.</string>
+            <string>Covers you set from file, URL, search or drag and drop are also written into the tags of all the music files of the album (ID3v2 APIC frame for MP3), replacing their embedded covers, so they are kept with the files. Covers found by the automatic cover search are never written into the music files.</string>
            </property>
            <property name="text">
             <string>Also embed covers in the music files' tags</string>

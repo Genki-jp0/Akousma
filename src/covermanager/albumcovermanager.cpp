@@ -912,7 +912,8 @@ void AlbumCoverManager::SaveImageToAlbums(Song *song, const AlbumCoverImageResul
       album_item->setData(Role_ArtEmbedded, false);
       album_cover_choice_controller_->SaveArtEmbeddedToSong(&current_song, false, album_item->urls);
     }
-    album_cover_choice_controller_->SaveArtManualToSong(&current_song, album_cover_url);
+    // The cover was chosen by the user, from a file, an URL or the cover search dialog.
+    album_cover_choice_controller_->SaveArtManualToSong(&current_song, album_cover_url, AlbumCoverChoiceController::SaveCoverOrigin::User);
     UpdateCoverInList(album_item, album_cover_url);
   }
 
