@@ -260,6 +260,12 @@ class PlaylistBackendItemsTest : public ::testing::Test {
     return Exec(QStringLiteral("DELETE FROM %1 WHERE ROWID = ?").arg(QLatin1String(CollectionManager::kSongsTable)), QVariantList() << id);
   }
 
+  // Gives the song the ROWID of a deleted song, as SQLite does for the next song added to a songs table without AUTOINCREMENT (before schema 31).
+  Song ReuseRowId(const Song &song, const int rowid) {
+    if (song.id() != rowid && !Exec(QStringLiteral("UPDATE %1 SET ROWID = ? WHERE ROWID = ?").arg(QLatin1String(CollectionManager::kSongsTable)), QVariantList() << rowid << song.id())) return Song();
+    return collection_backend_->GetSongById(rowid);
+  }
+
   PlaylistItemPtrList LoadItems() {
     const std::optional<PlaylistItemPtrList> items = playlist_backend_->GetPlaylistItems(playlist_id_);
     EXPECT_TRUE(items.has_value());
@@ -331,7 +337,7 @@ TEST_F(PlaylistBackendItemsTest, DeleteSongsKeepsPlaylistItemsAsFiles) {
   collection_backend_->DeleteSongs(SongList() << song);
 
   // The next song added gets the ROWID of the deleted song.
-  const Song other_song = AddCollectionSong(u"Other"_s, u"other.flac"_s);
+  const Song other_song = ReuseRowId(AddCollectionSong(u"Other"_s, u"other.flac"_s), song.id());
   ASSERT_TRUE(other_song.is_valid());
   ASSERT_EQ(song.id(), other_song.id());
 
@@ -360,10 +366,10 @@ TEST_F(PlaylistBackendItemsTest, SaveKeepsItemOfReusedRowIdAsFile) {
   // Deleted without changing the playlist rows, and the ROWID given to another song.
   ASSERT_TRUE(DeleteSongRow(kept_song.id()));
   ASSERT_TRUE(DeleteSongRow(song.id()));
-  const Song new_song = AddCollectionSong(u"New"_s, u"new.flac"_s);
+  const Song new_song = ReuseRowId(AddCollectionSong(u"New"_s, u"new.flac"_s), song.id());
   ASSERT_TRUE(new_song.is_valid());
   ASSERT_EQ(song.id(), new_song.id());
-  const Song readded_kept_song = AddCollectionSong(u"Kept"_s, u"kept.flac"_s);
+  const Song readded_kept_song = ReuseRowId(AddCollectionSong(u"Kept"_s, u"kept.flac"_s), kept_song.id());
   ASSERT_TRUE(readded_kept_song.is_valid());
   ASSERT_EQ(kept_song.id(), readded_kept_song.id());
 

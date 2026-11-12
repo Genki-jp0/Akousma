@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS schema_version (
 
 DELETE FROM schema_version;
 
-INSERT INTO schema_version (version) VALUES (30);
+INSERT INTO schema_version (version) VALUES (31);
 
 CREATE TABLE IF NOT EXISTS directories (
   path TEXT NOT NULL,
@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS subdirectories (
 );
 
 CREATE TABLE IF NOT EXISTS songs (
+
+  rowid INTEGER PRIMARY KEY AUTOINCREMENT,
 
   title TEXT,
   titlesort TEXT,

@@ -53,7 +53,7 @@
 
 using namespace Qt::Literals::StringLiterals;
 
-const int Database::kSchemaVersion = 30;
+const int Database::kSchemaVersion = 31;
 const int Database::kMinSupportedSchemaVersion = 10;
 
 namespace {
