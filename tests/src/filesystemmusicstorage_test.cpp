@@ -19,8 +19,17 @@
 
 #include "gtest_include.h"
 
+#include <memory>
+
+#include <QtGlobal>
+
+#ifdef Q_OS_UNIX
+#  include <unistd.h>
+#endif
+
 #include <QByteArray>
 #include <QString>
+#include <QStringList>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -64,18 +73,24 @@ class FilesystemMusicStorageTest : public ::testing::Test {
   }
 
   // Moves a song from the source album directory to Artist/Album in the collection, with the given cover.
-  bool MoveSong(const QString &filename, const QString &cover_filename) {
+  bool MoveSong(const QString &filename, const QString &cover_filename, const bool overwrite = false) {
     MusicStorage::CopyJob job;
     job.source_ = source_path_ + u"/Album/"_s + filename;
     job.original_root_ = source_path_;
     job.destination_ = u"Artist/Album/"_s + filename;
     job.remove_original_ = true;
+    job.overwrite_ = overwrite;
     job.albumcover_ = true;
     job.cover_source_ = cover_filename;
     job.cover_dest_ = u"Artist/Album/"_s + QFileInfo(cover_filename).fileName();
     FilesystemMusicStorage storage(Song::Source::Collection, root_path_);
     QString error_text;
     return storage.CopyToStorage(job, error_text);
+  }
+
+  // The files in the directory, also hidden ones, like a temporary file left by copying.
+  static QStringList Entries(const QString &path) {
+    return QDir(path).entryList(QDir::AllEntries | QDir::Hidden | QDir::System | QDir::NoDotAndDotDot, QDir::Name);
   }
 
   QTemporaryDir temp_dir_;
@@ -487,6 +502,367 @@ TEST_F(FilesystemMusicStorageTest, MoveDoesNotReplaceExistingLink) {
   EXPECT_EQ(QByteArray("song data"), ReadFile(filename));
   EXPECT_TRUE(QFileInfo(dest_filename).isSymLink());
   EXPECT_EQ(QStringList() << u"01.flac"_s, QDir(root_path_ + u"/Artist/Album"_s).entryList(QDir::AllEntries | QDir::Hidden | QDir::System | QDir::NoDotAndDotDot));
+
+}
+
+// Overwriting doesn't remove the destination first, it's replaced by the new file, and no temporary file is left.
+TEST_F(FilesystemMusicStorageTest, MoveWithOverwriteReplacesDestinationAndCover) {
+
+  const QString cover_filename = source_path_ + u"/Album/cover.jpg"_s;
+  ASSERT_TRUE(CreateFile(source_path_ + u"/Album/01.flac"_s, QByteArray("new song")));
+  ASSERT_TRUE(CreateFile(cover_filename, QByteArray("new cover")));
+  ASSERT_TRUE(QDir().mkpath(root_path_ + u"/Artist/Album"_s));
+  ASSERT_TRUE(CreateFile(root_path_ + u"/Artist/Album/01.flac"_s, QByteArray("old song")));
+  ASSERT_TRUE(CreateFile(root_path_ + u"/Artist/Album/cover.jpg"_s, QByteArray("old cover")));
+
+  ASSERT_TRUE(MoveSong(u"01.flac"_s, cover_filename, true));
+
+  EXPECT_EQ(QByteArray("new song"), ReadFile(root_path_ + u"/Artist/Album/01.flac"_s));
+  EXPECT_EQ(QByteArray("new cover"), ReadFile(root_path_ + u"/Artist/Album/cover.jpg"_s));
+  EXPECT_FALSE(QFile::exists(source_path_ + u"/Album/01.flac"_s));
+  EXPECT_EQ(QStringList() << u"01.flac"_s << u"cover.jpg"_s, Entries(root_path_ + u"/Artist/Album"_s));
+
+}
+
+// When the song can't be moved, the destination which would be overwritten is kept, and so is its cover.
+TEST_F(FilesystemMusicStorageTest, MoveWithOverwriteKeepsDestinationWhenSourceIsMissing) {
+
+  ASSERT_TRUE(QDir().mkpath(root_path_ + u"/Artist/Album"_s));
+  ASSERT_TRUE(CreateFile(root_path_ + u"/Artist/Album/01.flac"_s, QByteArray("old song")));
+  ASSERT_TRUE(CreateFile(root_path_ + u"/Artist/Album/cover.jpg"_s, QByteArray("old cover")));
+
+  // Neither the song nor the cover exists at the source, for example when the song was already moved to the destination.
+  EXPECT_FALSE(MoveSong(u"01.flac"_s, source_path_ + u"/Album/cover.jpg"_s, true));
+
+  EXPECT_EQ(QByteArray("old song"), ReadFile(root_path_ + u"/Artist/Album/01.flac"_s));
+  EXPECT_EQ(QByteArray("old cover"), ReadFile(root_path_ + u"/Artist/Album/cover.jpg"_s));
+  EXPECT_EQ(QStringList() << u"01.flac"_s << u"cover.jpg"_s, Entries(root_path_ + u"/Artist/Album"_s));
+
+}
+
+TEST_F(FilesystemMusicStorageTest, CopyWithOverwriteReplacesDestinationAndKeepsSource) {
+
+  const QString filename = source_path_ + u"/Album/01.flac"_s;
+  const QString cover_filename = source_path_ + u"/Album/cover.jpg"_s;
+  ASSERT_TRUE(CreateFile(filename, QByteArray("new song")));
+  ASSERT_TRUE(CreateFile(cover_filename, QByteArray("new cover")));
+  ASSERT_TRUE(QDir().mkpath(root_path_ + u"/Artist/Album"_s));
+  ASSERT_TRUE(CreateFile(root_path_ + u"/Artist/Album/01.flac"_s, QByteArray("old song")));
+  ASSERT_TRUE(CreateFile(root_path_ + u"/Artist/Album/cover.jpg"_s, QByteArray("old cover")));
+
+  MusicStorage::CopyJob job;
+  job.source_ = filename;
+  job.destination_ = u"Artist/Album/01.flac"_s;
+  job.overwrite_ = true;
+  job.albumcover_ = true;
+  job.cover_source_ = cover_filename;
+  job.cover_dest_ = u"Artist/Album/cover.jpg"_s;
+  FilesystemMusicStorage storage(Song::Source::Collection, root_path_);
+  QString error_text;
+  ASSERT_TRUE(storage.CopyToStorage(job, error_text)) << error_text.toStdString();
+
+  EXPECT_EQ(QByteArray("new song"), ReadFile(root_path_ + u"/Artist/Album/01.flac"_s));
+  EXPECT_EQ(QByteArray("new cover"), ReadFile(root_path_ + u"/Artist/Album/cover.jpg"_s));
+  EXPECT_EQ(QByteArray("new song"), ReadFile(filename));
+  EXPECT_EQ(QByteArray("new cover"), ReadFile(cover_filename));
+  EXPECT_EQ(QStringList() << u"01.flac"_s << u"cover.jpg"_s, Entries(root_path_ + u"/Artist/Album"_s));
+
+}
+
+TEST_F(FilesystemMusicStorageTest, CopyWithOverwriteKeepsDestinationWhenSourceIsMissing) {
+
+  ASSERT_TRUE(QDir().mkpath(root_path_ + u"/Artist/Album"_s));
+  ASSERT_TRUE(CreateFile(root_path_ + u"/Artist/Album/01.flac"_s, QByteArray("old song")));
+  ASSERT_TRUE(CreateFile(root_path_ + u"/Artist/Album/cover.jpg"_s, QByteArray("old cover")));
+
+  MusicStorage::CopyJob job;
+  job.source_ = source_path_ + u"/Album/01.flac"_s;
+  job.destination_ = u"Artist/Album/01.flac"_s;
+  job.overwrite_ = true;
+  job.albumcover_ = true;
+  job.cover_source_ = source_path_ + u"/Album/cover.jpg"_s;
+  job.cover_dest_ = u"Artist/Album/cover.jpg"_s;
+  FilesystemMusicStorage storage(Song::Source::Collection, root_path_);
+  QString error_text;
+  EXPECT_FALSE(storage.CopyToStorage(job, error_text));
+
+  EXPECT_EQ(QByteArray("old song"), ReadFile(root_path_ + u"/Artist/Album/01.flac"_s));
+  EXPECT_EQ(QByteArray("old cover"), ReadFile(root_path_ + u"/Artist/Album/cover.jpg"_s));
+  EXPECT_EQ(QStringList() << u"01.flac"_s << u"cover.jpg"_s, Entries(root_path_ + u"/Artist/Album"_s));
+
+}
+
+// A song moved to another filesystem over an existing file is copied to a temporary file, which replaces the destination.
+TEST_F(FilesystemMusicStorageTest, MoveWithOverwriteToOtherFilesystemReplacesDestination) {
+
+  QTemporaryDir other_temp_dir(u"/dev/shm/strawberry_test-XXXXXX"_s);
+  if (!other_temp_dir.isValid() || QStorageInfo(other_temp_dir.path()).rootPath() == QStorageInfo(root_path_).rootPath()) {
+    GTEST_SKIP() << "No other filesystem for the source.";
+  }
+
+  const QString source_path = other_temp_dir.filePath(u"Album"_s);
+  ASSERT_TRUE(QDir().mkpath(source_path));
+  ASSERT_TRUE(CreateFile(source_path + u"/01.flac"_s, QByteArray("new song")));
+  ASSERT_TRUE(QDir().mkpath(root_path_ + u"/Artist/Album"_s));
+  ASSERT_TRUE(CreateFile(root_path_ + u"/Artist/Album/01.flac"_s, QByteArray("old song")));
+
+  MusicStorage::CopyJob job;
+  job.source_ = source_path + u"/01.flac"_s;
+  job.original_root_ = other_temp_dir.path();
+  job.destination_ = u"Artist/Album/01.flac"_s;
+  job.remove_original_ = true;
+  job.overwrite_ = true;
+  FilesystemMusicStorage storage(Song::Source::Collection, root_path_);
+  QString error_text;
+  ASSERT_TRUE(storage.CopyToStorage(job, error_text)) << error_text.toStdString();
+
+  EXPECT_EQ(QByteArray("new song"), ReadFile(root_path_ + u"/Artist/Album/01.flac"_s));
+  EXPECT_FALSE(QFile::exists(source_path + u"/01.flac"_s));
+  EXPECT_EQ(QStringList() << u"01.flac"_s, Entries(root_path_ + u"/Artist/Album"_s));
+
+}
+
+// On a case-sensitive filesystem, a destination which only differs in case is another file, which is replaced when overwriting.
+TEST_F(FilesystemMusicStorageTest, MoveWithOverwriteReplacesOtherFileDifferingInCase) {
+
+  ASSERT_TRUE(QDir().mkpath(root_path_ + u"/Artist/Album"_s));
+  ASSERT_TRUE(CreateFile(root_path_ + u"/Artist/Album/01 help.flac"_s, QByteArray("new song")));
+  if (QFile::exists(root_path_ + u"/Artist/Album/01 Help.flac"_s)) {
+    GTEST_SKIP() << "The temporary directory is on a case-insensitive filesystem.";
+  }
+  ASSERT_TRUE(CreateFile(root_path_ + u"/Artist/Album/01 Help.flac"_s, QByteArray("old song")));
+
+  MusicStorage::CopyJob job;
+  job.source_ = root_path_ + u"/Artist/Album/01 help.flac"_s;
+  job.original_root_ = root_path_;
+  job.destination_ = u"Artist/Album/01 Help.flac"_s;
+  job.remove_original_ = true;
+  job.overwrite_ = true;
+  FilesystemMusicStorage storage(Song::Source::Collection, root_path_);
+  QString error_text;
+  ASSERT_TRUE(storage.CopyToStorage(job, error_text)) << error_text.toStdString();
+
+  EXPECT_EQ(QByteArray("new song"), ReadFile(root_path_ + u"/Artist/Album/01 Help.flac"_s));
+  EXPECT_EQ(QStringList() << u"01 Help.flac"_s, Entries(root_path_ + u"/Artist/Album"_s));
+
+}
+
+#ifndef Q_OS_WIN
+// The destination is the source through a linked directory, so it's the same file, which is not replaced with itself.
+TEST_F(FilesystemMusicStorageTest, MoveWithOverwriteThroughLinkedDirectoryKeepsFileAndCover) {
+
+  ASSERT_TRUE(QDir().mkpath(root_path_ + u"/Artist/Album"_s));
+  ASSERT_TRUE(CreateFile(root_path_ + u"/Artist/Album/01.flac"_s, QByteArray("song data")));
+  ASSERT_TRUE(CreateFile(root_path_ + u"/Artist/Album/cover.jpg"_s, QByteArray("cover data")));
+  ASSERT_TRUE(QFile::link(root_path_ + u"/Artist"_s, root_path_ + u"/Linked"_s));
+
+  MusicStorage::CopyJob job;
+  job.source_ = root_path_ + u"/Artist/Album/01.flac"_s;
+  job.original_root_ = root_path_;
+  job.destination_ = u"Linked/Album/01.flac"_s;
+  job.remove_original_ = true;
+  job.overwrite_ = true;
+  job.albumcover_ = true;
+  job.cover_source_ = root_path_ + u"/Artist/Album/cover.jpg"_s;
+  job.cover_dest_ = u"Linked/Album/cover.jpg"_s;
+  FilesystemMusicStorage storage(Song::Source::Collection, root_path_);
+  QString error_text;
+  ASSERT_TRUE(storage.CopyToStorage(job, error_text)) << error_text.toStdString();
+
+  EXPECT_EQ(QByteArray("song data"), ReadFile(root_path_ + u"/Artist/Album/01.flac"_s));
+  EXPECT_EQ(QByteArray("cover data"), ReadFile(root_path_ + u"/Artist/Album/cover.jpg"_s));
+  EXPECT_EQ(QStringList() << u"01.flac"_s << u"cover.jpg"_s, Entries(root_path_ + u"/Artist/Album"_s));
+
+}
+
+// The source is a link to the destination, replacing the destination with the link would remove the file.
+TEST_F(FilesystemMusicStorageTest, MoveWithOverwriteOfLinkToDestinationKeepsFile) {
+
+  ASSERT_TRUE(QDir().mkpath(root_path_ + u"/Artist/Album"_s));
+  const QString dest_filename = root_path_ + u"/Artist/Album/01.flac"_s;
+  ASSERT_TRUE(CreateFile(dest_filename, QByteArray("song data")));
+  ASSERT_TRUE(QFile::link(dest_filename, source_path_ + u"/Album/01.flac"_s));
+
+  ASSERT_TRUE(MoveSong(u"01.flac"_s, QString(), true));
+
+  EXPECT_FALSE(QFileInfo(dest_filename).isSymLink());
+  EXPECT_EQ(QByteArray("song data"), ReadFile(dest_filename));
+
+}
+
+// The destination is a link to the source, the source is not replaced through it.
+TEST_F(FilesystemMusicStorageTest, MoveWithOverwriteOntoLinkToSourceKeepsFile) {
+
+  const QString filename = source_path_ + u"/Album/01.flac"_s;
+  ASSERT_TRUE(CreateFile(filename, QByteArray("song data")));
+  ASSERT_TRUE(QDir().mkpath(root_path_ + u"/Artist/Album"_s));
+  ASSERT_TRUE(QFile::link(filename, root_path_ + u"/Artist/Album/01.flac"_s));
+
+  ASSERT_TRUE(MoveSong(u"01.flac"_s, QString(), true));
+
+  EXPECT_EQ(QByteArray("song data"), ReadFile(filename));
+  EXPECT_EQ(QByteArray("song data"), ReadFile(root_path_ + u"/Artist/Album/01.flac"_s));
+
+}
+
+// An existing link at the destination is replaced, not the file it links to.
+TEST_F(FilesystemMusicStorageTest, MoveWithOverwriteReplacesLinkNotItsTarget) {
+
+  const QString other_filename = temp_dir_.filePath(u"other.flac"_s);
+  ASSERT_TRUE(CreateFile(other_filename, QByteArray("other song")));
+  ASSERT_TRUE(CreateFile(source_path_ + u"/Album/01.flac"_s, QByteArray("new song")));
+  ASSERT_TRUE(QDir().mkpath(root_path_ + u"/Artist/Album"_s));
+  const QString dest_filename = root_path_ + u"/Artist/Album/01.flac"_s;
+  ASSERT_TRUE(QFile::link(other_filename, dest_filename));
+
+  ASSERT_TRUE(MoveSong(u"01.flac"_s, QString(), true));
+
+  EXPECT_FALSE(QFileInfo(dest_filename).isSymLink());
+  EXPECT_EQ(QByteArray("new song"), ReadFile(dest_filename));
+  EXPECT_EQ(QByteArray("other song"), ReadFile(other_filename));
+
+}
+#endif
+
+#ifdef Q_OS_UNIX
+// The destination is another hard link to the source, so it's the same file, which is not replaced with itself.
+TEST_F(FilesystemMusicStorageTest, MoveWithOverwriteOntoHardLinkKeepsFile) {
+
+  const QString filename = source_path_ + u"/Album/01.flac"_s;
+  ASSERT_TRUE(CreateFile(filename, QByteArray("song data")));
+  ASSERT_TRUE(QDir().mkpath(root_path_ + u"/Artist/Album"_s));
+  const QString dest_filename = root_path_ + u"/Artist/Album/01.flac"_s;
+  if (::link(QFile::encodeName(filename).constData(), QFile::encodeName(dest_filename).constData()) != 0) {
+    GTEST_SKIP() << "The filesystem doesn't support hard links.";
+  }
+
+  ASSERT_TRUE(MoveSong(u"01.flac"_s, QString(), true));
+
+  EXPECT_EQ(QByteArray("song data"), ReadFile(dest_filename));
+
+}
+#endif
+
+// The tests run in AKOUSMA_TEST_CASE_INSENSITIVE_DIR when it's set, for example a FAT, exFAT or casefolded directory on Linux, or a ciopfs mount with -o use_ino, which gives a file the same inode number in every case.
+// Otherwise they run in the temporary directory, which is case-insensitive by default on Windows and macOS, and they're skipped when the directory is case-sensitive.
+class FilesystemMusicStorageCaseInsensitiveTest : public FilesystemMusicStorageTest {
+ protected:
+  void SetUp() override {
+    const QString path = qEnvironmentVariable("AKOUSMA_TEST_CASE_INSENSITIVE_DIR", QDir::tempPath());
+    ci_temp_dir_ = std::make_unique<QTemporaryDir>(path + u"/strawberry_test-XXXXXX"_s);
+    ASSERT_TRUE(ci_temp_dir_->isValid()) << path.toStdString();
+    ASSERT_TRUE(CreateFile(ci_temp_dir_->filePath(u"probe"_s)));
+    if (!QFile::exists(ci_temp_dir_->filePath(u"PROBE"_s))) {
+      GTEST_SKIP() << "The directory " << path.toStdString() << " is case-sensitive, set AKOUSMA_TEST_CASE_INSENSITIVE_DIR to a case-insensitive directory.";
+    }
+    ASSERT_TRUE(QFile::remove(ci_temp_dir_->filePath(u"probe"_s)));
+    root_path_ = ci_temp_dir_->filePath(u"collection"_s);
+    ASSERT_TRUE(QDir().mkpath(root_path_ + u"/the beatles/Help"_s));
+  }
+
+  MusicStorage::CopyJob CaseJob(const QString &source_filename, const QString &destination_filename, const bool remove_original, const bool overwrite) const {
+    MusicStorage::CopyJob job;
+    job.source_ = root_path_ + u"/the beatles/Help/"_s + source_filename;
+    job.original_root_ = root_path_;
+    job.destination_ = u"The Beatles/Help/"_s + destination_filename;
+    job.remove_original_ = remove_original;
+    job.overwrite_ = overwrite;
+    job.albumcover_ = true;
+    job.cover_source_ = root_path_ + u"/the beatles/Help/cover.jpg"_s;
+    job.cover_dest_ = u"The Beatles/Help/cover.jpg"_s;
+    return job;
+  }
+
+  std::unique_ptr<QTemporaryDir> ci_temp_dir_;
+};
+
+// Only the case of the filename changes, with overwriting on, the song and the cover are kept, the song is renamed.
+TEST_F(FilesystemMusicStorageCaseInsensitiveTest, CaseOnlyRenameWithOverwriteKeepsSongAndCover) {
+
+  ASSERT_TRUE(CreateFile(root_path_ + u"/the beatles/Help/01 - help.flac"_s, QByteArray("song data")));
+  ASSERT_TRUE(CreateFile(root_path_ + u"/the beatles/Help/cover.jpg"_s, QByteArray("cover data")));
+
+  FilesystemMusicStorage storage(Song::Source::Collection, root_path_);
+  QString error_text;
+  ASSERT_TRUE(storage.CopyToStorage(CaseJob(u"01 - help.flac"_s, u"01 - Help.flac"_s, true, true), error_text)) << error_text.toStdString();
+
+  // The directories are shared with other songs, so they keep their case.
+  EXPECT_EQ(QStringList() << u"01 - Help.flac"_s << u"cover.jpg"_s, Entries(root_path_ + u"/the beatles/Help"_s));
+  EXPECT_EQ(QByteArray("song data"), ReadFile(root_path_ + u"/The Beatles/Help/01 - Help.flac"_s));
+  EXPECT_EQ(QByteArray("cover data"), ReadFile(root_path_ + u"/The Beatles/Help/cover.jpg"_s));
+
+}
+
+// Nothing is overwritten when only the case changes, so the song is also renamed without overwriting.
+TEST_F(FilesystemMusicStorageCaseInsensitiveTest, CaseOnlyRenameWithoutOverwrite) {
+
+  ASSERT_TRUE(CreateFile(root_path_ + u"/the beatles/Help/01 - help.flac"_s, QByteArray("song data")));
+  ASSERT_TRUE(CreateFile(root_path_ + u"/the beatles/Help/cover.jpg"_s, QByteArray("cover data")));
+
+  FilesystemMusicStorage storage(Song::Source::Collection, root_path_);
+  QString error_text;
+  ASSERT_TRUE(storage.CopyToStorage(CaseJob(u"01 - help.flac"_s, u"01 - Help.flac"_s, true, false), error_text)) << error_text.toStdString();
+
+  EXPECT_EQ(QStringList() << u"01 - Help.flac"_s << u"cover.jpg"_s, Entries(root_path_ + u"/the beatles/Help"_s));
+  EXPECT_EQ(QByteArray("song data"), ReadFile(root_path_ + u"/The Beatles/Help/01 - Help.flac"_s));
+
+}
+
+// A copy to the same file in another case is not made, the file is kept as it is.
+TEST_F(FilesystemMusicStorageCaseInsensitiveTest, CaseOnlyCopyWithOverwriteKeepsSongAndCover) {
+
+  ASSERT_TRUE(CreateFile(root_path_ + u"/the beatles/Help/01 - help.flac"_s, QByteArray("song data")));
+  ASSERT_TRUE(CreateFile(root_path_ + u"/the beatles/Help/cover.jpg"_s, QByteArray("cover data")));
+
+  FilesystemMusicStorage storage(Song::Source::Collection, root_path_);
+  QString error_text;
+  ASSERT_TRUE(storage.CopyToStorage(CaseJob(u"01 - help.flac"_s, u"01 - Help.flac"_s, false, true), error_text)) << error_text.toStdString();
+
+  EXPECT_EQ(QStringList() << u"01 - help.flac"_s << u"cover.jpg"_s, Entries(root_path_ + u"/the beatles/Help"_s));
+  EXPECT_EQ(QByteArray("song data"), ReadFile(root_path_ + u"/the beatles/Help/01 - help.flac"_s));
+  EXPECT_EQ(QByteArray("cover data"), ReadFile(root_path_ + u"/the beatles/Help/cover.jpg"_s));
+
+}
+
+// Only the case of the directory changes, and the filename changes, the cover in the directory is the same file as the destination cover, so it's kept.
+TEST_F(FilesystemMusicStorageCaseInsensitiveTest, DirectoryCaseOnlyWithOverwriteKeepsCover) {
+
+  ASSERT_TRUE(CreateFile(root_path_ + u"/the beatles/Help/01.flac"_s, QByteArray("song data")));
+  ASSERT_TRUE(CreateFile(root_path_ + u"/the beatles/Help/cover.jpg"_s, QByteArray("cover data")));
+
+  FilesystemMusicStorage storage(Song::Source::Collection, root_path_);
+  QString error_text;
+  ASSERT_TRUE(storage.CopyToStorage(CaseJob(u"01.flac"_s, u"01 - Help.flac"_s, true, true), error_text)) << error_text.toStdString();
+
+  EXPECT_EQ(QStringList() << u"01 - Help.flac"_s << u"cover.jpg"_s, Entries(root_path_ + u"/the beatles/Help"_s));
+  EXPECT_EQ(QByteArray("song data"), ReadFile(root_path_ + u"/The Beatles/Help/01 - Help.flac"_s));
+  EXPECT_EQ(QByteArray("cover data"), ReadFile(root_path_ + u"/The Beatles/Help/cover.jpg"_s));
+
+}
+
+// A transcoded song replaces its original, which only differs in case, the original is not removed afterwards, since it's the transcoded song now.
+TEST_F(FilesystemMusicStorageCaseInsensitiveTest, TranscodedCaseOnlyKeepsTranscodedSong) {
+
+  const QString transcode_path = ci_temp_dir_->filePath(u"cache/organize"_s);
+  ASSERT_TRUE(QDir().mkpath(transcode_path));
+  const QString transcoded_filename = transcode_path + u"/01 - Help.mp3"_s;
+  ASSERT_TRUE(CreateFile(transcoded_filename, QByteArray("transcoded")));
+  const QString original_filename = root_path_ + u"/the beatles/Help/01 - help.mp3"_s;
+  ASSERT_TRUE(CreateFile(original_filename, QByteArray("original")));
+
+  MusicStorage::CopyJob job;
+  job.source_ = transcoded_filename;
+  job.original_source_ = original_filename;
+  job.original_root_ = root_path_;
+  job.destination_ = u"The Beatles/Help/01 - Help.mp3"_s;
+  job.remove_original_ = true;
+  job.overwrite_ = true;
+  FilesystemMusicStorage storage(Song::Source::Collection, root_path_);
+  QString error_text;
+  ASSERT_TRUE(storage.CopyToStorage(job, error_text)) << error_text.toStdString();
+
+  EXPECT_EQ(QByteArray("transcoded"), ReadFile(root_path_ + u"/The Beatles/Help/01 - Help.mp3"_s));
+  EXPECT_EQ(1, Entries(root_path_ + u"/the beatles/Help"_s).count());
 
 }
 
