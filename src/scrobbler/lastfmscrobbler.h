@@ -28,6 +28,7 @@
 
 #include "includes/shared_ptr.h"
 #include "core/song.h"
+#include "credentialsmanager/credentialsreply.h"
 #include "scrobblerservice.h"
 #include "scrobblercache.h"
 #include "scrobblercacheitem.h"
@@ -38,12 +39,13 @@ class QNetworkReply;
 class ScrobblerSettingsService;
 class NetworkAccessManager;
 class LocalRedirectServer;
+class CredentialsManager;
 
 class LastFMScrobbler : public ScrobblerService {
   Q_OBJECT
 
  public:
-  explicit LastFMScrobbler(const SharedPtr<ScrobblerSettingsService> settings, const SharedPtr<NetworkAccessManager> network, QObject *parent = nullptr);
+  explicit LastFMScrobbler(const SharedPtr<ScrobblerSettingsService> settings, const SharedPtr<NetworkAccessManager> network, const SharedPtr<CredentialsManager> credentials_manager, QObject *parent = nullptr);
   ~LastFMScrobbler() override;
 
   static const char *kName;
@@ -61,6 +63,9 @@ class LastFMScrobbler : public ScrobblerService {
   bool authenticated() const override { return !api_key_.isEmpty() && !api_secret_.isEmpty() && !username_.isEmpty() && !session_key_.isEmpty(); }
   bool use_authorization_header() const override { return false; }
   QByteArray authorization_header() const override { return QByteArray(); }
+
+  // True while the session key is read from the credentials manager, which can wait for a keyring password prompt.
+  bool session_key_loading() const { return !read_session_key_reply_.isNull(); }
 
   bool subscriber() const { return subscriber_; }
   bool submitted() const override { return submitted_; }
@@ -87,6 +92,9 @@ class LastFMScrobbler : public ScrobblerService {
   void ScrobbleRequestFinished(QNetworkReply *reply, ScrobblerCacheItemPtrList cache_items);
   void SingleScrobbleRequestFinished(QNetworkReply *reply, ScrobblerCacheItemPtr cache_item);
   void LoveRequestFinished(QNetworkReply *reply);
+  void ReadSessionKeyFinished();
+  void MigrateSessionKeyFinished();
+  void SaveSessionKeyFinished();
 
  private:
   enum class ScrobbleErrorCode {
@@ -129,9 +137,11 @@ class LastFMScrobbler : public ScrobblerService {
   static QString ErrorString(const ScrobbleErrorCode error);
   void SendScrobbleRequests();
   void CheckScrobblePrevSong();
+  void AbortSessionKeyReplies();
 
  protected:
   const SharedPtr<NetworkAccessManager> network_;
+  const SharedPtr<CredentialsManager> credentials_manager_;
   ScrobblerCache *cache_;
   LocalRedirectServer *local_redirect_server_;
 
@@ -145,6 +155,10 @@ class LastFMScrobbler : public ScrobblerService {
 
   QString api_key_;
   QString api_secret_;
+
+  CredentialsReplyPtr read_session_key_reply_;
+  CredentialsReplyPtr migrate_session_key_reply_;
+  CredentialsReplyPtr save_session_key_reply_;
 
   bool submitted_;
   Song song_playing_;

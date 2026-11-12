@@ -53,6 +53,9 @@
 #include "core/logging.h"
 #include "core/settings.h"
 #include "core/localredirectserver.h"
+#include "credentialsmanager/credentialsmanager.h"
+#include "credentialsmanager/credentialsreply.h"
+#include "credentialsmanager/credentialsresult.h"
 #include "constants/timeconstants.h"
 #include "constants/scrobblersettings.h"
 #include "constants/lastfmsettings.h"
@@ -76,6 +79,7 @@ constexpr int kScrobblesPerRequest = 50;
 constexpr char kCacheFile[] = "lastfmscrobbler.cache";
 constexpr char kSubscriber[] = "subscriber";
 constexpr char kUsername[] = "username";
+// The session key was stored in the settings file before it was stored with the credentials manager, it is only read to migrate it.
 constexpr char kSessionKey[] = "session_key";
 constexpr char kReplySessionKeyProperty[] = "session_key";
 
@@ -104,9 +108,10 @@ bool LastFMScrobbler::HasCompiledCredentials() {
 #endif
 }
 
-LastFMScrobbler::LastFMScrobbler(const SharedPtr<ScrobblerSettingsService> settings, const SharedPtr<NetworkAccessManager> network, QObject *parent)
+LastFMScrobbler::LastFMScrobbler(const SharedPtr<ScrobblerSettingsService> settings, const SharedPtr<NetworkAccessManager> network, const SharedPtr<CredentialsManager> credentials_manager, QObject *parent)
     : ScrobblerService(QLatin1String(kName), network, settings, parent),
       network_(network),
+      credentials_manager_(credentials_manager),
       cache_(new ScrobblerCache(QLatin1String(kCacheFile), this)),
       local_redirect_server_(nullptr),
       enabled_(false),
@@ -166,16 +171,113 @@ void LastFMScrobbler::ReloadSettings() {
 
 void LastFMScrobbler::LoadSession() {
 
+  AbortSessionKeyReplies();
+
   Settings s;
   s.beginGroup(kSettingsGroup);
   subscriber_ = s.value(kSubscriber, false).toBool();
   username_ = s.value(kUsername).toString();
-  session_key_ = s.value(kSessionKey).toString();
+  session_key_.clear();
+
+  // Migrate the session key from the settings file to the credentials manager.
+  // The old session key is removed from the settings file when it is saved, if saving fails it is kept and migrated next time.
+  if (s.contains(kSessionKey)) {
+    session_key_ = s.value(kSessionKey).toString();
+    if (session_key_.isEmpty()) {
+      s.remove(kSessionKey);
+    }
+    else {
+      migrate_session_key_reply_ = credentials_manager_->SavePasswordAsync(QLatin1String(LastFMSettings::kCredentialsService), session_key_);
+      QObject::connect(&*migrate_session_key_reply_, &CredentialsReply::Finished, this, &LastFMScrobbler::MigrateSessionKeyFinished);
+    }
+  }
+
   s.endGroup();
+
+  // Only read the session key when logged in, since reading it can show a keyring password prompt.
+  if (session_key_.isEmpty() && !username_.isEmpty()) {
+    read_session_key_reply_ = credentials_manager_->ReadPasswordAsync(QLatin1String(LastFMSettings::kCredentialsService));
+    QObject::connect(&*read_session_key_reply_, &CredentialsReply::Finished, this, &LastFMScrobbler::ReadSessionKeyFinished);
+  }
+
+}
+
+void LastFMScrobbler::ReadSessionKeyFinished() {
+
+  if (!read_session_key_reply_ || sender() != &*read_session_key_reply_) return;
+
+  const CredentialsResult result = read_session_key_reply_->result();
+  read_session_key_reply_.reset();
+
+  switch (result.status) {
+    case CredentialsResult::Status::Success:
+      session_key_ = result.password;
+      // Send the scrobbles which were cached while the session key was read.
+      Start();
+      break;
+    case CredentialsResult::Status::NotFound:
+      qLog(Warning) << "No Last.fm session key is stored for" << username_ << "log in to Last.fm again.";
+      break;
+    case CredentialsResult::Status::Error:
+      qLog(Error) << "Could not read the Last.fm session key:" << result.error;
+      break;
+  }
+
+}
+
+void LastFMScrobbler::MigrateSessionKeyFinished() {
+
+  if (!migrate_session_key_reply_ || sender() != &*migrate_session_key_reply_) return;
+
+  if (migrate_session_key_reply_->success()) {
+    Settings s;
+    s.beginGroup(kSettingsGroup);
+    s.remove(kSessionKey);
+    s.endGroup();
+  }
+
+  migrate_session_key_reply_.reset();
+
+}
+
+void LastFMScrobbler::SaveSessionKeyFinished() {
+
+  if (!save_session_key_reply_ || sender() != &*save_session_key_reply_) return;
+
+  const CredentialsResult result = save_session_key_reply_->result();
+  save_session_key_reply_.reset();
+
+  // The session key is not written to the settings file instead, it is kept for this session, after a restart the user has to log in again.
+  if (!result.success()) {
+    Error(tr("Could not save the session key: %1").arg(result.error));
+  }
+
+}
+
+void LastFMScrobbler::AbortSessionKeyReplies() {
+
+  // Ignore the replies of earlier requests, the requests themselves still run, in order, in the credentials manager.
+  if (read_session_key_reply_) {
+    QObject::disconnect(&*read_session_key_reply_, nullptr, this, nullptr);
+    read_session_key_reply_.reset();
+  }
+  if (migrate_session_key_reply_) {
+    QObject::disconnect(&*migrate_session_key_reply_, nullptr, this, nullptr);
+    migrate_session_key_reply_.reset();
+  }
+  if (save_session_key_reply_) {
+    QObject::disconnect(&*save_session_key_reply_, nullptr, this, nullptr);
+    save_session_key_reply_.reset();
+  }
 
 }
 
 void LastFMScrobbler::ClearSession() {
+
+  // Only delete the session key from the credentials manager when one can be stored, since accessing the keyring can show a keyring password prompt.
+  bool session_key_stored = !session_key_.isEmpty() || !username_.isEmpty() || read_session_key_reply_ || migrate_session_key_reply_ || save_session_key_reply_;
+
+  AbortSessionKeyReplies();
 
   subscriber_ = false;
   username_.clear();
@@ -183,10 +285,18 @@ void LastFMScrobbler::ClearSession() {
 
   Settings settings;
   settings.beginGroup(kSettingsGroup);
+  if (settings.contains(kUsername) || settings.contains(kSessionKey)) {
+    session_key_stored = true;
+  }
   settings.remove(kSubscriber);
   settings.remove(kUsername);
   settings.remove(kSessionKey);
   settings.endGroup();
+
+  if (session_key_stored) {
+    // Nothing waits for the result, the credentials manager logs a failure.
+    static_cast<void>(credentials_manager_->DeletePasswordAsync(QLatin1String(LastFMSettings::kCredentialsService)));
+  }
 
 }
 
@@ -333,6 +443,9 @@ void LastFMScrobbler::AuthenticateReplyFinished(QNetworkReply *reply) {
     return;
   }
 
+  // A session key which is still being read or migrated belongs to the previous login.
+  AbortSessionKeyReplies();
+
   subscriber_ = json_object_session["subscriber"_L1].toBool();
   username_ = json_object_session["name"_L1].toString();
   session_key_ = json_object_session["key"_L1].toString();
@@ -341,8 +454,11 @@ void LastFMScrobbler::AuthenticateReplyFinished(QNetworkReply *reply) {
   s.beginGroup(kSettingsGroup);
   s.setValue(kSubscriber, subscriber_);
   s.setValue(kUsername, username_);
-  s.setValue(kSessionKey, session_key_);
+  s.remove(kSessionKey);
   s.endGroup();
+
+  save_session_key_reply_ = credentials_manager_->SavePasswordAsync(QLatin1String(LastFMSettings::kCredentialsService), session_key_);
+  QObject::connect(&*save_session_key_reply_, &CredentialsReply::Finished, this, &LastFMScrobbler::SaveSessionKeyFinished);
 
   Q_EMIT AuthenticationComplete(true);
 
@@ -509,7 +625,8 @@ void LastFMScrobbler::Scrobble(const Song &song) {
   if (settings_->offline()) return;
 
   if (!authenticated()) {
-    if (settings_->show_error_dialog()) {
+    // While the session key is read, the scrobble is cached and sent when it is read.
+    if (settings_->show_error_dialog() && !session_key_loading()) {
       Q_EMIT ErrorMessage(tr("Scrobbler %1 is not authenticated!").arg(name_));
     }
     return;

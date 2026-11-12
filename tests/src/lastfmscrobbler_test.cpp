@@ -17,6 +17,8 @@
  *
  */
 
+#include "config.h"
+
 #include <cstring>
 #include <memory>
 
@@ -44,6 +46,9 @@
 #include "core/standardpaths.h"
 #include "constants/lastfmsettings.h"
 #include "constants/scrobblersettings.h"
+#include "credentialsmanager/credentialsmanager.h"
+#include "credentialsmanager/credentialsreply.h"
+#include "credentialsmanager/credentialsresult.h"
 #include "scrobbler/lastfmscrobbler.h"
 #include "scrobbler/scrobblersettingsservice.h"
 
@@ -140,6 +145,12 @@ class LastFMScrobblerTest : public ::testing::Test {
     QFile::remove(cache_path_ + u'/' + QLatin1String(kCacheFile));
 
     Settings s;
+    // The Last.fm session key is stored with the credentials manager, here with the settings backend so the tests don't touch a keyring.
+    s.remove(u"Credentials"_s);
+    s.remove(QLatin1String(CredentialsManager::kSettingsGroup));
+    s.beginGroup(CredentialsManager::kSettingsGroup);
+    s.setValue(CredentialsManager::kBackend, u"settings"_s);
+    s.endGroup();
     s.remove(QLatin1String(ScrobblerSettings::kSettingsGroup));
     s.beginGroup(ScrobblerSettings::kSettingsGroup);
     s.setValue(ScrobblerSettings::kEnabled, true);
@@ -158,15 +169,22 @@ class LastFMScrobblerTest : public ::testing::Test {
     s.setValue("session_key", u"session_key"_s);
     s.endGroup();
 
+    credentials_manager_ = make_shared<CredentialsManager>();
     settings_ = make_shared<ScrobblerSettingsService>();
     network_ = make_shared<ControlledNetworkAccessManager>();
-    scrobbler_ = std::make_unique<LastFMScrobbler>(settings_, network_);
+    scrobbler_ = std::make_unique<LastFMScrobbler>(settings_, network_, credentials_manager_);
     ASSERT_TRUE(scrobbler_->authenticated());
 
   }
 
   void TearDown() override {
     scrobbler_.reset();
+    {
+      Settings s;
+      s.remove(u"Credentials"_s);
+      s.remove(QLatin1String(CredentialsManager::kSettingsGroup));
+      s.remove(QLatin1String(LastFMScrobbler::kSettingsGroup));
+    }
     if (!cache_path_.isEmpty()) {
       QDir(cache_path_).removeRecursively();
     }
@@ -204,16 +222,22 @@ class LastFMScrobblerTest : public ::testing::Test {
     QTest::qWait(20);
   }
 
-  static QString SessionKeyInSettings() {
-    Settings s;
-    s.beginGroup(LastFMScrobbler::kSettingsGroup);
-    const QString session_key = s.value("session_key").toString();
-    s.endGroup();
-    return session_key;
+  // The stored session key, it's moved from the settings file to the credentials manager when the session is loaded.
+  // Requests to the credentials manager run in order, so the requests the scrobbler made before are finished when this read is finished.
+  QString StoredSessionKey() {
+    CredentialsReplyPtr reply = credentials_manager_->ReadPasswordAsync(QLatin1String(LastFMSettings::kCredentialsService));
+    if (!reply->finished()) {
+      QSignalSpy spy(&*reply, &CredentialsReply::Finished);
+      EXPECT_TRUE(spy.wait(10000));
+    }
+    QCoreApplication::processEvents();
+    const CredentialsResult result = reply->result();
+    return result.success() ? result.password : QString();
   }
 
   QString organization_name_;
   QString cache_path_;
+  SharedPtr<CredentialsManager> credentials_manager_;
   SharedPtr<ScrobblerSettingsService> settings_;
   SharedPtr<ControlledNetworkAccessManager> network_;
   std::unique_ptr<LastFMScrobbler> scrobbler_;
@@ -230,7 +254,7 @@ TEST_F(LastFMScrobblerTest, RevokedSessionStopsRetrying) {
   QCoreApplication::processEvents();
 
   EXPECT_FALSE(scrobbler_->authenticated());
-  EXPECT_TRUE(SessionKeyInSettings().isEmpty());
+  EXPECT_TRUE(StoredSessionKey().isEmpty());
   EXPECT_EQ(1, spy_error.count());
 
   FireRetryTimer();
@@ -273,7 +297,7 @@ TEST_F(LastFMScrobblerTest, OtherErrorKeepsSession) {
   QCoreApplication::processEvents();
 
   EXPECT_TRUE(scrobbler_->authenticated());
-  EXPECT_EQ(u"session_key"_s, SessionKeyInSettings());
+  EXPECT_EQ(u"session_key"_s, StoredSessionKey());
 
 }
 
@@ -293,7 +317,7 @@ TEST_F(LastFMScrobblerTest, RejectedPreviousSessionKeepsNewSession) {
   QCoreApplication::processEvents();
 
   EXPECT_TRUE(scrobbler_->authenticated());
-  EXPECT_EQ(u"new_session_key"_s, SessionKeyInSettings());
+  EXPECT_EQ(u"new_session_key"_s, StoredSessionKey());
 
 }
 
@@ -307,6 +331,150 @@ TEST_F(LastFMScrobblerTest, UnauthorizedClearsSession) {
   QCoreApplication::processEvents();
 
   EXPECT_FALSE(scrobbler_->authenticated());
+
+}
+
+// The Last.fm session key is stored with the credentials manager, here with the settings backend so the tests don't touch a keyring.
+class LastFMScrobblerCredentialsTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    // Settings uses the organization name for the file name, the test main only sets the application name. The settings are in a temporary directory.
+    QCoreApplication::setOrganizationName(u"Akousma"_s);
+    RemoveSettings();
+    Settings s;
+    s.beginGroup(CredentialsManager::kSettingsGroup);
+    s.setValue(CredentialsManager::kBackend, u"settings"_s);
+    s.endGroup();
+    // A session is cleared when there is no API key and secret, so set custom ones, which are also used when there are no compiled in credentials.
+    s.beginGroup(LastFMScrobbler::kSettingsGroup);
+    s.setValue(LastFMSettings::kUseCustomApiCredentials, true);
+    s.setValue(LastFMSettings::kClientId, u"dummy-api-key"_s);
+    s.setValue(LastFMSettings::kClientSecret, u"dummy-api-secret"_s);
+    s.endGroup();
+
+    credentials_manager_ = make_shared<CredentialsManager>();
+    settings_service_ = make_shared<ScrobblerSettingsService>();
+    network_ = make_shared<NetworkAccessManager>();
+  }
+
+  void TearDown() override {
+    RemoveSettings();
+  }
+
+  static void RemoveSettings() {
+    Settings s;
+    s.remove(QLatin1String(LastFMScrobbler::kSettingsGroup));
+    s.remove(u"Credentials"_s);
+    s.remove(QLatin1String(CredentialsManager::kSettingsGroup));
+  }
+
+  static void SetLegacySession(const QString &username, const QString &session_key) {
+    Settings s;
+    s.beginGroup(LastFMScrobbler::kSettingsGroup);
+    s.setValue(u"username"_s, username);
+    if (!session_key.isNull()) {
+      s.setValue(u"session_key"_s, session_key);
+    }
+    s.endGroup();
+  }
+
+  static CredentialsResult WaitForReply(CredentialsReplyPtr reply) {
+    if (!reply->finished()) {
+      QSignalSpy spy(&*reply, &CredentialsReply::Finished);
+      EXPECT_TRUE(spy.wait(10000));
+    }
+    return reply->result();
+  }
+
+  // Requests run in order, so when this read is finished, the requests the scrobbler made before are finished too.
+  CredentialsResult ReadStoredSessionKey() {
+    const CredentialsResult result = WaitForReply(credentials_manager_->ReadPasswordAsync(QLatin1String(LastFMSettings::kCredentialsService)));
+    // Let the scrobbler handle the replies of its own requests.
+    QCoreApplication::processEvents();
+    return result;
+  }
+
+  SharedPtr<LastFMScrobbler> CreateScrobbler() {
+    return make_shared<LastFMScrobbler>(settings_service_, network_, credentials_manager_);
+  }
+
+  SharedPtr<CredentialsManager> credentials_manager_;
+  SharedPtr<ScrobblerSettingsService> settings_service_;
+  SharedPtr<NetworkAccessManager> network_;
+};
+
+TEST_F(LastFMScrobblerCredentialsTest, SessionKeyIsMigratedFromSettingsFile) {
+
+  const QString session_key = u"dummy-session-key"_s;
+  SetLegacySession(u"user"_s, session_key);
+
+  SharedPtr<LastFMScrobbler> scrobbler = CreateScrobbler();
+
+  // The migrated session key is used right away.
+  EXPECT_TRUE(scrobbler->authenticated());
+  EXPECT_FALSE(scrobbler->session_key_loading());
+  EXPECT_EQ(u"user"_s, scrobbler->username());
+
+  const CredentialsResult result = ReadStoredSessionKey();
+  ASSERT_TRUE(result.success());
+  EXPECT_EQ(session_key, result.password);
+
+  Settings s;
+  s.beginGroup(LastFMScrobbler::kSettingsGroup);
+  EXPECT_FALSE(s.contains(u"session_key"_s));
+  EXPECT_EQ(u"user"_s, s.value(u"username"_s).toString());
+  s.endGroup();
+
+}
+
+TEST_F(LastFMScrobblerCredentialsTest, SessionKeyIsReadFromCredentialsManager) {
+
+  const QString session_key = u"dummy-session-key"_s;
+  ASSERT_TRUE(WaitForReply(credentials_manager_->SavePasswordAsync(QLatin1String(LastFMSettings::kCredentialsService), session_key)).success());
+  SetLegacySession(u"user"_s, QString());
+
+  SharedPtr<LastFMScrobbler> scrobbler = CreateScrobbler();
+  EXPECT_TRUE(scrobbler->session_key_loading());
+  EXPECT_FALSE(scrobbler->authenticated());
+
+  EXPECT_TRUE(QTest::qWaitFor([&scrobbler]() { return !scrobbler->session_key_loading(); }, 10000));
+  EXPECT_TRUE(scrobbler->authenticated());
+  EXPECT_EQ(u"user"_s, scrobbler->username());
+
+}
+
+TEST_F(LastFMScrobblerCredentialsTest, CredentialsManagerIsNotUsedWhenNotLoggedIn) {
+
+  SharedPtr<LastFMScrobbler> scrobbler = CreateScrobbler();
+  EXPECT_FALSE(scrobbler->session_key_loading());
+  EXPECT_FALSE(scrobbler->authenticated());
+
+  scrobbler->ClearSession();
+  QTest::qWait(100);
+
+  // The backend is initialized by the first request, so no request was made, and no keyring prompt can be shown.
+  EXPECT_TRUE(credentials_manager_->backend_name().isEmpty());
+
+}
+
+TEST_F(LastFMScrobblerCredentialsTest, ClearSessionDeletesSessionKey) {
+
+  SetLegacySession(u"user"_s, u"dummy-session-key"_s);
+
+  SharedPtr<LastFMScrobbler> scrobbler = CreateScrobbler();
+  ASSERT_TRUE(scrobbler->authenticated());
+
+  scrobbler->ClearSession();
+  EXPECT_FALSE(scrobbler->authenticated());
+  EXPECT_TRUE(scrobbler->username().isEmpty());
+
+  EXPECT_EQ(CredentialsResult::Status::NotFound, ReadStoredSessionKey().status);
+
+  Settings s;
+  s.beginGroup(LastFMScrobbler::kSettingsGroup);
+  EXPECT_FALSE(s.contains(u"session_key"_s));
+  EXPECT_FALSE(s.contains(u"username"_s));
+  s.endGroup();
 
 }
 

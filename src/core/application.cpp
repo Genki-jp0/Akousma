@@ -233,7 +233,7 @@ class ApplicationImpl {
 #endif
         scrobbler_([app]() {
           AudioScrobbler *scrobbler = new AudioScrobbler(app);
-          scrobbler->AddService(make_shared<LastFMScrobbler>(scrobbler->settings(), app->network()));
+          scrobbler->AddService(make_shared<LastFMScrobbler>(scrobbler->settings(), app->network(), app->credentials_manager()));
           scrobbler->AddService(make_shared<ListenBrainzScrobbler>(scrobbler->settings(), app->network()));
 #ifdef HAVE_SUBSONIC
           scrobbler->AddService(make_shared<SubsonicScrobbler>(scrobbler->settings(), app->network(), app->streaming_services()->Service<SubsonicService>(), app));

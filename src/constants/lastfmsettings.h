@@ -26,6 +26,9 @@ constexpr char kUseCustomApiCredentials[] = "use_custom_api_credentials";
 constexpr char kClientId[] = "client_id";
 constexpr char kClientSecret[] = "client_secret";
 
+// The session key is stored with the credentials manager under this name.
+constexpr char kCredentialsService[] = "lastfm";
+
 }  // namespace LastFMSettings
 
 #endif  // LASTFMSETTINGS_H
