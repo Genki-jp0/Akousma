@@ -24,7 +24,9 @@
 #include <QByteArray>
 #include <QCoreApplication>
 #include <QDateTime>
+#include <QDir>
 #include <QFile>
+#include <QIODevice>
 #include <QMap>
 #include <QSettings>
 #include <QStandardPaths>
@@ -33,6 +35,8 @@
 #include <QTemporaryDir>
 #include <QTimer>
 #include <QUrl>
+#include <QSqlDatabase>
+#include <QSqlQuery>
 
 #include "includes/shared_ptr.h"
 #include "constants/timeconstants.h"
@@ -326,6 +330,70 @@ TEST(PlayerImporterTest, FirstStartIgnoresFallbackSettings) {
   Settings system_settings(QSettings::SystemScope);
   system_settings.clear();
   system_settings.sync();
+
+}
+
+// A Strawberry database Akousma can't use must not replace the collection: it made every later start abort, or replaced the collection with an empty one.
+TEST(PlayerImporterTest, RejectsStrawberryDatabasesAkousmaCantUse) {
+
+  QCoreApplication::setOrganizationName(u"Akousma"_s);
+  QStandardPaths::setTestModeEnabled(true);
+  if (QFile::exists(PlayerImporter::AkousmaDatabaseFile())) {
+    GTEST_SKIP() << "An Akousma collection exists in the test data directory";
+  }
+
+  QTemporaryDir dir;
+  ASSERT_TRUE(dir.isValid());
+
+  const auto write_file = [](const QString &filename, const QByteArray &data) {
+    QFile file(filename);
+    return file.open(QIODevice::WriteOnly | QIODevice::Truncate) && file.write(data) == data.size();
+  };
+  const auto create_database = [](const QString &filename, const int schema_version) {
+    bool ok = false;
+    {
+      QSqlDatabase db = QSqlDatabase::addDatabase(u"QSQLITE"_s, u"playerimporter_test"_s);
+      db.setDatabaseName(filename);
+      ok = db.open();
+      QSqlQuery q(db);
+      const QStringList statements = QStringList() << u"CREATE TABLE schema_version (version INTEGER NOT NULL)"_s << QStringLiteral("INSERT INTO schema_version (version) VALUES (%1)").arg(schema_version) << u"CREATE TABLE songs (title TEXT)"_s << u"CREATE TABLE directories (path TEXT)"_s << u"CREATE TABLE subdirectories (path TEXT)"_s << u"CREATE TABLE playlists (name TEXT)"_s << u"CREATE TABLE playlist_items (playlist INTEGER)"_s;
+      for (const QString &statement : statements) {
+        ok = ok && q.exec(statement);
+      }
+      db.close();
+    }
+    QSqlDatabase::removeDatabase(u"playerimporter_test"_s);
+    return ok;
+  };
+
+  QByteArray garbage;
+  while (garbage.size() < 8192) garbage += "This is not an SQLite database.\n";
+
+  const QString empty_file = dir.filePath(u"empty.db"_s);
+  ASSERT_TRUE(write_file(empty_file, QByteArray()));
+  const QString garbage_file = dir.filePath(u"garbage.db"_s);
+  ASSERT_TRUE(write_file(garbage_file, garbage));
+  const QString too_old_file = dir.filePath(u"tooold.db"_s);
+  ASSERT_TRUE(create_database(too_old_file, Database::kMinSupportedSchemaVersion - 1));
+  const QString too_new_file = dir.filePath(u"toonew.db"_s);
+  ASSERT_TRUE(create_database(too_new_file, Database::kSchemaVersion + 1));
+
+  const QStringList database_files = QStringList() << empty_file << garbage_file << too_old_file << too_new_file;
+  for (const QString &database_file : database_files) {
+    PlayerImporter::Installation installation;
+    installation.player = PlayerImporter::Player::Strawberry;
+    installation.name = u"Strawberry"_s;
+    installation.data_dir = dir.path();
+    installation.database_file = database_file;
+
+    const PlayerImporter::Result result = PlayerImporter::Import(installation, PlayerImporter::Item::Collection);
+    EXPECT_FALSE(result.success) << database_file.toStdString();
+    EXPECT_FALSE(result.imported & PlayerImporter::Item::Collection) << database_file.toStdString();
+    EXPECT_FALSE(result.errors.isEmpty()) << database_file.toStdString();
+    EXPECT_FALSE(QFile::exists(PlayerImporter::AkousmaDatabaseFile())) << database_file.toStdString();
+    EXPECT_FALSE(QFile::exists(PlayerImporter::AkousmaDatabaseFile() + u".import"_s)) << database_file.toStdString();
+    if (!result.backup_dir.isEmpty()) QDir(result.backup_dir).removeRecursively();
+  }
 
 }
 

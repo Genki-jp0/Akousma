@@ -38,6 +38,7 @@
 
 #include "includes/shared_ptr.h"
 #include "sqlquery.h"
+#include "databasehealth.h"
 
 class QThread;
 class TaskManager;
@@ -50,6 +51,10 @@ class Database : public QObject {
   ~Database() override;
 
   static const int kSchemaVersion;
+  static const int kMinSupportedSchemaVersion;
+
+  // The collection database file the application uses.
+  static QString DefaultFilename();
 
   struct AttachedDatabase {
     AttachedDatabase() : is_temporary_(false) {}
@@ -78,6 +83,11 @@ class Database : public QObject {
   QString startup_error();
   int current_schema_version() const { return kSchemaVersion; }
 
+  // What Connect() found when it opened the main database: Ok, TooNew, or the reason the database can't be used.
+  // A database that can't be used is not opened again by this object, Connect() returns a closed connection for it.
+  DatabaseHealth::State open_state() const;
+  QString open_error() const;
+
   void AttachDatabase(const QString &database_name, const AttachedDatabase &database);
   void AttachDatabaseOnDbConnection(const QString &database_name, const AttachedDatabase &database, QSqlDatabase &db);
   void DetachDatabase(const QString &database_name);
@@ -103,6 +113,8 @@ class Database : public QObject {
   bool ExecSongTablesCommands(QSqlDatabase &db, const QStringList &song_tables, const QStringList &commands, QString &error);
 
   bool UpdateDatabaseSchema(const int version, QSqlDatabase &db, QString &error);
+  void SetOpenState(const DatabaseHealth::State state, const QString &error = QString());
+  QSqlDatabase OpenFailed(QSqlDatabase &db, const DatabaseHealth::State state, const QString &error, const bool first_connect);
   void UrlEncodeFilenameColumn(const QString &table, QSqlDatabase &db);
   QStringList SongsTables(QSqlDatabase &db, const int schema_version);
   static int SchemaVersion(sqlite3 *connection);
@@ -117,6 +129,9 @@ class Database : public QObject {
 
   QString directory_;
   QMutex connect_mutex_;
+  mutable QMutex open_state_mutex_;
+  DatabaseHealth::State open_state_;
+  QString open_error_;
   QRecursiveMutex mutex_;
 
   // This ID makes the QSqlDatabase name unique to the object as well as the thread

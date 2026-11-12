@@ -45,6 +45,7 @@
 #include "core/settings.h"
 #include "core/standardpaths.h"
 #include "core/database.h"
+#include "core/databasehealth.h"
 #include "core/song.h"
 #include "constants/jellyfinsettings.h"
 #include "constants/plexsettings.h"
@@ -234,18 +235,25 @@ QSet<QString> TableColumns(QSqlDatabase &db, const QString &schema, const QStrin
 
 }
 
-int CountRows(QSqlDatabase &db, const QString &table) {
+int CountRows(QSqlDatabase &db, const QString &table, bool *ok = nullptr) {
 
   QSqlQuery q(db);
   if (q.exec(u"SELECT COUNT(*) FROM "_s + table) && q.next()) {
+    if (ok) *ok = true;
     return q.value(0).toInt();
   }
+  if (ok) *ok = false;
   return 0;
 
 }
 
 QString QueryError(const QSqlQuery &q) {
   return q.lastError().text() + u" ("_s + q.lastQuery().left(200) + u')';
+}
+
+// The tables the collection needs, a Strawberry database without them is not imported.
+QStringList RequiredStrawberryTables() {
+  return QStringList() << u"songs"_s << u"directories"_s << u"subdirectories"_s << u"playlists"_s << u"playlist_items"_s;
 }
 
 // Song columns from the Clementine songs table, as they map to Akousma's songs table.
@@ -1522,14 +1530,12 @@ bool PlayerImporter::ImportStrawberryDatabase(const Installation &installation, 
     db.setConnectOptions(u"QSQLITE_OPEN_READONLY;QSQLITE_BUSY_TIMEOUT=30000"_s);
     db.setDatabaseName(installation.database_file);
     if (db.open()) {
+      // Only a database Akousma can open and update replaces the collection: one that is damaged, is not a database, or has a schema version Akousma can't update
+      // would make every start of Akousma fail, and a database without tables would replace the collection with an empty one.
+      const QString problem = DatabaseHealth::ImportProblem(DatabaseHealth::ProbeConnection(db), RequiredStrawberryTables());
       QSqlQuery q(db);
-      int schema_version = 0;
-      if (q.exec(u"SELECT version FROM schema_version"_s) && q.next()) {
-        schema_version = q.value(0).toInt();
-      }
-      q.finish();
-      if (schema_version > Database::kSchemaVersion) {
-        result->errors << tr("The Strawberry collection database has schema version %1, which is newer than the version %2 this Akousma supports. Update Akousma and import again.").arg(schema_version).arg(Database::kSchemaVersion);
+      if (!problem.isEmpty()) {
+        result->errors << tr("The Strawberry collection database %1 can't be imported: %2").arg(QDir::toNativeSeparators(installation.database_file), problem);
         success = false;
       }
       // VACUUM INTO makes a consistent copy, also when Strawberry is running and has changes in its write ahead log.
@@ -1556,9 +1562,23 @@ bool PlayerImporter::ImportStrawberryDatabase(const Installation &installation, 
     QSqlDatabase db = QSqlDatabase::addDatabase(u"QSQLITE"_s, QLatin1String(kConnectionName));
     db.setDatabaseName(new_file);
     if (db.open()) {
-      songs = CountRows(db, u"songs"_s);
-      playlists = CountRows(db, u"playlists"_s);
-      if (covers) {
+      // Check the copy as well, it is what replaces the collection: also when it was made by copying the file, and with an integrity check of all pages.
+      const QString problem = DatabaseHealth::ImportProblem(DatabaseHealth::ProbeConnection(db, true), RequiredStrawberryTables());
+      bool songs_ok = false;
+      bool playlists_ok = false;
+      if (problem.isEmpty()) {
+        songs = CountRows(db, u"songs"_s, &songs_ok);
+        playlists = CountRows(db, u"playlists"_s, &playlists_ok);
+      }
+      if (!problem.isEmpty()) {
+        result->errors << tr("The copy of the Strawberry collection database can't be used: %1").arg(problem);
+        success = false;
+      }
+      else if (!songs_ok || !playlists_ok) {
+        result->errors << tr("Could not count the songs and playlists in the copy of the Strawberry collection database.");
+        success = false;
+      }
+      else if (covers) {
         db.transaction();
         covers_rewritten = RewriteCoverUrls(db, installation.data_dir, AkousmaDataDir(), result);
         if (installation.data_dir.toLower() != installation.data_dir) {
@@ -1700,7 +1720,14 @@ bool PlayerImporter::ImportClementineDatabase(const Installation &installation, 
   // Create an empty Akousma database with the current schema.
   {
     Database database(nullptr, nullptr, new_file);
+    const DatabaseHealth::State state = database.open_state();
+    const QString error = database.open_error();
     database.Close();
+    if (state != DatabaseHealth::State::Ok) {
+      result->errors << tr("Could not create the collection database: %1").arg(error.isEmpty() ? DatabaseHealth::StateDescription(state, -1) : error);
+      QFile::remove(new_file);
+      return false;
+    }
   }
 
   QStringList errors;

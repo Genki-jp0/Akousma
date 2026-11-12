@@ -47,16 +47,17 @@
 #include "standardpaths.h"
 #include "taskmanager.h"
 #include "database.h"
+#include "databasehealth.h"
 #include "sqlquery.h"
 #include "scopedtransaction.h"
 
 using namespace Qt::Literals::StringLiterals;
 
 const int Database::kSchemaVersion = 30;
+const int Database::kMinSupportedSchemaVersion = 10;
 
 namespace {
 constexpr char kDatabaseFilename[] = "akousma.db";
-constexpr int kMinSupportedSchemaVersion = 10;
 constexpr char kMagicAllSongsTables[] = "%allsongstables";
 // How long to wait for another connection to finish writing, before a query fails because the database is locked.
 constexpr int kBusyTimeoutMsec = 30000;
@@ -75,6 +76,10 @@ std::filesystem::path FilesystemPath(const QString &filename) {
 #endif
 }
 
+QString DefaultDirectory() {
+  return QDir::toNativeSeparators(StandardPaths::WritableLocation(StandardPaths::StandardLocation::AppLocalDataLocation)).replace(u"Akousma"_s, u"akousma"_s);
+}
+
 }  // namespace
 
 int Database::sNextConnectionId = 1;
@@ -83,6 +88,7 @@ QMutex Database::sNextConnectionIdMutex;
 Database::Database(SharedPtr<TaskManager> task_manager, QObject *parent, const QString &database_name)
     : QObject(parent),
       task_manager_(task_manager),
+      open_state_(DatabaseHealth::State::Missing),
       injected_database_name_(database_name),
       query_hash_(0),
       startup_schema_version_(-1),
@@ -97,10 +103,58 @@ Database::Database(SharedPtr<TaskManager> task_manager, QObject *parent, const Q
     connection_id_ = sNextConnectionId++;
   }
 
-  directory_ = QDir::toNativeSeparators(StandardPaths::WritableLocation(StandardPaths::StandardLocation::AppLocalDataLocation)).replace(u"Akousma"_s, u"akousma"_s);
+  directory_ = DefaultDirectory();
 
   QMutexLocker l(&mutex_);
   Connect();
+
+}
+
+QString Database::DefaultFilename() {
+
+  // The same name Connect() opens.
+  return DefaultDirectory() + u'/' + QLatin1String(kDatabaseFilename);
+
+}
+
+DatabaseHealth::State Database::open_state() const {
+
+  QMutexLocker l(&open_state_mutex_);
+  return open_state_;
+
+}
+
+QString Database::open_error() const {
+
+  QMutexLocker l(&open_state_mutex_);
+  return open_error_;
+
+}
+
+void Database::SetOpenState(const DatabaseHealth::State state, const QString &error) {
+
+  QMutexLocker l(&open_state_mutex_);
+  open_state_ = state;
+  open_error_ = error;
+
+}
+
+QSqlDatabase Database::OpenFailed(QSqlDatabase &db, const DatabaseHealth::State state, const QString &error, const bool first_connect) {
+
+  // The start-up check shows the problem and offers to move the database aside, see DatabaseStartupCheck.
+  const QString description = DatabaseHealth::StateDescription(state, SchemaVersion(&db));
+  qLog(Error) << "The collection database" << db.databaseName() << "can't be used:" << description << error;
+  // Only what the first connection finds decides about the database. A later connection, from another thread, can fail for a passing reason like a lock.
+  if (first_connect) {
+    SetOpenState(state, error);
+    SetStartupError(db, error.isEmpty() ? description : description + u"\n\n"_s + error);
+  }
+  Q_EMIT Error(tr("The collection database %1 can't be used: %2").arg(QDir::toNativeSeparators(db.databaseName()), description));
+  if (!error.isEmpty()) {
+    Q_EMIT Error(u"Database: "_s + error);
+  }
+  db.close();
+  return db;
 
 }
 
@@ -153,6 +207,15 @@ QSqlDatabase Database::Connect() {
   if (db.isOpen()) {
     return db;
   }
+
+  // Don't keep using a database found unusable, the error was reported when it was found.
+  // A file that could not be opened at all is tried again, the problem may be gone.
+  const bool first_connect = startup_schema_version_ == -1;
+  const DatabaseHealth::State state = open_state();
+  if (!DatabaseHealth::IsUsable(state) && state != DatabaseHealth::State::CannotOpen) {
+    return db;
+  }
+
   db.setConnectOptions(QStringLiteral("QSQLITE_BUSY_TIMEOUT=%1").arg(kBusyTimeoutMsec));
   // qLog(Debug) << "Opened database with connection id" << connection_id;
 
@@ -164,36 +227,36 @@ QSqlDatabase Database::Connect() {
   }
 
   if (!db.open()) {
+    if (first_connect) {
+      SetOpenState(DatabaseHealth::State::CannotOpen, db.lastError().text());
+    }
     Q_EMIT Error(u"Database: "_s + db.lastError().text());
     SetStartupError(db, db.lastError().text());
     return db;
   }
 
   // A file which isn't a database, or is corrupt, can't be read, so it must not be set up as a new database.
-  int table_count = 0;
-  {
-    SqlQuery q(db);
-    if (!q.prepare(u"SELECT COUNT(*) FROM sqlite_master WHERE type='table'"_s) || !q.Exec() || !q.next()) {
-      SetStartupError(db, q.lastError().text());
-      return db;
-    }
-    table_count = q.value(0).toInt();
-  }
-
-  if (table_count == 0) {
+  DatabaseHealth::Probe probe = DatabaseHealth::ProbeConnection(db);
+  if (probe.state == DatabaseHealth::State::Empty) {
     // Set up initial schema
     qLog(Info) << "Creating initial database schema";
     QString error;
     if (!UpdateDatabaseSchema(0, db, error)) {
-      SetStartupError(db, tr("Could not create the database: %1").arg(error));
-      return db;
+      return OpenFailed(db, DatabaseHealth::State::UpgradeFailed, tr("Could not create the database: %1").arg(error), first_connect);
     }
+    probe = DatabaseHealth::ProbeConnection(db);
   }
 
-  const int schema_version = SchemaVersion(&db);
-  if (schema_version < kMinSupportedSchemaVersion) {
-    SetStartupError(db, tr("The database has schema version %1, which is too old to be updated, the oldest supported version is %2.").arg(schema_version).arg(kMinSupportedSchemaVersion));
-    return db;
+  switch (probe.state) {
+    case DatabaseHealth::State::Ok:
+    case DatabaseHealth::State::NeedsUpgrade:
+    case DatabaseHealth::State::TooNew:
+      break;
+    case DatabaseHealth::State::Empty:
+      // The initial schema did not create any tables.
+      return OpenFailed(db, DatabaseHealth::State::UpgradeFailed, probe.error, first_connect);
+    default:
+      return OpenFailed(db, probe.state, probe.error, first_connect);
   }
 
   // Attach external databases
@@ -214,12 +277,12 @@ QSqlDatabase Database::Connect() {
     }
   }
 
-  if (startup_schema_version_ == -1) {
+  if (first_connect) {
     QString error;
     if (!UpdateMainSchema(&db, error)) {
-      SetStartupError(db, error);
-      return db;
+      return OpenFailed(db, DatabaseHealth::State::UpgradeFailed, error, first_connect);
     }
+    SetOpenState(probe.state == DatabaseHealth::State::TooNew ? DatabaseHealth::State::TooNew : DatabaseHealth::State::Ok);
   }
 
   // We might have to initialize the schema in some attached databases now, if they were deleted and don't match up with the main schema version.
@@ -306,7 +369,7 @@ bool Database::UpdateMainSchema(QSqlDatabase *db, QString &error) {
     return true;
   }
   if (schema_version < kSchemaVersion) {
-    // Update the schema
+    // Update the schema. Each update runs in its own transaction, so a failed one leaves the database at the previous version.
     for (int v = schema_version + 1; v <= kSchemaVersion; ++v) {
       QString update_error;
       if (!UpdateDatabaseSchema(v, *db, update_error)) {

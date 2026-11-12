@@ -110,6 +110,7 @@
 #include "core/database.h"
 #include "core/metatypes.h"
 #include "core/mainwindow.h"
+#include "core/databasestartupcheck.h"
 
 #ifdef Q_OS_MACOS
 #  include "systemtrayicon/macsystemtrayicon.h"
@@ -445,6 +446,11 @@ int main(int argc, char *argv[]) {
     // Imported settings like the style and language are read before this, start again to use them.
     QProcess::startDetached(QCoreApplication::applicationFilePath(), QStringList() << u"--restarted"_s);
     return 0;
+  }
+
+  // Open the collection database before anything uses it. One that can't be used is explained, with the choice to quit, restore the backup or start with a new collection.
+  if (!DatabaseStartupCheck::Run()) {
+    return 1;
   }
 
   Application app;

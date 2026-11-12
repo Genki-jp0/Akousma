@@ -523,6 +523,8 @@ set(SOURCES
   src/core/player.cpp
   src/core/commandlineoptions.cpp
   src/core/database.cpp
+  src/core/databasehealth.cpp
+  src/core/databasestartupcheck.cpp
   src/core/memorydatabase.cpp
   src/core/sqlquery.cpp
   src/core/sqlrow.cpp
