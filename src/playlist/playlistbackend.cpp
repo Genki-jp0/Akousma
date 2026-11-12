@@ -23,6 +23,7 @@
 
 #include <utility>
 #include <memory>
+#include <optional>
 
 #include <QObject>
 #include <QApplication>
@@ -37,7 +38,9 @@
 #include <QStringList>
 #include <QUrl>
 #include <QUuid>
+#include <QVariant>
 #include <QSqlDatabase>
+#include <QSqlError>
 
 #include "includes/shared_ptr.h"
 #include "core/database.h"
@@ -59,8 +62,49 @@ using namespace Qt::Literals::StringLiterals;
 using std::make_shared;
 
 namespace {
+
 constexpr int kSongTableJoins = 2;
+
+// The type column of a playlist item holds a Song::Source.
+// A value which is not one, for example written by a newer version or a damaged database, must not be cast to Song::Source and used as one.
+bool IsKnownSource(const int value) {
+
+  switch (static_cast<Song::Source>(value)) {
+    case Song::Source::Unknown:
+    case Song::Source::LocalFile:
+    case Song::Source::Collection:
+    case Song::Source::CDDA:
+    case Song::Source::Device:
+    case Song::Source::Stream:
+    case Song::Source::Tidal:
+    case Song::Source::Subsonic:
+    case Song::Source::Qobuz:
+    case Song::Source::SomaFM:
+    case Song::Source::RadioParadise:
+    case Song::Source::Spotify:
+    case Song::Source::RadioBrowser:
+    case Song::Source::Plex:
+    case Song::Source::Jellyfin:
+      return true;
+  }
+
+  return false;
+
 }
+
+std::optional<Song::Source> SourceFromTypeValue(const QVariant &value) {
+
+  if (value.isNull()) return std::nullopt;
+
+  bool ok = false;
+  const int source = value.toInt(&ok);
+  if (!ok || !IsKnownSource(source)) return std::nullopt;
+
+  return static_cast<Song::Source>(source);
+
+}
+
+}  // namespace
 
 PlaylistBackend::PlaylistBackend(const SharedPtr<Database> database,
                                  const SharedPtr<TagReaderClient> tagreader_client,
@@ -152,6 +196,11 @@ PlaylistBackend::PlaylistList PlaylistBackend::GetPlaylists(const GetPlaylistsFl
     ret << p;
   }
 
+  // A step which fails ends the loop like the last row does.
+  if (q.lastError().isValid()) {
+    database_->ReportErrors(q);
+  }
+
   return ret;
 
 }
@@ -170,7 +219,12 @@ PlaylistBackend::Playlist PlaylistBackend::GetPlaylist(const int id) {
     return Playlist();
   }
 
-  if (!q.next()) return Playlist();
+  if (!q.next()) {
+    if (q.lastError().isValid()) {
+      database_->ReportErrors(q);
+    }
+    return Playlist();
+  }
 
   Playlist p;
   p.id = q.value(0).toInt();
@@ -197,9 +251,9 @@ QString PlaylistBackend::PlaylistItemsQuery() {
 
 }
 
-PlaylistItemPtrList PlaylistBackend::GetPlaylistItems(const int playlist_id) {
+std::optional<PlaylistItemPtrList> PlaylistBackend::GetPlaylistItems(const int playlist_id) {
 
-  PlaylistItemPtrList playlist_items;
+  std::optional<PlaylistItemPtrList> playlist_items;
 
   {
 
@@ -212,8 +266,17 @@ PlaylistItemPtrList PlaylistBackend::GetPlaylistItems(const int playlist_id) {
     q.BindValue(u":playlist"_s, playlist_id);
     // Don't return early on errors, the connection must be closed below.
     if (q.Exec()) {
+      PlaylistItemPtrList items;
       while (q.next()) {
-        playlist_items << NewPlaylistItemFromQuery(SqlRow(q));
+        PlaylistItemPtr item = NewPlaylistItemFromQuery(SqlRow(q));
+        if (item) items << item;
+      }
+      // A step which fails ends the loop like the last row does, the items read until then are not the whole playlist.
+      if (q.lastError().isValid()) {
+        database_->ReportErrors(q);
+      }
+      else {
+        playlist_items = items;
       }
     }
     else {
@@ -222,7 +285,9 @@ PlaylistItemPtrList PlaylistBackend::GetPlaylistItems(const int playlist_id) {
 
   }
 
-  RestoreCueData(playlist_items);
+  if (playlist_items) {
+    RestoreCueData(*playlist_items);
+  }
 
   if (QThread::currentThread() != thread() && QThread::currentThread() != qApp->thread()) {
     Close();
@@ -232,39 +297,14 @@ PlaylistItemPtrList PlaylistBackend::GetPlaylistItems(const int playlist_id) {
 
 }
 
-SongList PlaylistBackend::GetPlaylistSongs(const int playlist_id) {
+std::optional<SongList> PlaylistBackend::GetPlaylistSongs(const int playlist_id) {
 
-  PlaylistItemPtrList playlist_items;
-
-  {
-    QMutexLocker l(database_->Mutex());
-    QSqlDatabase db(database_->Connect());
-    SqlQuery q(db);
-    // Forward iterations only may be faster
-    q.setForwardOnly(true);
-    q.prepare(PlaylistItemsQuery());
-    q.BindValue(u":playlist"_s, playlist_id);
-    // Don't return early on errors, the connection must be closed below.
-    if (q.Exec()) {
-      while (q.next()) {
-        playlist_items << NewPlaylistItemFromQuery(SqlRow(q));
-      }
-    }
-    else {
-      database_->ReportErrors(q);
-    }
-
-  }
-
-  RestoreCueData(playlist_items);
-
-  if (QThread::currentThread() != thread() && QThread::currentThread() != qApp->thread()) {
-    Close();
-  }
+  const std::optional<PlaylistItemPtrList> playlist_items = GetPlaylistItems(playlist_id);
+  if (!playlist_items) return std::nullopt;
 
   SongList songs;
-  songs.reserve(playlist_items.count());
-  for (const PlaylistItemPtr &item : std::as_const(playlist_items)) {
+  songs.reserve(playlist_items->count());
+  for (const PlaylistItemPtr &item : *playlist_items) {
     songs << item->EffectiveMetadata();
   }
 
@@ -276,10 +316,39 @@ PlaylistItemPtr PlaylistBackend::NewPlaylistItemFromQuery(const SqlRow &row) {
 
   // The song tables get joined first
   const int playlist_row = static_cast<int>(Song::kRowIdColumns.count()) * kSongTableJoins;
-  const Song::Source source = static_cast<Song::Source>(row.value(playlist_row).toInt());
+  const QVariant type = row.value(playlist_row);
   const QUuid uuid = QUuid::fromString(row.value(playlist_row + 1).toString());
-  PlaylistItemPtr item = PlaylistItem::NewFromSource(source, uuid);
-  item->InitFromQuery(row);
+
+  const std::optional<Song::Source> source = SourceFromTypeValue(type);
+  if (!source) {
+    // Keep what was saved with the item rather than guessing its kind from the type.
+    qLog(Warning) << "Playlist item" << uuid << "has an unknown type" << type << "loading it from its saved metadata";
+    PlaylistItemPtr item = NewFileItemFromSavedMetadata(row, uuid);
+    if (!item) {
+      qLog(Warning) << "Playlist item" << uuid << "has no saved URL, skipping it";
+      return nullptr;
+    }
+    return item;
+  }
+
+  PlaylistItemPtr item = PlaylistItem::NewFromSource(*source, uuid);
+  const bool success = item->InitFromQuery(row);
+
+  if (*source == Song::Source::Collection) {
+    // Collection items are joined with the songs table by ROWID, no song with that ROWID means the song was deleted from the collection.
+    // The item is then restored from the metadata saved with it as a file, instead of as a collection item without a song.
+    if (row.value(0).isNull() || !success || item->OriginalMetadata().url().isEmpty()) {
+      item = NewFileItemFromSavedMetadata(row, uuid);
+      if (!item) {
+        qLog(Warning) << "The collection song of playlist item" << uuid << "no longer exists, and the item has no saved URL, skipping it";
+        return nullptr;
+      }
+    }
+  }
+  else if (!success) {
+    qLog(Warning) << "Could not load playlist item" << uuid << "skipping it";
+    return nullptr;
+  }
 
   return item;
 
@@ -293,6 +362,26 @@ void PlaylistBackend::RestoreCueData(PlaylistItemPtrList &playlist_items) {
   for (PlaylistItemPtr &item : playlist_items) {
     item = RestoreCueData(item, state);
   }
+
+}
+
+PlaylistItemPtr PlaylistBackend::NewFileItemFromSavedMetadata(const SqlRow &row, const QUuid &uuid) {
+
+  // The playlist_items columns follow the songs table columns.
+  Song song;
+  song.InitFromQuery(row, false, static_cast<int>(Song::kRowIdColumns.count()));
+  if (song.url().isEmpty()) return nullptr;
+
+  // The ROWID read is the playlist row's own, and the song is no longer in the collection.
+  const Song::Source source = song.url().isLocalFile() ? Song::Source::LocalFile : Song::Source::Unknown;
+  song.set_id(-1);
+  song.set_directory_id(-1);
+  song.set_source(source);
+
+  PlaylistItemPtr item = make_shared<SongPlaylistItem>(source, uuid);
+  item->SetOriginalMetadata(song);
+
+  return item;
 
 }
 
@@ -425,6 +514,8 @@ void PlaylistBackend::SavePlaylist(const int playlist_id, const PlaylistItemSave
     }
   }
 
+  if (!DetachMissingCollectionSongs(db, playlist_id)) return;
+
   // Update the last played track number
   {
     SqlQuery q(db);
@@ -481,7 +572,32 @@ void PlaylistBackend::SavePlaylistItems(const int playlist_id, const PlaylistIte
     }
   }
 
+  if (!DetachMissingCollectionSongs(db, playlist_id)) return;
+
   transaction.Commit();
+
+}
+
+bool PlaylistBackend::DetachMissingCollectionSongs(const QSqlDatabase &db, const int playlist_id) {
+
+  // Collection items are saved with the ROWID of their song, which SQLite gives to the next song added once the song is deleted.
+  // An item whose song no longer exists, or whose ROWID now belongs to a song with another URL, is changed to a file item with the metadata saved with it.
+  // Otherwise it would load as an empty item, or as the other song.
+  SqlQuery q(db);
+  q.prepare(u"UPDATE playlist_items SET type = :file_type, source = :file_source, collection_id = NULL "
+             "WHERE playlist = :playlist AND type = :collection_type AND IFNULL(url, '') != '' "
+             "AND NOT EXISTS (SELECT 1 FROM songs WHERE songs.ROWID = playlist_items.collection_id AND songs.source = :collection_source AND songs.url = playlist_items.url)"_s);
+  q.BindValue(u":file_type"_s, static_cast<int>(Song::Source::LocalFile));
+  q.BindValue(u":file_source"_s, static_cast<int>(Song::Source::LocalFile));
+  q.BindValue(u":playlist"_s, playlist_id);
+  q.BindValue(u":collection_type"_s, static_cast<int>(Song::Source::Collection));
+  q.BindValue(u":collection_source"_s, static_cast<int>(Song::Source::Collection));
+  if (!q.Exec()) {
+    database_->ReportErrors(q);
+    return false;
+  }
+
+  return true;
 
 }
 

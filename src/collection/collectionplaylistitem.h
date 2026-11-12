@@ -48,7 +48,8 @@ class CollectionPlaylistItem : public PlaylistItem {
 
  protected:
   QVariant DatabaseValue(DatabaseColumn database_column) const override;
-  Song DatabaseSongMetadata() const override { return Song(source_); }
+  // The metadata is saved with the item, so the item can be restored as a file when its song is deleted from the collection.
+  Song DatabaseSongMetadata() const override { return song_; }
 
  protected:
   Song song_;

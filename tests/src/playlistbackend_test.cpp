@@ -20,6 +20,8 @@
 #include "config.h"
 
 #include <atomic>
+#include <memory>
+#include <optional>
 #include <thread>
 
 #include "gtest_include.h"
@@ -31,6 +33,11 @@
 #include <QTemporaryDir>
 #include <QThread>
 #include <QUrl>
+#include <QUuid>
+#include <QVariant>
+#include <QSignalSpy>
+#include <QSqlDatabase>
+#include <QSqlQuery>
 
 #ifndef Q_OS_WIN32
 #  include <fcntl.h>
@@ -40,10 +47,12 @@
 
 #include "includes/shared_ptr.h"
 #include "core/database.h"
+#include "core/memorydatabase.h"
 #include "core/song.h"
 #include "core/taskmanager.h"
 #include "collection/collectionbackend.h"
 #include "collection/collectionmanager.h"
+#include "collection/collectionplaylistitem.h"
 #include "playlist/playlistbackend.h"
 #include "playlist/playlistitem.h"
 #include "playlist/songplaylistitem.h"
@@ -51,6 +60,8 @@
 
 using std::make_shared;
 using namespace Qt::Literals::StringLiterals;
+
+// clazy:excludeall=non-pod-global-static,returning-void-expression
 
 namespace {
 
@@ -126,13 +137,15 @@ TEST_F(PlaylistBackendTest, RestoresCueData) {
   const int playlist_id = SaveCueSongPlaylist(cue_path, audio_path);
   ASSERT_NE(-1, playlist_id);
 
-  const PlaylistItemPtrList items = playlist_backend_->GetPlaylistItems(playlist_id);
-  ASSERT_EQ(1, items.count());
-  EXPECT_EQ(u"CUE title"_s, items.first()->EffectiveMetadata().title());
+  const std::optional<PlaylistItemPtrList> items = playlist_backend_->GetPlaylistItems(playlist_id);
+  ASSERT_TRUE(items.has_value());
+  ASSERT_EQ(1, items->count());
+  EXPECT_EQ(u"CUE title"_s, items->first()->EffectiveMetadata().title());
 
-  const SongList songs = playlist_backend_->GetPlaylistSongs(playlist_id);
-  ASSERT_EQ(1, songs.count());
-  EXPECT_EQ(u"CUE title"_s, songs.first().title());
+  const std::optional<SongList> songs = playlist_backend_->GetPlaylistSongs(playlist_id);
+  ASSERT_TRUE(songs.has_value());
+  ASSERT_EQ(1, songs->count());
+  EXPECT_EQ(u"CUE title"_s, songs->first().title());
 
 }
 
@@ -170,7 +183,7 @@ TEST_F(PlaylistBackendTest, CueDataIsRestoredWithoutDatabaseMutex) {
     close(fd);
   });
 
-  const PlaylistItemPtrList items = playlist_backend_->GetPlaylistItems(playlist_id);
+  const std::optional<PlaylistItemPtrList> items = playlist_backend_->GetPlaylistItems(playlist_id);
 
   // When the playlist backend didn't open the CUE sheet, the writer waits for a reader, so it's opened for reading here, and the test fails instead of hanging.
   items_returned = true;
@@ -179,11 +192,245 @@ TEST_F(PlaylistBackendTest, CueDataIsRestoredWithoutDatabaseMutex) {
   if (fd >= 0) close(fd);
 
   EXPECT_TRUE(mutex_locked);
-  ASSERT_EQ(1, items.count());
-  EXPECT_EQ(u"CUE title"_s, items.first()->EffectiveMetadata().title());
+  ASSERT_TRUE(items.has_value());
+  ASSERT_EQ(1, items->count());
+  EXPECT_EQ(u"CUE title"_s, items->first()->EffectiveMetadata().title());
 
 }
 
 #endif  // Q_OS_WIN32
+
+// Collection items of deleted songs, and reads which fail.
+class PlaylistBackendItemsTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    database_ = make_shared<MemoryDatabase>(nullptr);
+    collection_backend_ = make_shared<CollectionBackend>();
+    collection_backend_->Init(database_, nullptr, Song::Source::Collection, QLatin1String(CollectionManager::kSongsTable), QLatin1String(CollectionManager::kDirsTable), QLatin1String(CollectionManager::kSubdirsTable));
+    playlist_backend_ = make_shared<PlaylistBackend>(database_, nullptr, nullptr);
+
+    // The directory gets ID 1.
+    collection_backend_->AddDirectory(u"/music"_s);
+
+    playlist_id_ = playlist_backend_->CreatePlaylist(u"Playlist"_s, QString());
+  }
+
+  // Adds a song to the collection, and returns it with its ID.
+  Song AddCollectionSong(const QString &title, const QString &filename) {
+    Song song(Song::Source::Collection);
+    song.set_directory_id(1);
+    song.set_title(title);
+    song.set_artist(u"Artist"_s);
+    song.set_album(u"Album"_s);
+    song.set_url(QUrl::fromLocalFile(u"/music/"_s + filename));
+    song.set_mtime(1);
+    song.set_ctime(1);
+    song.set_filesize(1);
+
+    QSignalSpy added_spy(&*collection_backend_, &CollectionBackend::SongsAdded);
+    collection_backend_->AddOrUpdateSongs(SongList() << song);
+    if (added_spy.count() != 1) return Song();
+    const SongList added_songs = added_spy[0][0].value<SongList>();
+    if (added_songs.count() != 1) return Song();
+
+    // As stored in the collection.
+    return collection_backend_->GetSongById(added_songs.first().id());
+  }
+
+  void SaveItems(const PlaylistItemPtrList &items) {
+    PlaylistItemSaveDataList items_save_data;
+    for (const PlaylistItemPtr &item : items) {
+      items_save_data << item->CreateSaveData();
+    }
+    playlist_backend_->SavePlaylist(playlist_id_, items_save_data, -1, nullptr);
+  }
+
+  // Runs a statement on the database directly, as an older version or another program would.
+  bool Exec(const QString &statement, const QVariantList &values = QVariantList()) {
+    QSqlDatabase db(database_->Connect());
+    QSqlQuery q(db);
+    if (!q.prepare(statement)) return false;
+    for (const QVariant &value : values) {
+      q.addBindValue(value);
+    }
+    return q.exec();
+  }
+
+  bool DeleteSongRow(const int id) {
+    return Exec(QStringLiteral("DELETE FROM %1 WHERE ROWID = ?").arg(QLatin1String(CollectionManager::kSongsTable)), QVariantList() << id);
+  }
+
+  PlaylistItemPtrList LoadItems() {
+    const std::optional<PlaylistItemPtrList> items = playlist_backend_->GetPlaylistItems(playlist_id_);
+    EXPECT_TRUE(items.has_value());
+    return items.value_or(PlaylistItemPtrList());
+  }
+
+  SharedPtr<Database> database_;
+  SharedPtr<CollectionBackend> collection_backend_;
+  SharedPtr<PlaylistBackend> playlist_backend_;
+  int playlist_id_ = -1;
+};
+
+TEST_F(PlaylistBackendItemsTest, CollectionItemIsLoadedFromTheCollection) {
+
+  ASSERT_NE(-1, playlist_id_);
+  const Song song = AddCollectionSong(u"Song"_s, u"song.flac"_s);
+  ASSERT_TRUE(song.is_valid());
+
+  SaveItems(PlaylistItemPtrList() << make_shared<CollectionPlaylistItem>(song));
+
+  const PlaylistItemPtrList items = LoadItems();
+  ASSERT_EQ(1, items.count());
+  EXPECT_EQ(Song::Source::Collection, items[0]->source());
+  EXPECT_TRUE(items[0]->IsLocalCollectionItem());
+  EXPECT_EQ(song.id(), items[0]->OriginalMetadata().id());
+  EXPECT_EQ(song.url(), items[0]->OriginalMetadata().url());
+  EXPECT_EQ(u"Song"_s, items[0]->OriginalMetadata().title());
+
+}
+
+// Regression test: a collection item whose song was deleted loaded as an item without URL or title, or was dropped.
+TEST_F(PlaylistBackendItemsTest, CollectionItemOfDeletedSongIsLoadedAsFile) {
+
+  ASSERT_NE(-1, playlist_id_);
+  const Song song = AddCollectionSong(u"Deleted"_s, u"deleted.flac"_s);
+  ASSERT_TRUE(song.is_valid());
+
+  SaveItems(PlaylistItemPtrList() << make_shared<CollectionPlaylistItem>(song));
+  ASSERT_TRUE(DeleteSongRow(song.id()));
+
+  const PlaylistItemPtrList items = LoadItems();
+  ASSERT_EQ(1, items.count());
+  EXPECT_EQ(Song::Source::LocalFile, items[0]->source());
+  EXPECT_FALSE(items[0]->IsLocalCollectionItem());
+  const Song metadata = items[0]->OriginalMetadata();
+  EXPECT_EQ(Song::Source::LocalFile, metadata.source());
+  EXPECT_EQ(-1, metadata.id());
+  EXPECT_EQ(song.url(), metadata.url());
+  EXPECT_EQ(u"Deleted"_s, metadata.title());
+  EXPECT_EQ(u"Artist"_s, metadata.artist());
+
+  const std::optional<SongList> songs = playlist_backend_->GetPlaylistSongs(playlist_id_);
+  ASSERT_TRUE(songs.has_value());
+  ASSERT_EQ(1, songs->count());
+  EXPECT_EQ(song.url(), songs->first().url());
+
+}
+
+// Regression test: deleting a collection song left the playlist rows pointing at its ROWID, which SQLite gives to the next song added.
+TEST_F(PlaylistBackendItemsTest, DeleteSongsKeepsPlaylistItemsAsFiles) {
+
+  ASSERT_NE(-1, playlist_id_);
+  const Song song = AddCollectionSong(u"Removed"_s, u"removed.flac"_s);
+  ASSERT_TRUE(song.is_valid());
+
+  // A row as saved by earlier versions, without the song's metadata.
+  ASSERT_TRUE(Exec(u"INSERT INTO playlist_items (playlist, type, uuid, collection_id) VALUES (?, ?, ?, ?)"_s, QVariantList() << playlist_id_ << static_cast<int>(Song::Source::Collection) << QUuid::createUuid().toString(QUuid::WithoutBraces) << song.id()));
+
+  collection_backend_->DeleteSongs(SongList() << song);
+
+  // The next song added gets the ROWID of the deleted song.
+  const Song other_song = AddCollectionSong(u"Other"_s, u"other.flac"_s);
+  ASSERT_TRUE(other_song.is_valid());
+  ASSERT_EQ(song.id(), other_song.id());
+
+  const PlaylistItemPtrList items = LoadItems();
+  ASSERT_EQ(1, items.count());
+  EXPECT_EQ(Song::Source::LocalFile, items[0]->source());
+  const Song metadata = items[0]->OriginalMetadata();
+  EXPECT_EQ(song.url(), metadata.url());
+  EXPECT_EQ(u"Removed"_s, metadata.title());
+  EXPECT_EQ(u"Album"_s, metadata.album());
+
+}
+
+// Regression test: an open playlist saved its item of a deleted song with the old ROWID, after the ROWID was given to another song the item loaded as that song.
+TEST_F(PlaylistBackendItemsTest, SaveKeepsItemOfReusedRowIdAsFile) {
+
+  ASSERT_NE(-1, playlist_id_);
+  const Song song = AddCollectionSong(u"Old"_s, u"old.flac"_s);
+  ASSERT_TRUE(song.is_valid());
+  const Song kept_song = AddCollectionSong(u"Kept"_s, u"kept.flac"_s);
+  ASSERT_TRUE(kept_song.is_valid());
+
+  const PlaylistItemPtr item = make_shared<CollectionPlaylistItem>(song);
+  const PlaylistItemPtr kept_item = make_shared<CollectionPlaylistItem>(kept_song);
+
+  // Deleted without changing the playlist rows, and the ROWID given to another song.
+  ASSERT_TRUE(DeleteSongRow(kept_song.id()));
+  ASSERT_TRUE(DeleteSongRow(song.id()));
+  const Song new_song = AddCollectionSong(u"New"_s, u"new.flac"_s);
+  ASSERT_TRUE(new_song.is_valid());
+  ASSERT_EQ(song.id(), new_song.id());
+  const Song readded_kept_song = AddCollectionSong(u"Kept"_s, u"kept.flac"_s);
+  ASSERT_TRUE(readded_kept_song.is_valid());
+  ASSERT_EQ(kept_song.id(), readded_kept_song.id());
+
+  // The playlist still has the items with the old ROWIDs, and is saved.
+  SaveItems(PlaylistItemPtrList() << item << kept_item);
+
+  const PlaylistItemPtrList items = LoadItems();
+  ASSERT_EQ(2, items.count());
+
+  EXPECT_EQ(Song::Source::LocalFile, items[0]->source());
+  EXPECT_EQ(song.url(), items[0]->OriginalMetadata().url());
+  EXPECT_EQ(u"Old"_s, items[0]->OriginalMetadata().title());
+
+  // The song with the same ROWID and URL is the same file, it stays a collection item.
+  EXPECT_EQ(Song::Source::Collection, items[1]->source());
+  EXPECT_EQ(kept_song.url(), items[1]->OriginalMetadata().url());
+
+}
+
+// Regression test: the type column was cast to Song::Source without a check.
+TEST_F(PlaylistBackendItemsTest, ItemWithUnknownTypeIsLoadedFromSavedMetadata) {
+
+  ASSERT_NE(-1, playlist_id_);
+
+  const QString insert = u"INSERT INTO playlist_items (playlist, type, uuid, title, url, source) VALUES (?, ?, ?, ?, ?, ?)"_s;
+  ASSERT_TRUE(Exec(insert, QVariantList() << playlist_id_ << 1000 << QUuid::createUuid().toString(QUuid::WithoutBraces) << u"Future"_s << QUrl::fromLocalFile(u"/music/future.flac"_s).toString(QUrl::FullyEncoded) << 1000));
+  ASSERT_TRUE(Exec(insert, QVariantList() << playlist_id_ << u"not a number"_s << QUuid::createUuid().toString(QUuid::WithoutBraces) << u"Text"_s << u"http://example.com/stream"_s << 5));
+  // Nothing to restore an item from.
+  ASSERT_TRUE(Exec(insert, QVariantList() << playlist_id_ << -1 << QUuid::createUuid().toString(QUuid::WithoutBraces) << u"No URL"_s << QString() << 1));
+
+  const PlaylistItemPtrList items = LoadItems();
+  ASSERT_EQ(2, items.count());
+
+  EXPECT_EQ(Song::Source::LocalFile, items[0]->source());
+  EXPECT_EQ(Song::Source::LocalFile, items[0]->OriginalMetadata().source());
+  EXPECT_EQ(u"Future"_s, items[0]->OriginalMetadata().title());
+
+  EXPECT_EQ(Song::Source::Unknown, items[1]->source());
+  EXPECT_EQ(Song::Source::Unknown, items[1]->OriginalMetadata().source());
+  EXPECT_EQ(QUrl(u"http://example.com/stream"_s), items[1]->OriginalMetadata().url());
+
+}
+
+// Regression test: a failed read returned an empty playlist, which was then saved over the saved items.
+TEST_F(PlaylistBackendItemsTest, FailedReadIsNotAnEmptyPlaylist) {
+
+  ASSERT_NE(-1, playlist_id_);
+
+  {
+    const std::optional<PlaylistItemPtrList> items = playlist_backend_->GetPlaylistItems(playlist_id_);
+    ASSERT_TRUE(items.has_value());
+    EXPECT_TRUE(items->isEmpty());
+  }
+
+  const Song song = AddCollectionSong(u"Song"_s, u"song.flac"_s);
+  ASSERT_TRUE(song.is_valid());
+  SaveItems(PlaylistItemPtrList() << make_shared<CollectionPlaylistItem>(song));
+
+  ASSERT_TRUE(Exec(u"ALTER TABLE playlist_items RENAME TO playlist_items_moved"_s));
+  EXPECT_FALSE(playlist_backend_->GetPlaylistItems(playlist_id_).has_value());
+  EXPECT_FALSE(playlist_backend_->GetPlaylistSongs(playlist_id_).has_value());
+
+  ASSERT_TRUE(Exec(u"ALTER TABLE playlist_items_moved RENAME TO playlist_items"_s));
+  const std::optional<PlaylistItemPtrList> items = playlist_backend_->GetPlaylistItems(playlist_id_);
+  ASSERT_TRUE(items.has_value());
+  EXPECT_EQ(1, items->count());
+
+}
 
 }  // namespace

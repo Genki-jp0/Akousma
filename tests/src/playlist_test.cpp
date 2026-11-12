@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <functional>
 #include <memory>
+#include <optional>
 
 #include "gtest_include.h"
 
@@ -65,6 +66,8 @@
 #include <QElapsedTimer>
 #include <QSemaphore>
 #include <QAtomicInt>
+#include <QSqlDatabase>
+#include <QSqlQuery>
 
 using ::testing::Return;
 
@@ -2090,13 +2093,17 @@ TEST_F(PlaylistTest, SavePendingSavesScheduledChanges) {
 
     // Adding the item only starts the save timer.
     playlist.InsertItems(PlaylistItemPtrList() << MakeStreamItem(u"Added"_s));
-    ASSERT_TRUE(playlist_backend->GetPlaylistItems(playlist_id).isEmpty());
+    const std::optional<PlaylistItemPtrList> saved_items = playlist_backend->GetPlaylistItems(playlist_id);
+    ASSERT_TRUE(saved_items.has_value());
+    ASSERT_TRUE(saved_items->isEmpty());
 
     // The save is queued to the playlist backend, process the events once, long before the save timer fires.
     playlist.SavePending();
     QCoreApplication::processEvents();
 
-    const PlaylistItemPtrList items = playlist_backend->GetPlaylistItems(playlist_id);
+    const std::optional<PlaylistItemPtrList> items_loaded = playlist_backend->GetPlaylistItems(playlist_id);
+    ASSERT_TRUE(items_loaded.has_value());
+    const PlaylistItemPtrList items = *items_loaded;
     ASSERT_EQ(1, items.count());
     EXPECT_EQ(u"Added"_s, items.first()->OriginalMetadata().title());
   }
@@ -2136,11 +2143,69 @@ TEST_F(PlaylistTest, SavePendingWhileRestoringKeepsRestoredItems) {
     playlist.SavePending();
     QCoreApplication::processEvents();
 
-    const PlaylistItemPtrList items = playlist_backend->GetPlaylistItems(playlist_id);
+    const std::optional<PlaylistItemPtrList> items_loaded = playlist_backend->GetPlaylistItems(playlist_id);
+    ASSERT_TRUE(items_loaded.has_value());
+    const PlaylistItemPtrList items = *items_loaded;
     ASSERT_EQ(3, items.count());
     EXPECT_EQ(u"Restored1"_s, items.at(0)->OriginalMetadata().title());
     EXPECT_EQ(u"Restored2"_s, items.at(1)->OriginalMetadata().title());
     EXPECT_EQ(u"Added"_s, items.at(2)->OriginalMetadata().title());
+  }
+
+  database->Close();
+
+}
+
+// Regression test: a failed read of the saved items restored an empty playlist, and the first change to it replaced the saved items.
+TEST_F(PlaylistTest, RestoreFailureKeepsSavedItems) {
+
+  QTemporaryDir temp_dir;
+  ASSERT_TRUE(temp_dir.isValid());
+
+  SharedPtr<Database> database = std::make_shared<Database>(nullptr, nullptr, temp_dir.filePath(u"strawberry.db"_s));
+  SharedPtr<PlaylistBackend> playlist_backend = std::make_shared<PlaylistBackend>(database, tagreader_client_, nullptr);
+
+  const int playlist_id = playlist_backend->CreatePlaylist(u"Unreadable"_s, QString());
+  ASSERT_NE(-1, playlist_id);
+  PlaylistItemSaveDataList items_save_data;
+  items_save_data << MakeStreamItem(u"Saved1"_s)->CreateSaveData() << MakeStreamItem(u"Saved2"_s)->CreateSaveData();
+  playlist_backend->SavePlaylist(playlist_id, items_save_data, -1, nullptr);
+
+  // Make reading the items fail.
+  {
+    QSqlDatabase db(database->Connect());
+    QSqlQuery q(db);
+    ASSERT_TRUE(q.exec(u"ALTER TABLE playlist_items RENAME TO playlist_items_moved"_s));
+  }
+
+  {
+    // The restore starts in the constructor.
+    Playlist playlist(nullptr, nullptr, playlist_backend, nullptr, tagreader_client_, playlist_id);
+    QSignalSpy error_spy(&playlist, &Playlist::Error);
+    WaitForRestoreFinished(&playlist);
+
+    EXPECT_FALSE(playlist.is_restoring());
+    EXPECT_TRUE(playlist.restore_failed());
+    EXPECT_EQ(0, playlist.rowCount(QModelIndex()));
+    EXPECT_EQ(1, error_spy.count());
+
+    // The items can be read again, but the playlist doesn't have them, so it must not be saved.
+    {
+      QSqlDatabase db(database->Connect());
+      QSqlQuery q(db);
+      ASSERT_TRUE(q.exec(u"ALTER TABLE playlist_items_moved RENAME TO playlist_items"_s));
+    }
+
+    playlist.InsertItems(PlaylistItemPtrList() << MakeStreamItem(u"Added"_s));
+    playlist.SavePending();
+    QCoreApplication::processEvents();
+
+    const std::optional<PlaylistItemPtrList> items_loaded = playlist_backend->GetPlaylistItems(playlist_id);
+    ASSERT_TRUE(items_loaded.has_value());
+    const PlaylistItemPtrList items = *items_loaded;
+    ASSERT_EQ(2, items.count());
+    EXPECT_EQ(u"Saved1"_s, items.at(0)->OriginalMetadata().title());
+    EXPECT_EQ(u"Saved2"_s, items.at(1)->OriginalMetadata().title());
   }
 
   database->Close();

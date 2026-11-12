@@ -29,6 +29,7 @@
 #include <unordered_map>
 #include <random>
 #include <chrono>
+#include <optional>
 
 #include <QObject>
 #include <QCoreApplication>
@@ -214,6 +215,7 @@ Playlist::Playlist(const SharedPtr<TaskManager> task_manager,
       undo_stack_(new QUndoStack(this)),
       special_type_(special_type),
       restoring_(false),
+      restore_failed_(false),
       cancel_restore_(false),
       scrobbled_(false),
       scrobble_point_(-1),
@@ -2159,6 +2161,9 @@ void Playlist::Save() {
   // The changes are kept pending, and saved when the playlist is restored, unless the restored items are not inserted because the playlist was cleared.
   if (restoring_ && !cancel_restore_) return;
 
+  // The saved items could not be read, saving would replace them with the items in the playlist now.
+  if (restore_failed_) return;
+
   ++save_generation_;
 
   // The items are snapshotted here, on the playlist's own thread, rather than handing the items themselves to the database thread:
@@ -2211,10 +2216,11 @@ void Playlist::Restore() {
   endResetModel();
 
   restoring_ = true;
+  restore_failed_ = false;
   cancel_restore_ = false;
-  QFuture<PlaylistItemPtrList> future = QtConcurrent::run(&PlaylistBackend::GetPlaylistItems, playlist_backend_, id_);
-  QFutureWatcher<PlaylistItemPtrList> *watcher = new QFutureWatcher<PlaylistItemPtrList>(this);
-  QObject::connect(watcher, &QFutureWatcher<PlaylistItemPtrList>::finished, this, &Playlist::ItemsLoaded);
+  QFuture<std::optional<PlaylistItemPtrList>> future = QtConcurrent::run(&PlaylistBackend::GetPlaylistItems, playlist_backend_, id_);
+  QFutureWatcher<std::optional<PlaylistItemPtrList>> *watcher = new QFutureWatcher<std::optional<PlaylistItemPtrList>>(this);
+  QObject::connect(watcher, &QFutureWatcher<std::optional<PlaylistItemPtrList>>::finished, this, &Playlist::ItemsLoaded);
   watcher->setFuture(future);
 
 }
@@ -2230,8 +2236,8 @@ void Playlist::ClearCollectionItems() {
 
 void Playlist::ItemsLoaded() {
 
-  QFutureWatcher<PlaylistItemPtrList> *watcher = static_cast<QFutureWatcher<PlaylistItemPtrList>*>(sender());
-  PlaylistItemPtrList items = watcher->result();
+  QFutureWatcher<std::optional<PlaylistItemPtrList>> *watcher = static_cast<QFutureWatcher<std::optional<PlaylistItemPtrList>>*>(sender());
+  const std::optional<PlaylistItemPtrList> loaded_items = watcher->result();
   watcher->deleteLater();
 
   if (cancel_restore_) {
@@ -2240,7 +2246,21 @@ void Playlist::ItemsLoaded() {
     return;
   }
 
-  // Backend returns empty elements for collection items which it couldn't match (because they got deleted); we don't need those
+  if (!loaded_items) {
+    // The saved items could not be read, which is not the same as an empty playlist.
+    // Saving replaces the saved items, so the playlist is not saved, or the saved items would be lost the first time the playlist is changed.
+    qLog(Error) << "Could not restore playlist" << id_ << "changes to it are not saved";
+    restoring_ = false;
+    restore_failed_ = true;
+    Q_EMIT Error(tr("The saved songs of this playlist could not be read from the database. Changes to the playlist are not saved, so the saved songs are kept."));
+    Q_EMIT RestoreFinished();
+    Q_EMIT RestoreDone();
+    return;
+  }
+
+  PlaylistItemPtrList items = *loaded_items;
+
+  // The backend restores collection items whose song was deleted as files, this is a safety net for an item without a URL.
   QMutableListIterator<PlaylistItemPtr> it(items);
   while (it.hasNext()) {
     PlaylistItemPtr item = it.next();

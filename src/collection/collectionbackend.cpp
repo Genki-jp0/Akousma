@@ -1010,8 +1010,31 @@ void CollectionBackend::DeleteSongs(const SongList &songs) {
   SqlQuery q(db);
   q.prepare(QStringLiteral("DELETE FROM %1 WHERE ROWID = :id").arg(songs_table_));
 
+  // Playlists refer to collection songs by ROWID, which SQLite gives to the next song added once the song is deleted.
+  // The playlist items of a deleted song are changed to file items with the song's metadata, so they are kept, and can't load as another song later.
+  const bool detach_playlist_items = source_ == Song::Source::Collection;
+  SqlQuery q_detach(db);
+  if (detach_playlist_items) {
+    QStringList columns = Song::kColumns;
+    columns.removeAll(u"source"_s);
+    columns.removeAll(u"directory_id"_s);
+    const QString column_spec = columns.join(", "_L1);
+    q_detach.prepare(QStringLiteral("UPDATE playlist_items SET (%1) = (SELECT %1 FROM %2 WHERE ROWID = :song_id), type = :file_type, source = :file_source, directory_id = -1, collection_id = NULL WHERE type = :collection_type AND collection_id = :id").arg(column_spec, songs_table_));
+  }
+
   ScopedTransaction transaction(&db);
   for (const Song &song : songs) {
+    if (detach_playlist_items) {
+      q_detach.BindValue(u":song_id"_s, song.id());
+      q_detach.BindValue(u":file_type"_s, static_cast<int>(Song::Source::LocalFile));
+      q_detach.BindValue(u":file_source"_s, static_cast<int>(Song::Source::LocalFile));
+      q_detach.BindValue(u":collection_type"_s, static_cast<int>(Song::Source::Collection));
+      q_detach.BindValue(u":id"_s, song.id());
+      if (!q_detach.Exec()) {
+        db_->ReportErrors(q_detach);
+        return;
+      }
+    }
     q.BindValue(u":id"_s, song.id());
     if (!q.Exec()) {
       db_->ReportErrors(q);

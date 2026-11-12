@@ -18,6 +18,7 @@
  */
 
 #include <memory>
+#include <optional>
 
 #include "gtest_include.h"
 
@@ -206,14 +207,21 @@ class PlaylistManagerTest : public ::testing::Test {
 
   }
 
+  // The items saved in the database. GetPlaylistItems() returns no list when the playlist can't be read, which fails the test.
+  PlaylistItemPtrList SavedItems(const int id) const {
+    const std::optional<PlaylistItemPtrList> items = playlist_backend_->GetPlaylistItems(id);
+    EXPECT_TRUE(items.has_value()) << "Playlist " << id << " could not be read";
+    return items.value_or(PlaylistItemPtrList());
+  }
+
   // Processes events until the playlist has items in the database, or the timeout.
   PlaylistItemPtrList WaitForSavedItems(const int id, const int timeout_ms = 5000) const {
     QElapsedTimer timer;
     timer.start();
-    PlaylistItemPtrList items = playlist_backend_->GetPlaylistItems(id);
+    PlaylistItemPtrList items = SavedItems(id);
     while (items.isEmpty() && timer.elapsed() < timeout_ms) {
       QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
-      items = playlist_backend_->GetPlaylistItems(id);
+      items = SavedItems(id);
     }
     return items;
   }
@@ -236,14 +244,14 @@ TEST_F(PlaylistManagerTest, CloseFavoritePlaylistSavesPendingChanges) {
 
   const int id = AddPlaylistWithPendingItem(true);
   if (HasFatalFailure()) return;
-  ASSERT_TRUE(playlist_backend_->GetPlaylistItems(id).isEmpty());
+  ASSERT_TRUE(SavedItems(id).isEmpty());
 
   ASSERT_TRUE(playlist_manager_->Close(id));
   // The save is queued to the playlist backend, long before the save timer would have fired.
   QCoreApplication::processEvents();
 
   EXPECT_EQ(id, playlist_backend_->GetPlaylist(id).id);
-  const PlaylistItemPtrList items = playlist_backend_->GetPlaylistItems(id);
+  const PlaylistItemPtrList items = SavedItems(id);
   ASSERT_EQ(1, items.count());
   EXPECT_EQ(u"Added"_s, items.first()->OriginalMetadata().title());
 
@@ -259,7 +267,7 @@ TEST_F(PlaylistManagerTest, DeleteFavoritePlaylistDoesNotSavePendingChanges) {
   QCoreApplication::processEvents();
 
   EXPECT_EQ(-1, playlist_backend_->GetPlaylist(id).id);
-  EXPECT_TRUE(playlist_backend_->GetPlaylistItems(id).isEmpty());
+  EXPECT_TRUE(SavedItems(id).isEmpty());
 
 }
 
@@ -273,7 +281,7 @@ TEST_F(PlaylistManagerTest, CloseOtherPlaylistDoesNotSavePendingChanges) {
   QCoreApplication::processEvents();
 
   EXPECT_EQ(-1, playlist_backend_->GetPlaylist(id).id);
-  EXPECT_TRUE(playlist_backend_->GetPlaylistItems(id).isEmpty());
+  EXPECT_TRUE(SavedItems(id).isEmpty());
 
 }
 
@@ -309,7 +317,7 @@ TEST_F(PlaylistManagerTest, ClosedFavoritePlaylistRemovedBeforeSaveDoesNotSaveIt
   QCoreApplication::processEvents();
 
   EXPECT_EQ(-1, playlist_backend_->GetPlaylist(id).id);
-  EXPECT_TRUE(playlist_backend_->GetPlaylistItems(id).isEmpty());
+  EXPECT_TRUE(SavedItems(id).isEmpty());
 
 }
 
@@ -327,7 +335,7 @@ TEST_F(PlaylistManagerTest, DeletePlaylistEmitsPlaylistDeletedOnce) {
 
     EXPECT_EQ(1, spy.count());
     EXPECT_EQ(-1, playlist_backend_->GetPlaylist(id).id);
-    EXPECT_TRUE(playlist_backend_->GetPlaylistItems(id).isEmpty());
+    EXPECT_TRUE(SavedItems(id).isEmpty());
   }
 
 }
@@ -388,9 +396,9 @@ TEST_F(PlaylistManagerTest, NewPlaylistAfterRemovingClosedFavoritePlaylistKeepsI
   QCoreApplication::processEvents();
 
   EXPECT_EQ(-1, playlist_backend_->GetPlaylist(id).id);
-  EXPECT_TRUE(playlist_backend_->GetPlaylistItems(id).isEmpty());
+  EXPECT_TRUE(SavedItems(id).isEmpty());
   EXPECT_EQ(new_id, playlist_backend_->GetPlaylist(new_id).id);
-  EXPECT_TRUE(playlist_backend_->GetPlaylistItems(new_id).isEmpty());
+  EXPECT_TRUE(SavedItems(new_id).isEmpty());
 
 }
 
@@ -418,7 +426,7 @@ TEST_F(PlaylistManagerTest, SavePendingPlaylistsWaitsForClosedRestoringPlaylist)
   ASSERT_TRUE(spy.wait(5000));
   // The save is queued before the playlist backend exits.
   QCoreApplication::processEvents();
-  const PlaylistItemPtrList items = playlist_backend_->GetPlaylistItems(id);
+  const PlaylistItemPtrList items = SavedItems(id);
   ASSERT_EQ(1, items.count());
   EXPECT_EQ(u"Added"_s, items.first()->OriginalMetadata().title());
 
@@ -437,7 +445,7 @@ TEST_F(PlaylistManagerTest, CloseRestoringFavoritePlaylistWhileExitingSavesIt) {
 
   ASSERT_TRUE(spy.wait(5000));
   QCoreApplication::processEvents();
-  EXPECT_EQ(1, playlist_backend_->GetPlaylistItems(id).count());
+  EXPECT_EQ(1, SavedItems(id).count());
 
 }
 
@@ -454,7 +462,7 @@ TEST_F(PlaylistManagerTest, ReopenClosedRestoringPlaylistWhileExitingSavesIt) {
 
   ASSERT_TRUE(spy.wait(5000));
   QCoreApplication::processEvents();
-  EXPECT_EQ(1, playlist_backend_->GetPlaylistItems(id).count());
+  EXPECT_EQ(1, SavedItems(id).count());
 
 }
 
@@ -478,7 +486,7 @@ TEST_F(PlaylistManagerTest, RemoveClosedRestoringPlaylistWhileExitingFinishes) {
   // The removal is queued before the exit is reported.
   QCoreApplication::processEvents();
   EXPECT_EQ(-1, playlist_backend_->GetPlaylist(id).id);
-  EXPECT_TRUE(playlist_backend_->GetPlaylistItems(id).isEmpty());
+  EXPECT_TRUE(SavedItems(id).isEmpty());
 
 }
 
@@ -564,7 +572,7 @@ TEST_F(PlaylistManagerTest, ClosedPlaylistChangedAfterCloseIsSaved) {
 
   playlist->InsertItems(PlaylistItemPtrList() << MakeStreamItem(u"Added later"_s));
 
-  EXPECT_TRUE(QTest::qWaitFor([this, id]() { return playlist_backend_->GetPlaylistItems(id).count() == 2; }, 5000));
+  EXPECT_TRUE(QTest::qWaitFor([this, id]() { return SavedItems(id).count() == 2; }, 5000));
   EXPECT_TRUE(QTest::qWaitFor([&playlist]() { return playlist.isNull(); }, 5000));
 
 }

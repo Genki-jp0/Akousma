@@ -219,6 +219,8 @@ class Playlist : public QAbstractListModel {
   bool is_dynamic() const { return static_cast<bool>(dynamic_playlist_); }
   // True while the saved items are loaded, the playlist is not saved until they are inserted.
   bool is_restoring() const { return restoring_; }
+  // The saved items could not be read, the playlist is not saved until it is restored.
+  bool restore_failed() const { return restore_failed_; }
   int dynamic_history_length() const;
 
   QString special_type() const { return special_type_; }
@@ -514,6 +516,7 @@ class Playlist : public QAbstractListModel {
 
   // Cancel async restore if songs are already replaced
   bool restoring_;
+  bool restore_failed_;
   bool cancel_restore_;
 
   bool scrobbled_;

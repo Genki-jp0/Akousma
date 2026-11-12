@@ -24,12 +24,15 @@
 
 #include "config.h"
 
+#include <optional>
+
 #include <QObject>
 #include <QMutex>
 #include <QHash>
 #include <QList>
 #include <QSet>
 #include <QString>
+#include <QUuid>
 
 #include "includes/shared_ptr.h"
 #include "core/song.h"
@@ -39,6 +42,7 @@
 #include "smartplaylists/playlistgenerator.h"
 
 class QThread;
+class QSqlDatabase;
 class Database;
 class TagReaderClient;
 
@@ -74,8 +78,9 @@ class PlaylistBackend : public QObject {
   PlaylistList GetAllFavoritePlaylists();
   PlaylistBackend::Playlist GetPlaylist(const int id);
 
-  PlaylistItemPtrList GetPlaylistItems(const int playlist_id);
-  SongList GetPlaylistSongs(const int playlist_id);
+  // Both return no value when the items could not be read, which is not the same as an empty playlist: the caller must not save the playlist from the result then.
+  std::optional<PlaylistItemPtrList> GetPlaylistItems(const int playlist_id);
+  std::optional<SongList> GetPlaylistSongs(const int playlist_id);
 
   void SetPlaylistOrder(const QList<int> &ids);
   void SetPlaylistUiPath(const int id, const QString &path);
@@ -110,7 +115,9 @@ class PlaylistBackend : public QObject {
 
   static QString PlaylistItemsQuery();
   static PlaylistItemPtr NewPlaylistItemFromQuery(const SqlRow &row);
+  static PlaylistItemPtr NewFileItemFromSavedMetadata(const SqlRow &row, const QUuid &uuid);
   void RestoreCueData(PlaylistItemPtrList &playlist_items);
+  bool DetachMissingCollectionSongs(const QSqlDatabase &db, const int playlist_id);
   Song ReloadPlaylistItem(PlaylistItemPtr item) const;
   PlaylistItemPtr RestoreCueData(PlaylistItemPtr item, SharedPtr<NewSongFromQueryState> state);
 

@@ -22,6 +22,7 @@
 #include "config.h"
 
 #include <utility>
+#include <optional>
 
 #include <QtGlobal>
 #include <QObject>
@@ -365,11 +366,17 @@ void PlaylistManager::Save(const int id, const QString &playlist_name, const QSt
   }
   else {
     // Playlist is not in the playlist manager: probably save action was triggered from the left sidebar and the playlist isn't loaded.
-    QFuture<SongList> future = QtConcurrent::run(&PlaylistBackend::GetPlaylistSongs, playlist_backend_, id);
-    QFutureWatcher<SongList> *watcher = new QFutureWatcher<SongList>(this);
-    QObject::connect(watcher, &QFutureWatcher<SongList>::finished, this, [this, watcher, playlist_name, filename, path_type]() {
-      ItemsLoadedForSavePlaylist(playlist_name, watcher->result(), filename, path_type);
+    QFuture<std::optional<SongList>> future = QtConcurrent::run(&PlaylistBackend::GetPlaylistSongs, playlist_backend_, id);
+    QFutureWatcher<std::optional<SongList>> *watcher = new QFutureWatcher<std::optional<SongList>>(this);
+    QObject::connect(watcher, &QFutureWatcher<std::optional<SongList>>::finished, this, [this, watcher, playlist_name, filename, path_type]() {
+      const std::optional<SongList> songs = watcher->result();
       watcher->deleteLater();
+      // Writing an empty playlist would replace the file with nothing.
+      if (!songs) {
+        Q_EMIT Error(tr("The songs of playlist %1 could not be read from the database, %2 was not saved.").arg(playlist_name, filename));
+        return;
+      }
+      ItemsLoadedForSavePlaylist(playlist_name, *songs, filename, path_type);
     });
     watcher->setFuture(future);
   }
