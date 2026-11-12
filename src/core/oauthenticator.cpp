@@ -44,6 +44,7 @@
 #include "settings.h"
 #include "networkaccessmanager.h"
 #include "localredirectserver.h"
+#include "oauthcallback.h"
 #include "oauthenticator.h"
 
 using namespace Qt::Literals::StringLiterals;
@@ -67,6 +68,9 @@ constexpr qint64 kMaxRefreshCheckIntervalSecs = 300;
 // When refreshing the access token fails, for example because the network is not up yet after resuming, try again after this many seconds, doubled for each failure.
 constexpr qint64 kMinRefreshRetryIntervalSecs = 60;
 constexpr qint64 kMaxRefreshRetryIntervalSecs = 1800;
+
+// Stop waiting for the redirect of a login after this many seconds, so a login the user abandoned doesn't stay open for callbacks until the application exits.
+constexpr qint64 kLoginTimeoutSecs = 600;
 
 // Use at most half of the token lifetime as the margin, otherwise a token that expires within the margin would be refreshed again right away.
 qint64 RefreshMarginSecs(const qint64 expires_in) {
@@ -94,6 +98,7 @@ OAuthenticator::OAuthenticator(const SharedPtr<NetworkAccessManager> network, QO
     : QObject(parent),
       network_(network),
       timer_refresh_login_(new QTimer(this)),
+      timer_login_timeout_(new QTimer(this)),
       type_(Type::Authorization_Code),
       use_local_redirect_server_(true),
       port_type_(PortType::SetToRedirectURL),
@@ -106,6 +111,10 @@ OAuthenticator::OAuthenticator(const SharedPtr<NetworkAccessManager> network, QO
 
   timer_refresh_login_->setSingleShot(true);
   QObject::connect(timer_refresh_login_, &QTimer::timeout, this, &OAuthenticator::RefreshLoginTimerTimeout);
+
+  timer_login_timeout_->setSingleShot(true);
+  timer_login_timeout_->setInterval(static_cast<int>(kLoginTimeoutSecs * kMsecPerSec));
+  QObject::connect(timer_login_timeout_, &QTimer::timeout, this, &OAuthenticator::LoginTimeout);
 
 }
 
@@ -361,8 +370,14 @@ void OAuthenticator::Authenticate() {
     return;
   }
 
+  // A new login replaces a pending one, the redirect of the old login is no longer accepted.
+  CancelPendingLogin();
+
   if (use_local_redirect_server_) {
     local_redirect_server_.reset(new LocalRedirectServer(this));
+    // The path of the redirect URL can't be random here: it is registered with the service (ListenBrainz), or chosen by the redirect page that passes the port on (PortType::PassInState, Spotify and Genius).
+    // The server instead only accepts the redirect with the state of this login, set below, and the login timeout below also covers the server.
+    local_redirect_server_->set_timeout_secs(0);
     const bool success = local_redirect_server_->Listen();
     if (!success) {
       Q_EMIT AuthenticationFinished(false, local_redirect_server_->error());
@@ -378,6 +393,12 @@ void OAuthenticator::Authenticate() {
   if (port_type_ == PortType::PassInState && !local_redirect_server_.isNull()) {
     state_ += u'-' + QString::number(local_redirect_server_->port());
   }
+
+  if (!local_redirect_server_.isNull()) {
+    local_redirect_server_->set_expected_state(state_);
+  }
+
+  timer_login_timeout_->start();
 
   if (use_pkce_) {
     code_verifier_ = Utilities::CryptographicRandomString(44);
@@ -424,24 +445,68 @@ void OAuthenticator::Authenticate() {
 
 }
 
+void OAuthenticator::CancelPendingLogin() {
+
+  state_.clear();
+  code_verifier_.clear();
+  code_challenge_.clear();
+
+  if (timer_login_timeout_->isActive()) {
+    timer_login_timeout_->stop();
+  }
+
+  if (!local_redirect_server_.isNull()) {
+    QObject::disconnect(local_redirect_server_.data(), nullptr, this, nullptr);
+    local_redirect_server_->close();
+    local_redirect_server_.reset();
+  }
+
+}
+
+void OAuthenticator::LoginTimeout() {
+
+  if (state_.isEmpty()) return;
+
+  qLog(Error) << settings_group_ << "Timed out waiting for the login in the web browser.";
+
+  CancelPendingLogin();
+
+  Q_EMIT AuthenticationFinished(false, tr("Timed out waiting for the login in the web browser."));
+
+}
+
 void OAuthenticator::RedirectArrived() {
 
-  if (local_redirect_server_.isNull()) {
+  if (local_redirect_server_.isNull() || sender() != local_redirect_server_.data()) {
     return;
   }
 
   if (local_redirect_server_->success()) {
-    AuthorizationUrlReceived(local_redirect_server_->request_url(), EffectiveRedirectUrl());
+    const QUrl request_url = local_redirect_server_->request_url();
+    const QUrl redirect_url = EffectiveRedirectUrl();
+    local_redirect_server_.reset();
+    AuthorizationUrlReceived(request_url, redirect_url);
   }
   else {
-    Q_EMIT AuthenticationFinished(false, local_redirect_server_->error());
+    const QString error = local_redirect_server_->error();
+    CancelPendingLogin();
+    Q_EMIT AuthenticationFinished(false, error);
   }
-
-  local_redirect_server_.reset();
 
 }
 
 void OAuthenticator::ExternalAuthorizationUrlReceived(const QUrl &request_url) {
+
+  // The redirect of a login with the local redirect server arrives there, not here.
+  if (use_local_redirect_server_) {
+    qLog(Error) << settings_group_ << "Ignoring login callback, logins use the local redirect server.";
+    return;
+  }
+
+  if (!OAuthCallback::MatchesRedirectUrl(request_url, redirect_url_)) {
+    qLog(Error) << settings_group_ << "Ignoring login callback that doesn't match the redirect URL.";
+    return;
+  }
 
   AuthorizationUrlReceived(request_url, redirect_url_);
 
@@ -449,17 +514,30 @@ void OAuthenticator::ExternalAuthorizationUrlReceived(const QUrl &request_url) {
 
 void OAuthenticator::AuthorizationUrlReceived(const QUrl &request_url, const QUrl &redirect_url) {
 
-  if (!request_url.isValid()) {
-    Q_EMIT AuthenticationFinished(false, tr("Received invalid reply from web browser."));
+  // The callback URL can come from anyone who can open a URL with the application or reach the local redirect server, not just the web browser the login was started in.
+  // Only accept it while a login the user started is pending, and only with the state generated for that login, otherwise a callback could replace or log out the current session.
+  // Ignore other callbacks without ending the pending login, so they can't stop the user from finishing it either.
+  if (state_.isEmpty()) {
+    qLog(Error) << settings_group_ << "Ignoring login callback, no login is pending.";
     return;
   }
 
-  if (!request_url.hasQuery()) {
-    Q_EMIT AuthenticationFinished(false, tr("Redirect URL is missing query."));
+  if (!request_url.isValid() || !request_url.hasQuery()) {
+    qLog(Error) << settings_group_ << "Ignoring invalid login callback.";
     return;
   }
 
-  QUrlQuery url_query(request_url);
+  const QUrlQuery url_query(request_url);
+
+  // OAuth error replies carry the state too (RFC 6749, 4.1.2.1), so they are checked the same way.
+  if (!OAuthCallback::StateMatches(state_, url_query)) {
+    qLog(Error) << settings_group_ << "Ignoring login callback with missing or wrong state.";
+    return;
+  }
+
+  // The callback belongs to the pending login, which ends here: the state and the code verifier can only be used once.
+  const QString code_verifier = code_verifier_;
+  CancelPendingLogin();
 
   if (url_query.hasQueryItem(u"error_description"_s)) {
     Q_EMIT AuthenticationFinished(false, url_query.queryItemValue(u"error_description"_s, QUrl::FullyDecoded));
@@ -471,22 +549,12 @@ void OAuthenticator::AuthorizationUrlReceived(const QUrl &request_url, const QUr
     return;
   }
 
-  if (!url_query.hasQueryItem(u"code"_s)) {
+  if (!url_query.hasQueryItem(u"code"_s) || url_query.queryItemValue(u"code"_s).isEmpty()) {
     Q_EMIT AuthenticationFinished(false, tr("Request URL is missing code!"));
     return;
   }
 
-  if (!url_query.hasQueryItem(u"state"_s)) {
-    Q_EMIT AuthenticationFinished(false, tr("Request URL is missing state!"));
-    return;
-  }
-
-  if (url_query.queryItemValue(u"state"_s) != state_) {
-    Q_EMIT AuthenticationFinished(false, tr("Request URL has wrong state %1 != %2").arg(url_query.queryItemValue(u"state"_s), state_));
-    return;
-  }
-
-  RequestAccessToken(url_query.queryItemValue(u"code"_s), redirect_url);
+  RequestAccessToken(url_query.queryItemValue(u"code"_s), redirect_url, code_verifier);
 
 }
 
@@ -514,7 +582,7 @@ QNetworkReply *OAuthenticator::CreateAccessTokenRequest(const ParamList &params,
 
 }
 
-void OAuthenticator::RequestAccessToken(const QString &code, const QUrl &redirect_url) {
+void OAuthenticator::RequestAccessToken(const QString &code, const QUrl &redirect_url, const QString &code_verifier) {
 
   if (timer_refresh_login_->isActive()) {
     timer_refresh_login_->stop();
@@ -526,8 +594,8 @@ void OAuthenticator::RequestAccessToken(const QString &code, const QUrl &redirec
     params << Param(u"code"_s, code);
   }
 
-  if (!code_verifier_.isEmpty()) {
-    params << Param(u"code_verifier"_s, code_verifier_);
+  if (!code_verifier.isEmpty()) {
+    params << Param(u"code_verifier"_s, code_verifier);
   }
 
   if (!code.isEmpty()) {
@@ -609,11 +677,13 @@ void OAuthenticator::AccessTokenRequestFinished(QNetworkReply *reply, const bool
         if (json_object.contains("error"_L1)) {
           const QString error = json_object["error"_L1].toString();
           const QString error_description = json_object["error_description"_L1].toString();
-          // invalid_grant means the refresh token or authorization code is expired, revoked or otherwise unusable, so retrying with the same grant can never succeed.
-          // When refreshing, the other OAuth errors also mean the same request will be rejected again, Tidal documents them as logging out.
+          // When refreshing, invalid_grant means the refresh token is expired, revoked or otherwise unusable, so retrying with the same grant can never succeed.
+          // The other OAuth errors also mean the same request will be rejected again, Tidal documents them as logging out.
           // Clear the session to stop the same failure from being repeated, the user has to authenticate again.
+          // A failed authorization code exchange says nothing about the stored session, the code may not even be the one of the user, so it keeps the session.
+          // A failed client credentials request has no user session, it clears the stored token as before.
           const bool invalid_grant = error.compare("invalid_grant"_L1, Qt::CaseInsensitive) == 0;
-          const bool clear_session = invalid_grant || (refresh_token && IsTerminalRefreshError(error));
+          const bool clear_session = refresh_token ? IsTerminalRefreshError(error) : (type_ == Type::Client_Credentials && invalid_grant);
           if (clear_session) {
             qLog(Error) << settings_group_ << "Authorization grant is no longer valid, clearing session.";
             ClearSession();
@@ -752,6 +822,11 @@ void OAuthenticator::AccessTokenRequestFailed(const bool refresh_token, const QS
     qLog(Error) << settings_group_ << "Refreshing login failed:" << error;
     ScheduleRefreshRetry();
     return;
+  }
+
+  // RequestAccessToken() stopped the refresh timer, keep refreshing the session the failed login didn't replace.
+  if (!refresh_token && !clear_session) {
+    StartRefreshLoginTimer();
   }
 
   Q_EMIT AuthenticationFinished(false, error, clear_session);

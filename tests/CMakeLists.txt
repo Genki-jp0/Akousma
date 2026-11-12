@@ -11,7 +11,7 @@ set(TESTUTILS-SOURCES
   src/test_utils.cpp
 )
 
-set(TESTUTILS-MOC-HEADERS src/mock_networkaccessmanager.h src/test_utils.h)
+set(TESTUTILS-MOC-HEADERS src/mock_networkaccessmanager.h src/test_utils.h src/urlrecorder.h)
 
 qt_wrap_cpp(TESTUTILS-SOURCES-MOC ${TESTUTILS-MOC-HEADERS})
 
@@ -166,6 +166,10 @@ add_test_file(src/htmllyricsprovider_test.cpp false)
 add_test_file(src/lyricsfetcher_test.cpp false)
 add_test_file(src/musixmatchlyricsprovider_test.cpp false)
 add_test_file(src/lyricssearchdialog_test.cpp true)
+add_test_file(src/oauthcallback_test.cpp false)
+# The redirect server writes its page with the style of the QApplication.
+add_test_file(src/localredirectserver_test.cpp true)
+add_test_file(src/oauthenticator_test.cpp true)
 add_test_file(src/songeditor_test.cpp true)
 add_test_file(src/resizabletextedit_test.cpp true)
 add_test_file(src/fancytabwidget_test.cpp true)

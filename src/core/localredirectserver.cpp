@@ -18,6 +18,8 @@
  *
  */
 
+#include <chrono>
+
 #include <QApplication>
 #include <QIODevice>
 #include <QBuffer>
@@ -37,8 +39,10 @@
 #include <QTcpSocket>
 #include <QDateTime>
 #include <QRandomGenerator>
+#include <QTimer>
 
 #include "core/logging.h"
+#include "oauthcallback.h"
 #include "localredirectserver.h"
 
 using namespace Qt::Literals::StringLiterals;
@@ -46,12 +50,22 @@ using namespace Qt::Literals::StringLiterals;
 namespace {
 // Limits the request received on a connection before the end of the headers, so a connection can't make it grow without limit.
 constexpr qsizetype kMaxRequestSize = 64LL * 1024LL;
+// Stop waiting for the redirect when the user abandoned the login in the web browser, so the port isn't left open until the application exits.
+constexpr int kDefaultTimeoutSecs = 600;
 }  // namespace
 
 LocalRedirectServer::LocalRedirectServer(QObject *parent)
     : QTcpServer(parent),
       port_(0),
-      success_(false) {}
+      use_random_path_(false),
+      timeout_secs_(kDefaultTimeoutSecs),
+      timer_timeout_(new QTimer(this)),
+      success_(false) {
+
+  timer_timeout_->setSingleShot(true);
+  QObject::connect(timer_timeout_, &QTimer::timeout, this, &LocalRedirectServer::Timeout);
+
+}
 
 LocalRedirectServer::~LocalRedirectServer() {
   if (isListening()) close();
@@ -65,12 +79,19 @@ bool LocalRedirectServer::Listen() {
     return false;
   }
 
+  // A new random path for every login, only the web browser the redirect URL was given to knows it.
+  path_ = use_random_path_ ? OAuthCallback::RandomRedirectPath() : u"/"_s;
+
   url_.setScheme(u"http"_s);
   url_.setHost(u"localhost"_s);
   url_.setPort(serverPort());
-  url_.setPath(u"/"_s);
+  url_.setPath(path_);
   port_ = serverPort();
   QObject::connect(this, &QTcpServer::newConnection, this, &LocalRedirectServer::NewConnection);
+
+  if (timeout_secs_ > 0) {
+    timer_timeout_->start(std::chrono::seconds(timeout_secs_));
+  }
 
   return true;
 
@@ -130,11 +151,13 @@ void LocalRedirectServer::ReadyRead() {
     return;
   }
 
-  const QUrl request_url = ParseUrlFromRequest(request.left(headers_end));
+  QByteArray method;
+  const QUrl request_url = ParseUrlFromRequest(request.left(headers_end), &method);
   requests_.remove(socket);
 
-  if (!IsRedirect(request_url)) {
-    // Not the redirect, e.g. the web browser asking for favicon.ico, or another local connection, keep waiting for the redirect.
+  // Only the redirect of the pending login is accepted: a GET request with the random path of this login, or with the OAuth state of this login.
+  // Anything else, e.g. the web browser asking for favicon.ico, or another local connection sending a code, token or error of its own, is answered with 404, and the server keeps waiting for the redirect, so it can't end the login.
+  if (!OAuthCallback::IsPendingRedirectRequest(method, request_url, use_random_path_ ? path_ : QString(), expected_state_) || !IsRedirect(request_url)) {
     WriteNotFound(socket);
     socket->disconnectFromHost();
     return;
@@ -147,13 +170,35 @@ void LocalRedirectServer::ReadyRead() {
   success_ = true;
 
   // Stop listening, and close the other connections, the redirect arrived.
+  timer_timeout_->stop();
   close();
+  CloseConnections();
+
+  Q_EMIT Finished();
+
+}
+
+void LocalRedirectServer::CloseConnections() {
+
   const QList<QTcpSocket*> other_sockets = requests_.keys();
   requests_.clear();
   for (QTcpSocket *other_socket : other_sockets) {
+    QObject::disconnect(other_socket, nullptr, this, nullptr);
     other_socket->abort();
     other_socket->deleteLater();
   }
+
+}
+
+void LocalRedirectServer::Timeout() {
+
+  if (!isListening()) return;
+
+  close();
+  CloseConnections();
+
+  success_ = false;
+  error_ = tr("Timed out waiting for the login in the web browser.");
 
   Q_EMIT Finished();
 
@@ -220,16 +265,20 @@ void LocalRedirectServer::WriteTemplate(QTcpSocket *socket) const {
 
 }
 
-QUrl LocalRedirectServer::ParseUrlFromRequest(const QByteArray &request) const {
+QUrl LocalRedirectServer::ParseUrlFromRequest(const QByteArray &request, QByteArray *method) const {
 
   const QByteArrayList lines = request.split('\r');
   if (lines.isEmpty()) return QUrl();
   const QByteArray &request_line = lines[0];
   const QByteArrayList request_line_parts = request_line.split(' ');
   if (request_line_parts.size() < 2) return QUrl();
-  const QByteArray path = request_line_parts[1];
-  const QUrl base_url = url_;
-  const QUrl request_url(base_url.toString() + QString::fromLatin1(path.mid(1)), QUrl::StrictMode);
+  if (method) *method = request_line_parts[0];
+  // Only the origin form of the request target, an absolute path with an optional query, as sent by web browsers.
+  const QByteArray target = request_line_parts[1];
+  if (!target.startsWith('/')) return QUrl();
+  QUrl base_url = url_;
+  base_url.setPath(QString());
+  const QUrl request_url(base_url.toString() + QString::fromLatin1(target), QUrl::StrictMode);
 
   return request_url;
 

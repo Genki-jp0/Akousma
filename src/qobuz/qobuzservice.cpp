@@ -286,13 +286,17 @@ void QobuzService::Authenticate() {
     return;
   }
 
+  // Every login gets a new server with a new random path, a redirect for an earlier login is no longer accepted.
   if (local_redirect_server_) {
+    QObject::disconnect(local_redirect_server_, nullptr, this, nullptr);
     local_redirect_server_->close();
     local_redirect_server_->deleteLater();
     local_redirect_server_ = nullptr;
   }
 
   local_redirect_server_ = new LocalRedirectServer(this);
+  // The Qobuz redirect has no state, and the code in it can be one of any Qobuz account, so the random path in the redirect URL is what ties the redirect to this login.
+  local_redirect_server_->set_use_random_path(true);
   if (!local_redirect_server_->Listen()) {
     LoginError(tr("Failed to start local server for OAuth redirect: %1").arg(local_redirect_server_->error()));
     local_redirect_server_->deleteLater();
@@ -304,7 +308,7 @@ void QobuzService::Authenticate() {
   QUrl url(QString::fromLatin1(kOAuthSigninUrl));
   QUrlQuery url_query;
   url_query.addQueryItem(u"ext_app_id"_s, app_id_);
-  url_query.addQueryItem(u"redirect_url"_s, QStringLiteral("http://127.0.0.1:%1").arg(local_redirect_server_->port()));
+  url_query.addQueryItem(u"redirect_url"_s, QStringLiteral("http://127.0.0.1:%1%2").arg(QString::number(local_redirect_server_->port()), local_redirect_server_->path()));
   url.setQuery(url_query);
 
   const bool success = QDesktopServices::openUrl(url);
@@ -323,7 +327,7 @@ void QobuzService::Authenticate() {
 
 void QobuzService::OAuthRedirectReceived() {
 
-  if (!local_redirect_server_) return;
+  if (!local_redirect_server_ || sender() != local_redirect_server_) return;
 
   LocalRedirectServer *server = local_redirect_server_;
   local_redirect_server_ = nullptr;

@@ -37,6 +37,7 @@
 #include "core/networkaccessmanager.h"
 #include "core/urlhandlers.h"
 #include "core/oauthenticator.h"
+#include "core/oauthcallback.h"
 #include "constants/tidalsettings.h"
 #include "collection/collectionbackend.h"
 #include "collection/collectionmodel.h"
@@ -86,6 +87,18 @@ constexpr char kAlbumsSongsTable[] = "tidal_albums_songs";
 constexpr char kSongsTable[] = "tidal_songs";
 
 }  // namespace
+
+bool TidalService::IsLoginUrl(const QUrl &url) {
+
+  return url.scheme() == "tidal"_L1 && url.host() == "login"_L1;
+
+}
+
+bool TidalService::IsAuthorizationUrl(const QUrl &url) {
+
+  return OAuthCallback::MatchesRedirectUrl(url, QUrl(QLatin1String(kOAuthRedirectUrl)));
+
+}
 
 TidalService::TidalService(const SharedPtr<TaskManager> task_manager,
                            const SharedPtr<Database> database,
@@ -325,6 +338,12 @@ void TidalService::OAuthFinished(const bool success, const QString &error, const
 }
 
 void TidalService::AuthorizationUrlReceived(const QUrl &url) {
+
+  // Any web page or local program can open a tidal://login URL with the application, only pass it on while a login started here is waiting for it.
+  if (!oauth_->login_pending()) {
+    qLog(Error) << "Tidal: Ignoring login callback, no login is pending.";
+    return;
+  }
 
   oauth_->ExternalAuthorizationUrlReceived(url);
 

@@ -74,6 +74,11 @@ class TidalService : public StreamingService {
   static bool HasCompiledCredentials();
   static QString CompiledClientId();
 
+  // Returns true for URLs of the Tidal login callback, tidal://login/..., which are never songs to play.
+  static bool IsLoginUrl(const QUrl &url);
+  // Returns true for the URL of the Tidal login redirect, tidal://login/auth, the only one passed on to the login.
+  static bool IsAuthorizationUrl(const QUrl &url);
+
   void Exit() override;
   void ReloadSettings() override;
 

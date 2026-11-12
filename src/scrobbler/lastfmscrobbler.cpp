@@ -307,16 +307,24 @@ void LastFMScrobbler::Authenticate() {
     return;
   }
 
-  if (!local_redirect_server_) {
-    local_redirect_server_ = new LocalRedirectServer(this);
-    if (!local_redirect_server_->Listen()) {
-      AuthError(local_redirect_server_->error());
-      delete local_redirect_server_;
-      local_redirect_server_ = nullptr;
-      return;
-    }
-    QObject::connect(local_redirect_server_, &LocalRedirectServer::Finished, this, &LastFMScrobbler::RedirectArrived);
+  // Every login gets a new server with a new random path, a redirect for an earlier login is no longer accepted.
+  if (local_redirect_server_) {
+    QObject::disconnect(local_redirect_server_, nullptr, this, nullptr);
+    local_redirect_server_->close();
+    local_redirect_server_->deleteLater();
+    local_redirect_server_ = nullptr;
   }
+
+  local_redirect_server_ = new LocalRedirectServer(this);
+  // The Last.fm redirect has no state, and the token in it can be one of any Last.fm account, so the random path in the callback URL is what ties the redirect to this login.
+  local_redirect_server_->set_use_random_path(true);
+  if (!local_redirect_server_->Listen()) {
+    AuthError(local_redirect_server_->error());
+    delete local_redirect_server_;
+    local_redirect_server_ = nullptr;
+    return;
+  }
+  QObject::connect(local_redirect_server_, &LocalRedirectServer::Finished, this, &LastFMScrobbler::RedirectArrived);
 
   QUrlQuery url_query;
   url_query.addQueryItem(u"api_key"_s, api_key_);
@@ -357,7 +365,7 @@ void LastFMScrobbler::Authenticate() {
 
 void LastFMScrobbler::RedirectArrived() {
 
-  if (!local_redirect_server_) return;
+  if (!local_redirect_server_ || sender() != local_redirect_server_) return;
 
   if (local_redirect_server_->error().isEmpty()) {
     const QUrl url = local_redirect_server_->request_url();

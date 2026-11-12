@@ -559,6 +559,7 @@ set(SOURCES
   src/core/scopedtransaction.cpp
   src/core/translations.cpp
   src/core/localredirectserver.cpp
+  src/core/oauthcallback.cpp
   src/core/mimedata.cpp
   src/core/temporaryfile.cpp
   src/core/enginemetadata.cpp

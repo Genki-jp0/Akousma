@@ -2988,8 +2988,14 @@ void MainWindow::CommandlineOptionsReceived(const CommandlineOptions &options) {
 
 #ifdef HAVE_TIDAL
     for (const QUrl &url : options.urls()) {
-      if (url.scheme() == "tidal"_L1 && url.host() == "login"_L1) {
-        Q_EMIT AuthorizationUrlReceived(url);
+      if (TidalService::IsLoginUrl(url)) {
+        // Only the login redirect is passed on, TidalService then drops it unless a login is pending and the state matches.
+        if (TidalService::IsAuthorizationUrl(url)) {
+          Q_EMIT AuthorizationUrlReceived(url);
+        }
+        else {
+          qLog(Error) << "Ignoring Tidal login URL that is not the login redirect.";
+        }
         return;
       }
     }
@@ -3070,8 +3076,15 @@ bool MainWindow::LoadUrl(const QString &url) {
     return true;
   }
 #ifdef HAVE_TIDAL
-  if (url.startsWith("tidal://login"_L1)) {
-    Q_EMIT AuthorizationUrlReceived(QUrl(url));
+  // Checked the same way as URLs from the command line in CommandlineOptionsReceived().
+  const QUrl tidal_url(url);
+  if (TidalService::IsLoginUrl(tidal_url)) {
+    if (TidalService::IsAuthorizationUrl(tidal_url)) {
+      Q_EMIT AuthorizationUrlReceived(tidal_url);
+    }
+    else {
+      qLog(Error) << "Ignoring Tidal login URL that is not the login redirect.";
+    }
     return true;
   }
 #endif

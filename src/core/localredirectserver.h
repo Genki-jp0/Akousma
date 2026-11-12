@@ -29,6 +29,7 @@
 #include <QUrl>
 
 class QTcpSocket;
+class QTimer;
 
 class LocalRedirectServer : public QTcpServer {
   Q_OBJECT
@@ -45,6 +46,20 @@ class LocalRedirectServer : public QTcpServer {
   int port() const { return port_; }
   void set_port(const int port) { port_ = port; }
 
+  // The path of the redirect URL, a random path when set_use_random_path() was enabled, otherwise "/".
+  const QString &path() const { return path_; }
+
+  // Puts a random path in the redirect URL when listening, and only accepts the redirect on that path, for logins without an OAuth state to tie the redirect to the login, like Last.fm and Qobuz.
+  // Can't be used when the path of the redirect URL is chosen by someone else, like a registered redirect URL or the redirect page OAuthenticator uses with PortType::PassInState.
+  void set_use_random_path(const bool use_random_path) { use_random_path_ = use_random_path; }
+
+  // Only accepts the redirect when its "state" query item is this, for OAuth logins.
+  // Requests with another state are answered with 404 and the server keeps waiting, so they can't end the login.
+  void set_expected_state(const QString &expected_state) { expected_state_ = expected_state; }
+
+  // Stops waiting for the redirect after this many seconds, and finishes with an error.
+  void set_timeout_secs(const int timeout_secs) { timeout_secs_ = timeout_secs; }
+
   bool Listen();
 
  Q_SIGNALS:
@@ -57,15 +72,22 @@ class LocalRedirectServer : public QTcpServer {
  private Q_SLOTS:
   void ReadyRead();
   void Disconnected();
+  void Timeout();
 
  private:
   void WriteTemplate(QTcpSocket *socket) const;
   static void WriteNotFound(QTcpSocket *socket);
-  QUrl ParseUrlFromRequest(const QByteArray &request) const;
+  QUrl ParseUrlFromRequest(const QByteArray &request, QByteArray *method) const;
   static bool IsRedirect(const QUrl &url);
+  void CloseConnections();
 
  private:
   int port_;
+  bool use_random_path_;
+  int timeout_secs_;
+  QTimer *timer_timeout_;
+  QString path_;
+  QString expected_state_;
   QUrl url_;
   QUrl request_url_;
   // The request received so far on each connection, a request can arrive in several parts, and other connections than the redirect must not end it.

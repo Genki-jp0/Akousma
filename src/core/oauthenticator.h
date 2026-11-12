@@ -73,12 +73,16 @@ class OAuthenticator : public QObject {
   QString country_code() const { return country_code_; }
   quint64 user_id() const { return user_id_; }
   bool authenticated() const { return !token_type_.isEmpty() && !access_token_.isEmpty(); }
+  // True from Authenticate() until the redirect of that login is accepted, the login times out or a new one is started.
+  bool login_pending() const { return !state_.isEmpty(); }
 
   QByteArray authorization_header() const;
 
   void Authenticate();
   void ClearSession();
   void LoadSession();
+  // For redirect URLs with a custom scheme, which the application receives from the operating system.
+  // The URL is ignored unless it matches the redirect URL and has the state of the pending login.
   void ExternalAuthorizationUrlReceived(const QUrl &request_url);
 
   // Requests a new access token with the refresh token, for when the server rejected the access token.
@@ -95,10 +99,11 @@ class OAuthenticator : public QObject {
   void AbortReplies();
   void AccessTokenRequestFailed(const bool refresh_token, const QString &error, const bool clear_session = false);
   QNetworkReply *CreateAccessTokenRequest(const ParamList &params, const bool refresh_token);
-  void RequestAccessToken(const QString &code = QString(), const QUrl &redirect_url = QUrl());
+  void RequestAccessToken(const QString &code = QString(), const QUrl &redirect_url = QUrl(), const QString &code_verifier = QString());
   void RerefreshAccessToken();
   void AuthorizationUrlReceived(const QUrl &request_url, const QUrl &redirect_url);
   QUrl EffectiveRedirectUrl() const;
+  void CancelPendingLogin();
 
  Q_SIGNALS:
   void Error(const QString &error);
@@ -106,6 +111,7 @@ class OAuthenticator : public QObject {
 
  private Q_SLOTS:
   void RefreshLoginTimerTimeout();
+  void LoginTimeout();
   void RedirectArrived();
   void HandleSSLErrors(const QList<QSslError> &ssl_errors);
   void AccessTokenRequestFinished(QNetworkReply *reply, const bool refresh_token);
@@ -114,6 +120,7 @@ class OAuthenticator : public QObject {
   const SharedPtr<NetworkAccessManager> network_;
   QScopedPointer<LocalRedirectServer, QScopedPointerDeleteLater> local_redirect_server_;
   QTimer *timer_refresh_login_;
+  QTimer *timer_login_timeout_;
 
   QString settings_group_;
   Type type_;
@@ -127,6 +134,7 @@ class OAuthenticator : public QObject {
   PortType port_type_;
   bool use_pkce_;
 
+  // The state of the pending login, empty when no login is pending.
   QString state_;
 
   QString code_verifier_;
