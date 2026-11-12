@@ -202,6 +202,24 @@ QString CredentialsManager::backend_name() const {
   return backend_ && backend_state_ == BackendState::Ready ? backend_->name() : QString();
 }
 
+bool CredentialsManager::insecure_backend() const {
+  return backend_ && backend_state_ == BackendState::Ready && !backend_->secure();
+}
+
+bool CredentialsManager::TakeInsecureBackendNotice() {
+
+  Settings s;
+  s.beginGroup(kSettingsGroup);
+  const bool notice_shown = s.value(kInsecureBackendNoticeShown, false).toBool();
+  if (!notice_shown) {
+    s.setValue(kInsecureBackendNoticeShown, true);
+  }
+  s.endGroup();
+
+  return !notice_shown;
+
+}
+
 void CredentialsManager::ReloadSettings() {
 
   Settings s;
@@ -394,12 +412,23 @@ void CredentialsManager::BackendReady() {
 
   if (backend_->secure()) {
     qLog(Info) << "Using credentials backend" << backend_->name();
+    // Passwords are stored securely again, so tell the user again the next time the settings file has to be used.
+    Settings s;
+    s.beginGroup(kSettingsGroup);
+    if (s.contains(kInsecureBackendNoticeShown)) {
+      s.remove(kInsecureBackendNoticeShown);
+    }
+    s.endGroup();
   }
   else if (backend_type_ == BackendType::Settings) {
     qLog(Warning) << "Using the settings file for storing passwords, passwords are not stored securely.";
   }
   else {
     qLog(Warning) << "No secure credentials backend is available, passwords will be stored in the settings file.";
+  }
+
+  if (!backend_->secure()) {
+    Q_EMIT InsecureBackend();
   }
 
   StartNextRequest();

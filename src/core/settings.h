@@ -30,6 +30,10 @@ class Settings : public QSettings {
   explicit Settings(QObject *parent = nullptr);
   explicit Settings(const QSettings::Scope scope, QObject *parent = nullptr);
   explicit Settings(const QString &filename, const Format format, QObject *parent = nullptr);
+
+ private:
+  // On Unix, except macOS, creates the settings file readable and writable by the owner only (0600) and removes group and other permissions from an existing file.
+  void RestrictFilePermissions();
 };
 
 #endif  // SETTINGS_H

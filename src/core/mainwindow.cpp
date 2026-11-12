@@ -215,6 +215,7 @@
 #include "radios/radiobrowsersearchview.h"
 
 #include "scrobbler/audioscrobbler.h"
+#include "credentialsmanager/credentialsmanager.h"
 
 #ifdef HAVE_TAGFETCHER
 #  include "tagfetcher/tagfetcher.h"
@@ -1243,6 +1244,12 @@ MainWindow::MainWindow(Application *app,
     }
   }
 #endif
+
+  // Tell the user once when passwords and login keys are stored in the settings file because no keyring is available.
+  QObject::connect(&*app_->credentials_manager(), &CredentialsManager::InsecureBackend, this, &MainWindow::ShowInsecureCredentialsNotice);
+  if (app_->credentials_manager()->insecure_backend()) {
+    ShowInsecureCredentialsNotice();
+  }
 
   {
     Settings s;
@@ -3507,6 +3514,33 @@ void MainWindow::ShowTranscodeDialog() {
 
 void MainWindow::ShowErrorDialog(const QString &message) {
   error_dialog_->ShowMessage(message);
+}
+
+void MainWindow::ShowInsecureCredentialsNotice() {
+
+  if (!CredentialsManager::TakeInsecureBackendNotice()) return;
+
+  const QString settings_file = QDir::toNativeSeparators(Settings().fileName());
+  QString message;
+  if (app_->credentials_manager()->settings_backend_selected()) {
+    message = tr("Akousma is set to store saved passwords and login keys in its settings file instead of a system keyring, so they are not encrypted.");
+  }
+  else {
+    message = tr("No system keyring is available, so Akousma stores saved passwords and login keys in its settings file, where they are not encrypted.");
+  }
+  message += u' ' + tr("Settings file: %1").arg(settings_file);
+#if defined(Q_OS_UNIX) && !defined(Q_OS_MACOS)
+  message += u' ' + tr("Only your user account can read the file.");
+  if (!app_->credentials_manager()->settings_backend_selected()) {
+    message += u' ' + tr("To store them in a keyring, install and start a Secret Service keyring such as GNOME Keyring or KWallet, restart Akousma, then save the passwords and log in again.");
+  }
+#endif
+
+  QMessageBox *messagebox = new QMessageBox(QMessageBox::Warning, tr("Passwords are not stored securely"), message, QMessageBox::Ok, this);
+  messagebox->setTextFormat(Qt::PlainText);
+  messagebox->setAttribute(Qt::WA_DeleteOnClose);
+  messagebox->show();
+
 }
 
 void MainWindow::CheckShowErrorDialog() {

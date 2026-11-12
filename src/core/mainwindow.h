@@ -249,6 +249,7 @@ class MainWindow : public QMainWindow, public PlatformInterface {
   void ShowImportDialog();
   void ShowErrorDialog(const QString &message);
   void CheckShowErrorDialog();
+  void ShowInsecureCredentialsNotice();
   void ShowTranscodeDialog();
   SettingsDialog *CreateSettingsDialog();
   TagEditor *CreateTagEditor();

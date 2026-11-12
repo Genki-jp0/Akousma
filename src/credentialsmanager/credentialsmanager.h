@@ -61,6 +61,7 @@ class CredentialsManager : public QObject {
 
   static constexpr char kSettingsGroup[] = "CredentialsManager";
   static constexpr char kBackend[] = "backend";
+  static constexpr char kInsecureBackendNoticeShown[] = "insecure_backend_notice_shown";
 
   static QString BackendToString(const BackendType backend);
   static BackendType BackendFromString(const QString &backend);
@@ -78,6 +79,16 @@ class CredentialsManager : public QObject {
   // Name of the backend in use, empty until the first request has initialized it.
   QString backend_name() const;
 
+  // True when the backend in use stores the passwords unencrypted in the settings file, false until the first request has initialized the backend.
+  bool insecure_backend() const;
+
+  // True when the settings file is selected in the settings as the backend, instead of being used because no secure backend is available.
+  bool settings_backend_selected() const { return backend_type_ == BackendType::Settings; }
+
+  // Returns true once after passwords started being stored in the settings file, so the user is told about it one time.
+  // The notice is given again when a secure backend was used in the meantime.
+  static bool TakeInsecureBackendNotice();
+
   // Re-reads the selected backend from the settings, the backend is initialized again before the next request.
   void ReloadSettings();
 
@@ -90,6 +101,10 @@ class CredentialsManager : public QObject {
 
   // Deletes the password for the service, finishes with Success if the password is deleted or did not exist.
   [[nodiscard]] CredentialsReplyPtr DeletePasswordAsync(const QString &service);
+
+ Q_SIGNALS:
+  // Emitted when the backend is initialized and stores the passwords unencrypted in the settings file, because no secure backend is available or because it is selected.
+  void InsecureBackend();
 
  private:
   enum class RequestType {
