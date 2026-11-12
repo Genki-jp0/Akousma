@@ -81,4 +81,24 @@ bool GlobalStrictSSL() {
 
 }
 
+bool MigrateStrictSSLDefault() {
+
+  Settings s;
+  s.beginGroup(BackendSettings::kSettingsGroup);
+
+  bool reset = false;
+  if (!s.value(BackendSettings::kStrictSSLDefaultMigrated, false).toBool()) {
+    if (s.contains(BackendSettings::kStrictSSL) && !s.value(BackendSettings::kStrictSSL).toBool()) {
+      s.setValue(BackendSettings::kStrictSSL, true);
+      reset = true;
+    }
+    s.setValue(BackendSettings::kStrictSSLDefaultMigrated, true);
+  }
+
+  s.endGroup();
+
+  return reset;
+
+}
+
 }  // namespace StreamTls

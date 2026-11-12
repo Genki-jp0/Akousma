@@ -74,6 +74,69 @@ TEST(StreamTlsVerificationTest, GlobalStrictSSLReadsTheSetting) {
 
 }
 
+void RemoveStrictSSLDefaultMigrated() {
+  Settings s;
+  s.beginGroup(BackendSettings::kSettingsGroup);
+  s.remove(BackendSettings::kStrictSSLDefaultMigrated);
+  s.endGroup();
+}
+
+bool StrictSSLDefaultMigrated() {
+  Settings s;
+  s.beginGroup(BackendSettings::kSettingsGroup);
+  const bool migrated = s.value(BackendSettings::kStrictSSLDefaultMigrated, false).toBool();
+  s.endGroup();
+  return migrated;
+}
+
+bool StoredStrictSSLContained() {
+  Settings s;
+  s.beginGroup(BackendSettings::kSettingsGroup);
+  const bool contains = s.contains(BackendSettings::kStrictSSL);
+  s.endGroup();
+  return contains;
+}
+
+TEST(StreamTlsVerificationTest, MigrateStrictSSLDefaultResetsStoredFalseOnce) {
+
+  RemoveStrictSSLDefaultMigrated();
+  SetStoredStrictSSL(false);
+
+  EXPECT_TRUE(StreamTls::MigrateStrictSSLDefault());
+  EXPECT_TRUE(StreamTls::GlobalStrictSSL());
+  EXPECT_TRUE(StrictSSLDefaultMigrated());
+
+  // The user turns it off again, which is kept.
+  SetStoredStrictSSL(false);
+  EXPECT_FALSE(StreamTls::MigrateStrictSSLDefault());
+  EXPECT_FALSE(StreamTls::GlobalStrictSSL());
+
+  RemoveStrictSSLDefaultMigrated();
+  RemoveStoredStrictSSL();
+
+}
+
+TEST(StreamTlsVerificationTest, MigrateStrictSSLDefaultKeepsOtherValues) {
+
+  // Already on.
+  RemoveStrictSSLDefaultMigrated();
+  SetStoredStrictSSL(true);
+  EXPECT_FALSE(StreamTls::MigrateStrictSSLDefault());
+  EXPECT_TRUE(StreamTls::GlobalStrictSSL());
+  EXPECT_TRUE(StrictSSLDefaultMigrated());
+
+  // Not stored, the default applies, and nothing is stored for it.
+  RemoveStrictSSLDefaultMigrated();
+  RemoveStoredStrictSSL();
+  EXPECT_FALSE(StreamTls::MigrateStrictSSLDefault());
+  EXPECT_FALSE(StoredStrictSSLContained());
+  EXPECT_TRUE(StreamTls::GlobalStrictSSL());
+  EXPECT_TRUE(StrictSSLDefaultMigrated());
+
+  RemoveStrictSSLDefaultMigrated();
+
+}
+
 TEST(StreamTlsVerificationTest, StrictSSL) {
 
   // Default follows the global setting.

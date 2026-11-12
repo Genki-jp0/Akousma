@@ -48,6 +48,11 @@ StreamTlsVerification ForSourceUri(const QByteArray &source_uri, const QByteArra
 // The global "strict SSL" backend setting.
 bool GlobalStrictSSL();
 
+// Strict SSL used to be off by default, and the settings dialog stores the value, so most existing configurations have strict_ssl=false although the user never chose it.
+// This resets a stored false to true once, and marks it as done, so a user who turns it off again afterwards keeps that choice.
+// Returns true when the stored value was reset.
+bool MigrateStrictSSLDefault();
+
 }  // namespace StreamTls
 
 #endif  // STREAMTLSVERIFICATION_H

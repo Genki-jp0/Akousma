@@ -36,6 +36,7 @@
 #include "core/logging.h"
 #include "core/settings.h"
 #include "core/networkproxyfactory.h"
+#include "core/streamtlsverification.h"
 #include "enginebase.h"
 #include "constants/backendsettings.h"
 #include "constants/networkproxysettings.h"
@@ -171,6 +172,11 @@ void EngineBase::SetMute(const bool mute) {
 }
 
 void EngineBase::ReloadSettings() {
+
+  // Before the settings are read below, so the engine uses the new default right away.
+  if (StreamTls::MigrateStrictSSLDefault()) {
+    qLog(Info) << "Strict SSL mode was turned on, it is the new default.";
+  }
 
   Settings s;
 
