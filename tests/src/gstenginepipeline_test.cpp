@@ -22,6 +22,7 @@
 #include <gst/gst.h>
 
 #include <initializer_list>
+#include <optional>
 #include <utility>
 
 #include <QtGlobal>
@@ -46,6 +47,7 @@
 
 #include "engine/gststartup.h"
 #include "engine/gstenginepipeline.h"
+#include "core/streamtlsverification.h"
 
 #include "test_utils.h"
 
@@ -137,6 +139,18 @@ class GstEnginePipelineTest {
       pipeline.next_gst_url_ = stream_url.toEncoded();
     }
     pipeline.next_uri_set_ = true;
+  }
+
+  // Sets the GStreamer URI and TLS verification of the current stream, like InitFromUrl() does, without creating the GStreamer pipeline.
+  static void SetCurrentTlsVerification(GstEnginePipeline &pipeline, const QByteArray &gst_url, const StreamTlsVerification tls_verification) {
+    pipeline.set_tls_verification(tls_verification);
+    QMutexLocker lock(&pipeline.mutex_tls_verification_);
+    pipeline.tls_gst_url_ = gst_url;
+  }
+
+  // Runs the "source-setup" callback for source, like playbin does when it created the source element for a URI.
+  static void SourceSetup(GstEnginePipeline &pipeline, GstElement *source) {
+    GstEnginePipeline::SourceSetupCallback(nullptr, source, &pipeline);
   }
 };
 
@@ -1202,6 +1216,87 @@ TEST(GstEnginePipelineTest, WarmupAfterQuickUnpauseResumesPlayback) {
   EXPECT_TRUE(seen_paused);
   EXPECT_TRUE(always_pending);
   EXPECT_EQ(GST_STATE_PLAYING, pipeline.state());
+
+}
+
+// Creates an HTTP source element for uri, like playbin does, and returns whether the "source-setup" callback made it strict about TLS certificates.
+// Returns std::nullopt when souphttpsrc is not available.
+std::optional<bool> SourceStrictSSL(GstEnginePipeline &pipeline, const QByteArray &uri) {
+
+  GstElement *source = gst_element_factory_make("souphttpsrc", nullptr);
+  if (!source) return std::nullopt;
+  gst_object_ref_sink(source);
+
+  g_object_set(source, "location", uri.constData(), nullptr);
+  // Start from the opposite of the element's default, so the test sees the callback set it.
+  g_object_set(source, "ssl-strict", FALSE, nullptr);
+  GstEnginePipelineTest::SourceSetup(pipeline, source);
+
+  gboolean strict_ssl = FALSE;
+  g_object_get(source, "ssl-strict", &strict_ssl, nullptr);
+  gst_object_unref(source);
+
+  return strict_ssl == TRUE;
+
+}
+
+// Streams from a server with its own "Verify server certificate" setting follow that setting, every other stream follows the global strict SSL setting.
+TEST(GstEnginePipelineTest, SourceSetupStrictSSLFollowsStreamVerification) {
+
+  GstStartup::Initialize();
+
+  const QByteArray uri = "https://music.example.test/rest/stream?id=1";
+
+  for (const bool global_strict_ssl : {false, true}) {
+
+    GstEnginePipeline default_pipeline;
+    default_pipeline.set_strict_ssl_enabled(global_strict_ssl);
+    GstEnginePipelineTest::SetCurrentTlsVerification(default_pipeline, uri, StreamTlsVerification::Default);
+    const std::optional<bool> default_strict_ssl = SourceStrictSSL(default_pipeline, uri);
+    if (!default_strict_ssl) GTEST_SKIP() << "souphttpsrc is not available";
+    EXPECT_EQ(global_strict_ssl, *default_strict_ssl);
+
+    GstEnginePipeline verify_pipeline;
+    verify_pipeline.set_strict_ssl_enabled(global_strict_ssl);
+    GstEnginePipelineTest::SetCurrentTlsVerification(verify_pipeline, uri, StreamTlsVerification::Verify);
+    EXPECT_EQ(std::optional<bool>(true), SourceStrictSSL(verify_pipeline, uri));
+
+    GstEnginePipeline no_verify_pipeline;
+    no_verify_pipeline.set_strict_ssl_enabled(global_strict_ssl);
+    GstEnginePipelineTest::SetCurrentTlsVerification(no_verify_pipeline, uri, StreamTlsVerification::NoVerify);
+    EXPECT_EQ(std::optional<bool>(false), SourceStrictSSL(no_verify_pipeline, uri));
+
+  }
+
+}
+
+// The next stream of a gapless transition is set up while the current one plays, and gets its own verification, also after it became the current stream.
+TEST(GstEnginePipelineTest, SourceSetupStrictSSLForGaplessNextStream) {
+
+  GstStartup::Initialize();
+
+  const QUrl current_url(u"https://self-signed.example.test/Audio/1/stream"_s);
+  const QUrl next_url(u"https://radio.example.test/stream"_s);
+
+  GstEnginePipeline pipeline;
+  pipeline.set_strict_ssl_enabled(true);
+  GstEnginePipelineTest::SetCurrentUrls(pipeline, current_url, current_url);
+  GstEnginePipelineTest::SetCurrentTlsVerification(pipeline, current_url.toEncoded(), StreamTlsVerification::NoVerify);
+  pipeline.PrepareNextUrl(next_url, next_url, next_url.toEncoded(), 0, 0, StreamTlsVerification::Default);
+
+  const std::optional<bool> current_strict_ssl = SourceStrictSSL(pipeline, current_url.toEncoded());
+  if (!current_strict_ssl) GTEST_SKIP() << "souphttpsrc is not available";
+  EXPECT_FALSE(*current_strict_ssl);
+  EXPECT_EQ(std::optional<bool>(true), SourceStrictSSL(pipeline, next_url.toEncoded()));
+
+  // A source which matches neither stream does not get the exception of the current one.
+  EXPECT_EQ(std::optional<bool>(true), SourceStrictSSL(pipeline, "https://other.example.test/"));
+
+  // The next stream starts, and is the current stream now, the exception of the previous stream is gone.
+  GstEnginePipelineTest::SetNextUrlsAndMarkSet(pipeline, next_url, next_url);
+  GstEnginePipelineTest::DispatchStreamStart(pipeline);
+  EXPECT_EQ(std::optional<bool>(true), SourceStrictSSL(pipeline, next_url.toEncoded()));
+  EXPECT_EQ(std::optional<bool>(true), SourceStrictSSL(pipeline, current_url.toEncoded()));
 
 }
 

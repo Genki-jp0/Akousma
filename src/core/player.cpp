@@ -48,6 +48,7 @@
 #include "core/song.h"
 #include "core/urlhandlers.h"
 #include "core/urlhandler.h"
+#include "core/streamtlsverification.h"
 #include "core/enginemetadata.h"
 #if defined(HAVE_DBUS) && !defined(Q_OS_MACOS)
 #  include "core/sleepinhibitor.h"
@@ -282,6 +283,13 @@ void Player::ResumePlayback() {
 
 }
 
+StreamTlsVerification Player::TlsVerification(const QUrl &media_url) const {
+
+  UrlHandler *url_handler = url_handlers_->GetUrlHandler(media_url);
+  return url_handler ? url_handler->tls_verification() : StreamTlsVerification::Default;
+
+}
+
 void Player::HandleLoadResult(const UrlHandler::LoadResult &result) {
 
   if (loading_async_.contains(result.media_url_)) {
@@ -405,13 +413,13 @@ void Player::HandleLoadResult(const UrlHandler::LoadResult &result) {
 
       if (is_current) {
         qLog(Debug) << "Playing song" << current_item->EffectiveMetadata().title() << Utilities::UrlForLog(result.stream_url_) << "position" << play_offset_nanosec_;
-        engine_->Play(result.media_url_, result.stream_url_, pause_, stream_change_type_, song.has_cue(), static_cast<quint64>(song.beginning_nanosec()), song.end_nanosec(), play_offset_nanosec_, song.ebur128_integrated_loudness_lufs());
+        engine_->Play(result.media_url_, result.stream_url_, pause_, stream_change_type_, song.has_cue(), static_cast<quint64>(song.beginning_nanosec()), song.end_nanosec(), play_offset_nanosec_, song.ebur128_integrated_loudness_lufs(), TlsVerification(result.media_url_));
         current_item_ = current_item;
         play_offset_nanosec_ = 0;
       }
       else if (is_next && !current_item->EffectiveMetadata().is_module_music()) {
         qLog(Debug) << "Preloading next song" << next_item->EffectiveMetadata().title() << Utilities::UrlForLog(result.stream_url_);
-        engine_->StartPreloading(next_item->OriginalUrl(), result.stream_url_, song.has_cue(), song.beginning_nanosec(), song.end_nanosec());
+        engine_->StartPreloading(next_item->OriginalUrl(), result.stream_url_, song.has_cue(), song.beginning_nanosec(), song.end_nanosec(), TlsVerification(result.media_url_));
       }
 
       break;
@@ -901,7 +909,7 @@ void Player::PlayAt(const int index, const bool pause, const quint64 offset_nano
   }
   else {
     qLog(Debug) << "Playing song" << current_item_->EffectiveMetadata().title() << Utilities::UrlForLog(url) << "position" << play_offset_nanosec_;
-    engine_->Play(current_item_->OriginalUrl(), url, pause, change, current_item_->EffectiveMetadata().has_cue(), static_cast<quint64>(current_item_->effective_beginning_nanosec()), current_item_->effective_end_nanosec(), play_offset_nanosec_, current_item_->EffectiveMetadata().ebur128_integrated_loudness_lufs());
+    engine_->Play(current_item_->OriginalUrl(), url, pause, change, current_item_->EffectiveMetadata().has_cue(), static_cast<quint64>(current_item_->effective_beginning_nanosec()), current_item_->effective_end_nanosec(), play_offset_nanosec_, current_item_->EffectiveMetadata().ebur128_integrated_loudness_lufs(), TlsVerification(current_item_->OriginalUrl()));
   }
 
 }
@@ -1130,7 +1138,7 @@ void Player::TrackAboutToEnd() {
     return;
   }
 
-  engine_->StartPreloading(next_item->OriginalUrl(), url, next_item->EffectiveMetadata().has_cue(), next_item->effective_beginning_nanosec(), next_item->effective_end_nanosec());
+  engine_->StartPreloading(next_item->OriginalUrl(), url, next_item->EffectiveMetadata().has_cue(), next_item->effective_beginning_nanosec(), next_item->effective_end_nanosec(), TlsVerification(next_item->OriginalUrl()));
 
 }
 

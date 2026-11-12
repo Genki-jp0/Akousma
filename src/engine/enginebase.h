@@ -43,6 +43,7 @@
 #  include "constants/spotifysettings.h"
 #endif
 #include "core/song.h"
+#include "core/streamtlsverification.h"
 
 class EngineBase : public QObject {
   Q_OBJECT
@@ -95,8 +96,9 @@ class EngineBase : public QObject {
   virtual bool Init() = 0;
   virtual State state() const = 0;
   virtual State actual_state() const { return state(); }
-  virtual void StartPreloading(const QUrl &media_url, const QUrl &stream_url, const bool force_stop_at_end, const qint64 beginning_offset_nanosec, const qint64 end_offset_nanosec);
-  virtual bool Load(const QUrl &media_url, const QUrl &stream_url, const TrackChangeFlags track_change_flags, const bool force_stop_at_end, const quint64 beginning_offset_nanosec, const qint64 end_offset_nanosec, const std::optional<double> ebur128_integrated_loudness_lufs);
+  // tls_verification says how the TLS certificate of stream_url is checked, see StreamTlsVerification.
+  virtual void StartPreloading(const QUrl &media_url, const QUrl &stream_url, const bool force_stop_at_end, const qint64 beginning_offset_nanosec, const qint64 end_offset_nanosec, const StreamTlsVerification tls_verification);
+  virtual bool Load(const QUrl &media_url, const QUrl &stream_url, const TrackChangeFlags track_change_flags, const bool force_stop_at_end, const quint64 beginning_offset_nanosec, const qint64 end_offset_nanosec, const std::optional<double> ebur128_integrated_loudness_lufs, const StreamTlsVerification tls_verification);
   virtual bool Play(const bool pause, const quint64 offset_nanosec) = 0;
   virtual void Stop(const bool stop_after = false) = 0;
   virtual void Pause() = 0;
@@ -129,7 +131,7 @@ class EngineBase : public QObject {
 
   // Plays a media stream represented with the URL 'u' from the given 'beginning' to the given 'end' (usually from 0 to a song's length).
   // Both markers should be passed in nanoseconds. 'end' can be negative, indicating that the real length of 'u' stream is unknown.
-  bool Play(const QUrl &media_url, const QUrl &stream_url, const bool pause, const TrackChangeFlags flags, const bool force_stop_at_end, const quint64 beginning_offset_nanosec, const qint64 end_offset_nanosec, const quint64 offset_nanosec, const std::optional<double> ebur128_integrated_loudness_lufs);
+  bool Play(const QUrl &media_url, const QUrl &stream_url, const bool pause, const TrackChangeFlags flags, const bool force_stop_at_end, const quint64 beginning_offset_nanosec, const qint64 end_offset_nanosec, const quint64 offset_nanosec, const std::optional<double> ebur128_integrated_loudness_lufs, const StreamTlsVerification tls_verification);
   void SetVolume(const uint volume);
   void SetMute(const bool mute);
 

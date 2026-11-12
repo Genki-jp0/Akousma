@@ -65,8 +65,8 @@ class GstEngine : public EngineBase, public GstBufferConsumer {
   bool Init() override;
   State state() const override;
   State actual_state() const override;
-  void StartPreloading(const QUrl &media_url, const QUrl &stream_url, const bool force_stop_at_end, const qint64 beginning_offset_nanosec, const qint64 end_offset_nanosec) override;
-  bool Load(const QUrl &media_url, const QUrl &stream_url, const EngineBase::TrackChangeFlags change, const bool force_stop_at_end, const quint64 beginning_offset_nanosec, const qint64 end_offset_nanosec, const std::optional<double> ebur128_integrated_loudness_lufs) override;
+  void StartPreloading(const QUrl &media_url, const QUrl &stream_url, const bool force_stop_at_end, const qint64 beginning_offset_nanosec, const qint64 end_offset_nanosec, const StreamTlsVerification tls_verification) override;
+  bool Load(const QUrl &media_url, const QUrl &stream_url, const EngineBase::TrackChangeFlags change, const bool force_stop_at_end, const quint64 beginning_offset_nanosec, const qint64 end_offset_nanosec, const std::optional<double> ebur128_integrated_loudness_lufs, const StreamTlsVerification tls_verification) override;
   bool Play(const bool pause, const quint64 offset_nanosec) override;
   void Stop(const bool stop_after = false) override;
   void Pause() override;
@@ -140,7 +140,7 @@ class GstEngine : public EngineBase, public GstBufferConsumer {
   void StopTimers();
 
   GstEnginePipelinePtr CreatePipeline();
-  GstEnginePipelinePtr CreatePipeline(const QUrl &media_url, const QUrl &stream_url, const QByteArray &gst_url, const qint64 beginning_offset_nanosec, const qint64 end_offset_nanosec, const double ebur128_loudness_normalizing_gain_db);
+  GstEnginePipelinePtr CreatePipeline(const QUrl &media_url, const QUrl &stream_url, const QByteArray &gst_url, const qint64 beginning_offset_nanosec, const qint64 end_offset_nanosec, const double ebur128_loudness_normalizing_gain_db, const StreamTlsVerification tls_verification);
 
   void FinishPipeline(GstEnginePipelinePtr pipeline);
 

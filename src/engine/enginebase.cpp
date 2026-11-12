@@ -84,7 +84,7 @@ EngineBase::EngineBase(QObject *parent)
       channels_(0),
       bs2b_enabled_(false),
       http2_enabled_(true),
-      strict_ssl_enabled_(false),
+      strict_ssl_enabled_(BackendSettings::kDefaultStrictSSL),
 #ifdef HAVE_SPOTIFY
       spotify_bitrate_(SpotifySettings::kDefaultBitrate),
 #endif
@@ -92,20 +92,22 @@ EngineBase::EngineBase(QObject *parent)
 
 EngineBase::~EngineBase() = default;
 
-void EngineBase::StartPreloading(const QUrl &media_url, const QUrl &stream_url, const bool force_stop_at_end, const qint64 beginning_offset_nanosec, const qint64 end_offset_nanosec) {
+void EngineBase::StartPreloading(const QUrl &media_url, const QUrl &stream_url, const bool force_stop_at_end, const qint64 beginning_offset_nanosec, const qint64 end_offset_nanosec, const StreamTlsVerification tls_verification) {
 
   Q_UNUSED(media_url)
   Q_UNUSED(stream_url)
   Q_UNUSED(force_stop_at_end)
   Q_UNUSED(beginning_offset_nanosec)
   Q_UNUSED(end_offset_nanosec)
+  Q_UNUSED(tls_verification)
 
 }
 
-bool EngineBase::Load(const QUrl &media_url, const QUrl &stream_url, const TrackChangeFlags track_change_flags, const bool force_stop_at_end, const quint64 beginning_offset_nanosec, const qint64 end_offset_nanosec, const std::optional<double> ebur128_integrated_loudness_lufs) {
+bool EngineBase::Load(const QUrl &media_url, const QUrl &stream_url, const TrackChangeFlags track_change_flags, const bool force_stop_at_end, const quint64 beginning_offset_nanosec, const qint64 end_offset_nanosec, const std::optional<double> ebur128_integrated_loudness_lufs, const StreamTlsVerification tls_verification) {
 
   Q_UNUSED(track_change_flags)
   Q_UNUSED(force_stop_at_end);
+  Q_UNUSED(tls_verification)
 
   media_url_ = media_url;
   stream_url_ = stream_url;
@@ -130,9 +132,9 @@ bool EngineBase::Load(const QUrl &media_url, const QUrl &stream_url, const Track
 
 }
 
-bool EngineBase::Play(const QUrl &media_url, const QUrl &stream_url, const bool pause, const TrackChangeFlags flags, const bool force_stop_at_end, const quint64 beginning_offset_nanosec, const qint64 end_offset_nanosec, const quint64 offset_nanosec, const std::optional<double> ebur128_integrated_loudness_lufs) {
+bool EngineBase::Play(const QUrl &media_url, const QUrl &stream_url, const bool pause, const TrackChangeFlags flags, const bool force_stop_at_end, const quint64 beginning_offset_nanosec, const qint64 end_offset_nanosec, const quint64 offset_nanosec, const std::optional<double> ebur128_integrated_loudness_lufs, const StreamTlsVerification tls_verification) {
 
-  if (!Load(media_url, stream_url, flags, force_stop_at_end, beginning_offset_nanosec, end_offset_nanosec, ebur128_integrated_loudness_lufs)) {
+  if (!Load(media_url, stream_url, flags, force_stop_at_end, beginning_offset_nanosec, end_offset_nanosec, ebur128_integrated_loudness_lufs, tls_verification)) {
     return false;
   }
 

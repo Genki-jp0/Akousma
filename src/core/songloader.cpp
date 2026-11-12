@@ -47,6 +47,7 @@
 #include "core/song.h"
 #include "core/database.h"
 #include "core/urlhandlers.h"
+#include "core/streamtlsverification.h"
 #include "songloader.h"
 #include "tagreader/tagreaderclient.h"
 #include "collection/collectionbackend.h"
@@ -501,7 +502,10 @@ SongLoader::Result SongLoader::LoadRemote() {
   }
   gst_bin_add(GST_BIN(&*pipeline), source);
 
-  g_object_set(source, "ssl-strict", FALSE, nullptr);
+  // The remote playlist is not from a server with its own "Verify server certificate" setting, so it follows the global strict SSL setting like other streams do.
+  if (g_object_class_find_property(G_OBJECT_GET_CLASS(source), "ssl-strict")) {
+    g_object_set(source, "ssl-strict", StreamTls::GlobalStrictSSL() ? TRUE : FALSE, nullptr);
+  }
 
   // Create the other elements and link them up
   GstElement *typefind = gst_element_factory_make("typefind", nullptr);

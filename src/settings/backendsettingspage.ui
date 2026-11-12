@@ -314,6 +314,9 @@
       </item>
       <item>
        <widget class="QCheckBox" name="checkbox_strict_ssl">
+        <property name="toolTip">
+         <string>Verify the TLS certificate of streams. When this is off, streams are also played from servers whose certificate can't be verified, which lets anyone on the network path read and change them. Subsonic, Plex and Jellyfin streams follow the &quot;Verify server certificate&quot; setting of that server instead.</string>
+        </property>
         <property name="text">
          <string>Use strict SSL mode</string>
         </property>

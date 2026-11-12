@@ -201,7 +201,7 @@ EngineBase::State GstEngine::actual_state() const {
 
 }
 
-void GstEngine::StartPreloading(const QUrl &media_url, const QUrl &stream_url, const bool force_stop_at_end, const qint64 beginning_offset_nanosec, const qint64 end_offset_nanosec) {
+void GstEngine::StartPreloading(const QUrl &media_url, const QUrl &stream_url, const bool force_stop_at_end, const qint64 beginning_offset_nanosec, const qint64 end_offset_nanosec, const StreamTlsVerification tls_verification) {
 
   const GstUrl gst_url = FixupUrl(stream_url);
 
@@ -216,7 +216,7 @@ void GstEngine::StartPreloading(const QUrl &media_url, const QUrl &stream_url, c
     if (!gst_url.source_device.isEmpty()) {
       current_pipeline_->SetSourceDevice(gst_url.source_device);
     }
-    current_pipeline_->PrepareNextUrl(media_url, stream_url, gst_url.url, beginning_offset_nanosec, force_stop_at_end ? end_offset_nanosec : 0);
+    current_pipeline_->PrepareNextUrl(media_url, stream_url, gst_url.url, beginning_offset_nanosec, force_stop_at_end ? end_offset_nanosec : 0, tls_verification);
     // Add request to discover the stream
     if (discoverer_ && media_url.scheme() != u"spotify"_s) {
       if (!gst_discoverer_discover_uri_async(discoverer_, gst_url.url.constData())) {
@@ -227,9 +227,9 @@ void GstEngine::StartPreloading(const QUrl &media_url, const QUrl &stream_url, c
 
 }
 
-bool GstEngine::Load(const QUrl &media_url, const QUrl &stream_url, const EngineBase::TrackChangeFlags change, const bool force_stop_at_end, const quint64 beginning_offset_nanosec, const qint64 end_offset_nanosec, const std::optional<double> ebur128_integrated_loudness_lufs) {
+bool GstEngine::Load(const QUrl &media_url, const QUrl &stream_url, const EngineBase::TrackChangeFlags change, const bool force_stop_at_end, const quint64 beginning_offset_nanosec, const qint64 end_offset_nanosec, const std::optional<double> ebur128_integrated_loudness_lufs, const StreamTlsVerification tls_verification) {
 
-  EngineBase::Load(media_url, stream_url, change, force_stop_at_end, beginning_offset_nanosec, end_offset_nanosec, ebur128_integrated_loudness_lufs);
+  EngineBase::Load(media_url, stream_url, change, force_stop_at_end, beginning_offset_nanosec, end_offset_nanosec, ebur128_integrated_loudness_lufs, tls_verification);
 
   const GstUrl gst_url = FixupUrl(stream_url);
 
@@ -248,7 +248,7 @@ bool GstEngine::Load(const QUrl &media_url, const QUrl &stream_url, const Engine
     }
   }
 
-  GstEnginePipelinePtr pipeline = CreatePipeline(media_url, stream_url, gst_url.url, static_cast<qint64>(beginning_offset_nanosec), force_stop_at_end ? end_offset_nanosec : 0, ebur128_loudness_normalizing_gain_db_);
+  GstEnginePipelinePtr pipeline = CreatePipeline(media_url, stream_url, gst_url.url, static_cast<qint64>(beginning_offset_nanosec), force_stop_at_end ? end_offset_nanosec : 0, ebur128_loudness_normalizing_gain_db_, tls_verification);
   if (!pipeline) return false;
 
   // Set the source device if one was extracted from the URL
@@ -1026,9 +1026,10 @@ GstEnginePipelinePtr GstEngine::CreatePipeline() {
 
 }
 
-GstEnginePipelinePtr GstEngine::CreatePipeline(const QUrl &media_url, const QUrl &stream_url, const QByteArray &gst_url, const qint64 beginning_offset_nanosec, const qint64 end_offset_nanosec, const double ebur128_loudness_normalizing_gain_db) {
+GstEnginePipelinePtr GstEngine::CreatePipeline(const QUrl &media_url, const QUrl &stream_url, const QByteArray &gst_url, const qint64 beginning_offset_nanosec, const qint64 end_offset_nanosec, const double ebur128_loudness_normalizing_gain_db, const StreamTlsVerification tls_verification) {
 
   GstEnginePipelinePtr ret = CreatePipeline();
+  ret->set_tls_verification(tls_verification);
   QString error;
   if (!ret->InitFromUrl(media_url, stream_url, gst_url, beginning_offset_nanosec, end_offset_nanosec, ebur128_loudness_normalizing_gain_db, error)) {
     ret.reset();

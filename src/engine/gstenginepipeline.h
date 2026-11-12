@@ -48,6 +48,7 @@
 
 #include "includes/shared_ptr.h"
 #include "core/enginemetadata.h"
+#include "core/streamtlsverification.h"
 #ifdef HAVE_SPOTIFY
 #  include "constants/spotifysettings.h"
 #endif
@@ -91,6 +92,8 @@ class GstEnginePipeline : public QObject {
   void set_channels(const bool enabled, const int channels);
   void set_bs2b_enabled(const bool enabled);
   void set_strict_ssl_enabled(const bool enabled);
+  // How the TLS certificate of the stream given to InitFromUrl() is checked, set it before InitFromUrl().
+  void set_tls_verification(const StreamTlsVerification tls_verification);
   void set_fading_enabled(const bool enabled);
   // The fading element is only created when building the pipeline, without it fading has no effect on the volume.
   bool fading_enabled() const { return fading_enabled_; }
@@ -132,7 +135,7 @@ class GstEnginePipeline : public QObject {
   // If this is set then it will be loaded automatically when playback finishes for gapless playback
   bool HasNextUrl() const;
   bool HasMatchingNextUrl() const;
-  void PrepareNextUrl(const QUrl &media_url, const QUrl &stream_url, const QByteArray &gst_url, const qint64 beginning_offset_nanosec, const qint64 end_offset_nanosec);
+  void PrepareNextUrl(const QUrl &media_url, const QUrl &stream_url, const QByteArray &gst_url, const qint64 beginning_offset_nanosec, const qint64 end_offset_nanosec, const StreamTlsVerification tls_verification);
 
   void SetSourceDevice(const QString &device);
 
@@ -196,6 +199,9 @@ class GstEnginePipeline : public QObject {
   void DeviceWarmupElapsed(const quint64 device_warmup_generation);
   void EmitFinishedIfQuiescent();
   void SetNextUrl();
+
+  // Whether a new source element is strict about TLS certificates, from the global setting and the verification of the stream it was created for.
+  bool StrictSSLForSource(GstElement *source) const;
 
   // Static callbacks.  The GstEnginePipeline instance is passed in the last argument.
   static GstPadProbeReturn UpstreamEventsProbeCallback(GstPad *pad, GstPadProbeInfo *info, gpointer self);
@@ -357,6 +363,14 @@ class GstEnginePipeline : public QObject {
   QUrl next_stream_url_;
   QByteArray next_gst_url_;
   mutable QMutex mutex_next_url_;
+
+  // The TLS certificate verification of the current and the next stream, with the GStreamer URI each one is for, to match the source elements to them in SourceSetupCallback().
+  // They have their own mutex, which is never held while calling into GStreamer, so SourceSetupCallback() can lock it on any thread, also while the thread that set the "uri" property still holds mutex_url_ or mutex_next_url_.
+  QByteArray tls_gst_url_;
+  StreamTlsVerification tls_verification_;
+  QByteArray next_tls_gst_url_;
+  StreamTlsVerification next_tls_verification_;
+  mutable QMutex mutex_tls_verification_;
 
   double ebur128_loudness_normalizing_gain_db_;
 

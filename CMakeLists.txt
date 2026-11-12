@@ -545,6 +545,7 @@ set(SOURCES
   src/core/signalchecker.cpp
   src/core/song.cpp
   src/core/songloader.cpp
+  src/core/streamtlsverification.cpp
   src/core/updatechecker.cpp
   src/core/stylehelper.cpp
   src/core/stylesheetloader.cpp

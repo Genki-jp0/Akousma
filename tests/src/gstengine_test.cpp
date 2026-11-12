@@ -86,7 +86,7 @@ class GstEngineFadingTest : public ::testing::Test {
 
   bool Load() {
     discovering_ = true;
-    const bool success = engine_->Load(url_, url_, EngineBase::TrackChangeType::Manual, false, 0, 0, std::nullopt);
+    const bool success = engine_->Load(url_, url_, EngineBase::TrackChangeType::Manual, false, 0, 0, std::nullopt, StreamTlsVerification::Default);
     GstDiscoverer *discoverer = GstEngineTest::Discoverer(*engine_);
     if (discoverer && !discovery_connected_) {
       discovery_connected_ = true;

@@ -27,6 +27,7 @@
 #include <QUrl>
 
 #include "core/urlhandler.h"
+#include "core/streamtlsverification.h"
 #include "jellyfin/jellyfinservice.h"
 
 class JellyfinUrlHandler : public UrlHandler {
@@ -36,6 +37,7 @@ class JellyfinUrlHandler : public UrlHandler {
   explicit JellyfinUrlHandler(JellyfinService *service);
 
   QString scheme() const override { return service_->url_scheme(); }
+  StreamTlsVerification tls_verification() const override { return StreamTls::FromVerifyCertificate(service_->verify_certificate()); }
   LoadResult StartLoading(const QUrl &url) override;
   void PlaybackFailed(const QUrl &url) override;
 

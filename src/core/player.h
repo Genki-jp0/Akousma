@@ -33,6 +33,7 @@
 
 #include "includes/shared_ptr.h"
 #include "core/urlhandler.h"
+#include "core/streamtlsverification.h"
 #include "core/enginemetadata.h"
 #include "engine/enginebase.h"
 #include "playlist/playlist.h"
@@ -144,6 +145,10 @@ class Player : public PlayerInterface {
 
   // Returns true if we were supposed to stop after this track.
   bool HandleStopAfter(const Playlist::AutoScroll autoscroll);
+
+  // How the engine checks the TLS certificate of the stream for the playlist item with media_url.
+  // A stream URL from a URL handler is often played again later without the handler, so this asks the handler for the original URL each time.
+  StreamTlsVerification TlsVerification(const QUrl &media_url) const;
 
   void UnPause();
 

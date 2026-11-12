@@ -69,6 +69,7 @@
 #include "constants/timeconstants.h"
 #include "constants/backendsettings.h"
 #include "core/song.h"
+#include "core/streamtlsverification.h"
 #include "utilities/useragent.h"
 #include "core/logging.h"
 #include "core/signalchecker.h"
@@ -145,7 +146,7 @@ GstEnginePipeline::GstEnginePipeline(QObject *parent)
       volume_enabled_(true),
       volume_exponential_(false),
       fading_enabled_(false),
-      strict_ssl_enabled_(false),
+      strict_ssl_enabled_(BackendSettings::kDefaultStrictSSL),
       buffer_duration_nanosec_(BackendSettings::kDefaultBufferDuration * kNsecPerMsec),
       buffer_low_watermark_(BackendSettings::kDefaultBufferLowWatermark),
       buffer_high_watermark_(BackendSettings::kDefaultBufferHighWatermark),
@@ -176,6 +177,8 @@ GstEnginePipeline::GstEnginePipeline(QObject *parent)
       raw_stream_artist_received_(false),
       raw_stream_album_received_(false),
       raw_stream_split_title_(false),
+      tls_verification_(StreamTlsVerification::Default),
+      next_tls_verification_(StreamTlsVerification::Default),
       ebur128_loudness_normalizing_gain_db_(0.0),
       segment_start_(0),
       segment_start_received_(false),
@@ -399,6 +402,11 @@ void GstEnginePipeline::set_strict_ssl_enabled(const bool enabled) {
   strict_ssl_enabled_ = enabled;
 }
 
+void GstEnginePipeline::set_tls_verification(const StreamTlsVerification tls_verification) {
+  QMutexLocker l(&mutex_tls_verification_);
+  tls_verification_ = tls_verification;
+}
+
 void GstEnginePipeline::set_fading_enabled(const bool enabled) {
   fading_enabled_ = enabled;
 }
@@ -594,6 +602,11 @@ bool GstEnginePipeline::InitFromUrl(const QUrl &media_url, const QUrl &stream_ur
     media_url_ = media_url;
     stream_url_ = stream_url;
     gst_url_ = gst_url;
+  }
+
+  {
+    QMutexLocker l(&mutex_tls_verification_);
+    tls_gst_url_ = gst_url;
   }
 
   beginning_offset_nanosec_.store(beginning_offset_nanosec);
@@ -1271,8 +1284,9 @@ void GstEnginePipeline::SourceSetupCallback(GstElement *playbin, GstElement *sou
   }
 
   if (g_object_class_find_property(G_OBJECT_GET_CLASS(source), "ssl-strict")) {
-    qLog(Debug) << "Turning" << (instance->strict_ssl_enabled_.load() ? "on" : "off") << "strict SSL";
-    g_object_set(source, "ssl-strict", instance->strict_ssl_enabled_.load() ? TRUE : FALSE, nullptr);
+    const bool strict_ssl = instance->StrictSSLForSource(source);
+    qLog(Debug) << "Turning" << (strict_ssl ? "on" : "off") << "strict SSL";
+    g_object_set(source, "ssl-strict", strict_ssl ? TRUE : FALSE, nullptr);
   }
 
   if (g_object_class_find_property(G_OBJECT_GET_CLASS(source), "automatic-redirect")) {
@@ -1322,6 +1336,27 @@ void GstEnginePipeline::SourceSetupCallback(GstElement *playbin, GstElement *sou
     instance->buffering_ = false;
     Q_EMIT instance->BufferingFinished();
   }
+
+}
+
+bool GstEnginePipeline::StrictSSLForSource(GstElement *source) const {
+
+  QByteArray source_uri;
+  if (GST_IS_URI_HANDLER(source)) {
+    gchar *uri = gst_uri_handler_get_uri(GST_URI_HANDLER(source));
+    if (uri) {
+      source_uri = uri;
+      g_free(uri);
+    }
+  }
+
+  StreamTlsVerification tls_verification = StreamTlsVerification::Default;
+  {
+    QMutexLocker l(&mutex_tls_verification_);
+    tls_verification = StreamTls::ForSourceUri(source_uri, tls_gst_url_, tls_verification_, next_tls_gst_url_, next_tls_verification_);
+  }
+
+  return StreamTls::StrictSSL(strict_ssl_enabled_.load(), tls_verification);
 
 }
 
@@ -1689,6 +1724,12 @@ GstPadProbeReturn GstEnginePipeline::BufferProbeCallback(GstPad *pad, GstPadProb
         instance->next_beginning_offset_nanosec_.store(0);
         instance->next_end_offset_nanosec_.store(0);
       }
+      {
+        // The current stream continues, so it keeps its own verification.
+        QMutexLocker lock_tls_verification(&instance->mutex_tls_verification_);
+        instance->next_tls_gst_url_.clear();
+        instance->next_tls_verification_ = StreamTlsVerification::Default;
+      }
 
       // The stream continues, so there is no stream start which ends the transition.
       instance->gapless_transition_ = false;
@@ -1877,6 +1918,13 @@ void GstEnginePipeline::StreamStartMessageReceived() {
     end_offset_nanosec_.store(next_end_offset_nanosec_.load());
     next_beginning_offset_nanosec_.store(0);
     next_end_offset_nanosec_.store(0);
+  }
+  {
+    QMutexLocker lock_tls_verification(&mutex_tls_verification_);
+    tls_gst_url_ = next_tls_gst_url_;
+    tls_verification_ = next_tls_verification_;
+    next_tls_gst_url_.clear();
+    next_tls_verification_ = StreamTlsVerification::Default;
   }
 
   // The new track may have a different sample rate, which makes the sink renegotiate in place and can reset the device stream volume/mute (the audio goes silent, or unmutes, while playback continues).
@@ -3125,13 +3173,20 @@ bool GstEnginePipeline::HasMatchingNextUrl() const {
 
 }
 
-void GstEnginePipeline::PrepareNextUrl(const QUrl &media_url, const QUrl &stream_url, const QByteArray &gst_url, const qint64 beginning_offset_nanosec, const qint64 end_offset_nanosec) {
+void GstEnginePipeline::PrepareNextUrl(const QUrl &media_url, const QUrl &stream_url, const QByteArray &gst_url, const qint64 beginning_offset_nanosec, const qint64 end_offset_nanosec, const StreamTlsVerification tls_verification) {
 
   {
     QMutexLocker l(&mutex_next_url_);
     next_media_url_ = media_url;
     next_stream_url_ = stream_url;
     next_gst_url_ = gst_url;
+  }
+
+  // Set before SetNextUrl() below sets the "uri" property, so it is there when the source element for the next stream is set up.
+  {
+    QMutexLocker l(&mutex_tls_verification_);
+    next_tls_gst_url_ = gst_url;
+    next_tls_verification_ = tls_verification;
   }
 
   next_beginning_offset_nanosec_ = beginning_offset_nanosec;

@@ -26,6 +26,7 @@
 #include <QUrl>
 
 #include "core/urlhandler.h"
+#include "core/streamtlsverification.h"
 #include "plex/plexservice.h"
 
 class PlexUrlHandler : public UrlHandler {
@@ -35,6 +36,7 @@ class PlexUrlHandler : public UrlHandler {
   explicit PlexUrlHandler(PlexService *service);
 
   QString scheme() const override { return service_->url_scheme(); }
+  StreamTlsVerification tls_verification() const override { return StreamTls::FromVerifyCertificate(service_->verify_certificate()); }
   QUrl server_url() const { return service_->server_url(); }
   QString token() const { return service_->server_token(); }
 

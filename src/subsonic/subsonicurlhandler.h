@@ -27,6 +27,7 @@
 #include <QUrl>
 
 #include "core/urlhandler.h"
+#include "core/streamtlsverification.h"
 #include "subsonic/subsonicservice.h"
 #include "constants/subsonicsettings.h"
 
@@ -37,6 +38,7 @@ class SubsonicUrlHandler : public UrlHandler {
   explicit SubsonicUrlHandler(SubsonicService *service);
 
   QString scheme() const override { return service_->url_scheme(); }
+  StreamTlsVerification tls_verification() const override { return StreamTls::FromVerifyCertificate(service_->verify_certificate()); }
   QUrl server_url() const { return service_->server_url(); }
   QString username() const { return service_->username(); }
   QString password() const { return service_->password(); }

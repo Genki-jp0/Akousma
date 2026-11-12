@@ -28,6 +28,7 @@
 #include <QUrl>
 
 #include "song.h"
+#include "streamtlsverification.h"
 
 class UrlHandler : public QObject {
   Q_OBJECT
@@ -86,6 +87,11 @@ class UrlHandler : public QObject {
 
   // Called by the Player when a song starts loading - gives the handler a chance to do something clever to get a playable track.
   virtual LoadResult StartLoading(const QUrl &url) { return LoadResult(url); }
+
+  // How the engine checks the TLS certificate of the stream URLs this handler returns.
+  // The player also uses it when it plays or preloads a stream URL it got from this handler earlier, so it must not depend on the URL.
+  // Handlers for a server with its own "Verify server certificate" setting return that setting, since their stream URLs carry the credentials.
+  virtual StreamTlsVerification tls_verification() const { return StreamTlsVerification::Default; }
 
   // Called by the Player when a song it loaded failed to play, for example because the credentials in the stream URL are not valid anymore.
   virtual void PlaybackFailed(const QUrl &url) { Q_UNUSED(url) }
