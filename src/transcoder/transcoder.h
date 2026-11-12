@@ -68,9 +68,10 @@ class Transcoder : public QObject {
   ~Transcoder() override;
 
   static TranscoderPreset PresetForFileType(const Song::FileType filetype);
-  static void MigrateSettings();
   static QList<TranscoderPreset> GetAllPresets();
   static Song::FileType PickBestFormat(const QList<Song::FileType> &supported);
+  // Returns the name of the element used for the caps, the element with the highest rank, or an empty string if there is none.
+  static QString BestElementForMimeType(const GstElementFactoryListType element_type, const QString &mime_type, int *best_rank = nullptr);
 
   int max_threads() const { return max_threads_; }
   void set_max_threads(int count) { max_threads_ = count; }

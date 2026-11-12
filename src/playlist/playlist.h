@@ -192,6 +192,12 @@ class Playlist : public QAbstractListModel {
   const QString &ui_path() const { return ui_path_; }
   void set_ui_path(const QString &path) { ui_path_ = path; }
   bool is_favorite() const { return favorite_; }
+  // A closed favorite playlist is kept until it's saved, it's not used while it's closed, also not as the source of a drag.
+  bool is_closed() const { return closed_; }
+  void set_closed(const bool closed) { closed_ = closed; }
+  bool has_pending_save() const;
+  // Incremented every time saving is queued to the playlist backend.
+  quint64 save_generation() const { return save_generation_; }
   void set_favorite(const bool favorite) { favorite_ = favorite; }
   // A locked playlist can't be changed: songs can't be added, removed, moved, sorted or have their tags edited from it.
   bool is_locked() const { return locked_ && locking_enabled_; }
@@ -351,10 +357,10 @@ class Playlist : public QAbstractListModel {
   void AlbumCoverLoaded(const Song &song, const AlbumCoverLoaderResult &result);
 
  Q_SIGNALS:
+  void PendingInsertsCancelled();
   void RestoreFinished();
   // Emitted when restoring finished or was cancelled.
   void RestoreDone();
-  void PlaylistLoaded();
   void CurrentSongChanged(const Song &metadata);
   void CurrentSongMetadataChanged(const Song &metadata);
   void EditingFinished(const int playlist_id, const QModelIndex idx);
@@ -526,6 +532,8 @@ class Playlist : public QAbstractListModel {
   bool is_sorted_;
   Column sort_column_;
   Qt::SortOrder sort_order_;
+  bool closed_;
+  quint64 save_generation_;
 };
 
 #endif  // PLAYLIST_H

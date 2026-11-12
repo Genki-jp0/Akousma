@@ -59,6 +59,7 @@ class GstEnginePipeline : public QObject {
   Q_OBJECT
 
   friend class GstEnginePipelineTest;
+  friend class GstEngineTest;
 
  public:
   explicit GstEnginePipeline(QObject *parent = nullptr);
@@ -91,6 +92,8 @@ class GstEnginePipeline : public QObject {
   void set_bs2b_enabled(const bool enabled);
   void set_strict_ssl_enabled(const bool enabled);
   void set_fading_enabled(const bool enabled);
+  // The fading element is only created when building the pipeline, without it fading has no effect on the volume.
+  bool fading_enabled() const { return fading_enabled_; }
 #ifdef HAVE_SPOTIFY
   void set_spotify_access_token(const QString &spotify_access_token);
   void set_spotify_bitrate(const SpotifySettings::Bitrate spotify_bitrate);
@@ -341,6 +344,14 @@ class GstEnginePipeline : public QObject {
   // The tags of the current stream, since a tag message can have only some of the tags, like only the bitrate.
   // The metadata is parsed from a copy, so the artist and album parsed from the title are not kept.
   EngineMetadata raw_stream_metadata_;
+  // Whether a message without a title has replaced the artist or album since the last new title.
+  bool raw_stream_artist_received_;
+  bool raw_stream_album_received_;
+  // Whether the title is parsed without the artist and album kept for it from the messages before it.
+  bool raw_stream_split_title_;
+  // The artist and album of the current song, including those parsed from the title.
+  QString parsed_stream_artist_;
+  QString parsed_stream_album_;
 
   QUrl next_media_url_;
   QUrl next_stream_url_;

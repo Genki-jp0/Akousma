@@ -396,6 +396,7 @@ MainWindow::MainWindow(Application *app,
       playlistitem_actions_separator_(nullptr),
       playlist_rescan_songs_(nullptr),
       playlist_fetch_metadata_(nullptr),
+      playlist_menu_column_(-1),
       track_position_timer_(new QTimer(this)),
       track_slider_timer_(new QTimer(this)),
       metadata_queue_timer_(new QTimer(this)),
@@ -1604,9 +1605,9 @@ void MainWindow::PlaylistsLoaded() {
 
   playlists_loaded_ = true;
 
-  if (options_.has_value()) {
-    CommandlineOptionsReceived(options_.value());
-    options_.reset();
+  const QList<CommandlineOptions> pending_options = std::exchange(pending_options_, QList<CommandlineOptions>());
+  for (const CommandlineOptions &options : pending_options) {
+    CommandlineOptionsReceived(options);
   }
 
   app_->player()->PlaylistsLoaded();
@@ -1706,12 +1707,15 @@ void MainWindow::SendNowPlaying() {
 
   // Send now playing to scrobble services
   Playlist *playlist = app_->playlist_manager()->active();
-  if (app_->scrobbler()->enabled() && playlist && playlist->current_item() && playlist->current_item()->EffectiveMetadata().is_metadata_good()) {
-    app_->scrobbler()->UpdateNowPlaying(playlist->current_item()->EffectiveMetadata());
-    ui_->action_love->setEnabled(true);
-    ui_->button_love->setEnabled(true);
-    systemtrayicon_->LoveStateChanged(true);
+  bool can_love = false;
+  if (app_->scrobbler()->enabled() && playlist && playlist->current_item()) {
+    const Song song = playlist->current_item()->EffectiveMetadata();
+    app_->scrobbler()->UpdateNowPlaying(song);
+    can_love = song.is_metadata_good();
   }
+  ui_->action_love->setEnabled(can_love);
+  ui_->button_love->setEnabled(can_love);
+  systemtrayicon_->LoveStateChanged(can_love);
 
 }
 
@@ -1833,7 +1837,8 @@ void MainWindow::PlayIndex(const QModelIndex &idx, Playlist::AutoScroll autoscro
   }
 
   app_->playlist_manager()->SetActiveToCurrent();
-  app_->player()->PlayAt(row, false, 0, EngineBase::TrackChangeType::Manual, autoscroll, true);
+  // Playing the current song again is a new play, also for the scrobblers, like when double clicking it.
+  app_->player()->PlayAt(row, false, 0, EngineBase::TrackChangeType::Manual, autoscroll, true, true);
 
 }
 
@@ -2177,6 +2182,7 @@ void MainWindow::ShowPlaylistContextMenu(const QPoint global_pos, const QModelIn
   }
 
   playlist_menu_index_ = source_index;
+  playlist_menu_column_ = source_index.column();
 
   const bool is_current_row = source_index.isValid() && IsActivePlaylistCurrentRow(source_index.row());
 
@@ -2731,7 +2737,7 @@ void MainWindow::EditValue() {
   if (!current.isValid()) return;
 
   // Edit the last column that was right-clicked on.  If nothing's ever been right clicked then look for the first editable column.
-  int column = playlist_menu_index_.column();
+  int column = playlist_menu_column_;
   if (column == -1) {
     for (int i = 0; i < ui_->playlist->view()->model()->columnCount(); ++i) {
       if (ui_->playlist->view()->isColumnHidden(i)) continue;
@@ -2892,7 +2898,8 @@ void MainWindow::CommandlineOptionsReceived(const QByteArray &string_options) {
 void MainWindow::CommandlineOptionsReceived(const CommandlineOptions &options) {
 
   if (!playlists_loaded_) {
-    options_ = options;
+    // Another instance can send options before the playlists are loaded, keep them all and handle them in the order they were received.
+    pending_options_ << options;
     return;
   }
 
@@ -3003,6 +3010,9 @@ void MainWindow::CommandlineOptionsReceived(const CommandlineOptions &options) {
         ApplyAddBehaviour(BehaviourSettings::AddBehaviour::OpenInNew, mimedata);
         break;
     }
+
+    // The files are inserted and played asynchronously, after the saved playback would be resumed.
+    if (mimedata->play_now_) app_->player()->SkipResumePlayback();
 
     AddToPlaylist(mimedata);
   }

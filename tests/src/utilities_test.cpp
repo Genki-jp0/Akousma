@@ -21,6 +21,8 @@
 
 #include "gtest_include.h"
 
+#include <glib.h>
+
 #include <QByteArray>
 #include <QString>
 #include <QStringList>
@@ -35,6 +37,7 @@
 #include <QtDebug>
 
 #include "test_utils.h"
+#include "environmentvariablerestorer.h"
 #include "utilities/envutils.h"
 #include "utilities/strutils.h"
 #include "utilities/timeutils.h"
@@ -50,6 +53,12 @@
 #include "core/temporaryfile.h"
 
 using namespace Qt::Literals::StringLiterals;
+
+namespace {
+
+constexpr char kTestEnvironmentVariable[] = "STRAWBERRY_UTILITIES_TEST";
+
+}  // namespace
 
 TEST(UtilitiesTest, PrettyTimeDelta) {
 
@@ -98,6 +107,31 @@ TEST(UtilitiesTest, PrettySize) {
 TEST(UtilitiesTest, ColorToRgba) {
 
   ASSERT_EQ(Utilities::ColorToRgba(QColor(33, 22, 128)), u"rgba(33, 22, 128, 255)"_s);
+
+}
+
+// GLib and GStreamer read the environment with the wide character API on Windows, so characters outside the ANSI code page must be kept, for example in user names in paths.
+TEST(UtilitiesTest, SetEnvKeepsNonAsciiCharacters) {
+
+  const EnvironmentVariableRestorer restorer(kTestEnvironmentVariable);
+  const QString value = u"C:\\Users\\\u0141ukasz \u65E5\u672C\\gstreamer"_s;
+  Utilities::SetEnv(kTestEnvironmentVariable, value);
+  EXPECT_EQ(qEnvironmentVariable(kTestEnvironmentVariable), value);
+  EXPECT_EQ(Utilities::GetEnv(QLatin1String(kTestEnvironmentVariable)), value);
+  // GStreamer reads the environment through GLib.
+  const char *glib_value = g_getenv(kTestEnvironmentVariable);
+  ASSERT_NE(glib_value, nullptr);
+  EXPECT_EQ(QString::fromUtf8(glib_value), value);
+
+}
+
+// GetEnv() returns the value as it was set, qEnvironmentVariable() normalizes decomposed characters on macOS.
+TEST(UtilitiesTest, GetEnvKeepsDecomposedCharacters) {
+
+  const EnvironmentVariableRestorer restorer(kTestEnvironmentVariable);
+  const QString value = u"/Users/Rene\u0301/gstreamer"_s;
+  Utilities::SetEnv(kTestEnvironmentVariable, value);
+  EXPECT_EQ(Utilities::GetEnv(QLatin1String(kTestEnvironmentVariable)), value);
 
 }
 
@@ -335,6 +369,20 @@ TEST(UtilitiesTest, UrlForLog) {
   EXPECT_EQ(Utilities::UrlForLog(QUrl(u"https://user:secret@example.com/Audio/1/stream?static=true&api_key=token"_s)), u"https://example.com/Audio/1/stream"_s);
   EXPECT_EQ(Utilities::UrlForLog(QByteArray("http://example.com/rest/stream.view?u=user&p=secret")), u"http://example.com/rest/stream.view"_s);
   EXPECT_EQ(Utilities::UrlForLog(QByteArray("file:///music/a%b#1.flac")), u"file:///music/a%b#1.flac"_s);
+
+}
+
+// Regression test: the URL in the error string of a network reply is decoded, so a value with a space ended the URL, and the rest of the query was kept.
+TEST(UtilitiesTest, RedactUrlsWithReplyUrl) {
+
+  const QUrl url(u"https://example.com/ws/token.get?app_id=secret_id&model=Pixel%206&signature=secret_signature"_s);
+  const QString error_string = u"Error transferring %1 - server replied: Not Found"_s.arg(url.toDisplayString());
+  EXPECT_EQ(Utilities::RedactUrls(error_string, url), u"Error transferring https://example.com/ws/token.get - server replied: Not Found"_s);
+  // The URL in the error string is without the password.
+  const QUrl url_with_password(u"https://user:password@example.com/rest/ping.view?u=John%20Doe&t=secret_token"_s);
+  EXPECT_EQ(Utilities::RedactUrls(u"Error transferring %1 - server replied: Not Found"_s.arg(url_with_password.toDisplayString()), url_with_password), u"Error transferring https://example.com/rest/ping.view - server replied: Not Found"_s);
+  EXPECT_EQ(Utilities::RedactUrls(u"Host example.com not found, see https://other.example.com/x?t=1"_s, url), u"Host example.com not found, see https://other.example.com/x"_s);
+  EXPECT_EQ(Utilities::RedactUrls(u"https://user:pw@example.com/p?x=1"_s, QUrl()), u"https://example.com/p"_s);
 
 }
 

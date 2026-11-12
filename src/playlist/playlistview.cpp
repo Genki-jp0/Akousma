@@ -301,6 +301,7 @@ void PlaylistView::setModel(QAbstractItemModel *m) {
 void PlaylistView::SetPlaylist(Playlist *playlist) {
 
   if (playlist_) {
+    QObject::disconnect(playlist_, &Playlist::RestoreFinished, this, &PlaylistView::JumpToLastPlayedTrack);
     QObject::disconnect(playlist_, &Playlist::MaybeAutoscroll, this, &PlaylistView::MaybeAutoscroll);
     QObject::disconnect(playlist_, &Playlist::destroyed, this, &PlaylistView::PlaylistDestroyed);
     QObject::disconnect(playlist_, &Playlist::QueueChanged, this, &PlaylistView::Update);
@@ -1564,10 +1565,14 @@ void PlaylistView::AlbumCoverLoaded(const Song &song, const AlbumCoverLoaderResu
 
 void PlaylistView::set_background_image(const QImage &image) {
 
-  // Save previous image, for fading
-  previous_background_image_ = cached_scaled_background_image_;
-  previous_background_image_x_ = current_background_image_x_;
-  previous_background_image_y_ = current_background_image_y_;
+  // Save previous image, for fading.
+  // The scaled image is only updated when it's painted, which doesn't happen while the window is minimized, so it's only the previous image when it was painted after the image was set, otherwise it can be the image from before, like the cover of the album played before stopping.
+  // When it was not painted, the previous image which is still fading out is kept.
+  if (!force_background_redraw_) {
+    previous_background_image_ = cached_scaled_background_image_;
+    previous_background_image_x_ = current_background_image_x_;
+    previous_background_image_y_ = current_background_image_y_;
+  }
 
   if (image.isNull() || image.format() == QImage::Format_ARGB32) {
     background_image_ = image;

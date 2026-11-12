@@ -24,7 +24,6 @@
 
 #include "config.h"
 
-#include <optional>
 
 #include <QtGlobal>
 #include <QObject>
@@ -430,6 +429,8 @@ class MainWindow : public QMainWindow, public PlatformInterface {
 
   // Persistent, so it follows the row when rows change while the menu is open, like when a dynamic playlist removes the history.
   QPersistentModelIndex playlist_menu_index_;
+  // Kept apart from the index, since the column of the index is lost when the row is removed while the menu is open, and it's set every time the menu is opened.
+  int playlist_menu_column_;
 
   QTimer *track_position_timer_;
   QTimer *track_slider_timer_;
@@ -457,7 +458,7 @@ class MainWindow : public QMainWindow, public PlatformInterface {
   bool exit_started_;
   bool playlists_loaded_;
   bool delete_files_;
-  std::optional<CommandlineOptions> options_;
+  QList<CommandlineOptions> pending_options_;
 
   class MetadataQueueEntry {
    public:

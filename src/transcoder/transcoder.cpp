@@ -35,7 +35,6 @@
 #include <QList>
 #include <QMap>
 #include <QVariant>
-#include <QVariantMap>
 #include <QByteArray>
 #include <QString>
 #include <QStringList>
@@ -98,15 +97,9 @@ struct SuitableElement {
 
 };
 
-GstElement *Transcoder::CreateElementForMimeType(GstElementFactoryListType element_type, const QString &mime_type, GstElement *bin) {
+QString Transcoder::BestElementForMimeType(const GstElementFactoryListType element_type, const QString &mime_type, int *best_rank) {
 
-  if (mime_type.isEmpty()) return nullptr;
-
-  // HACK: Force mp4mux because it doesn't set any useful src caps
-  if (mime_type == "audio/mp4"_L1) {
-    Q_EMIT LogLine(QStringLiteral("Using '%1' (rank %2)").arg("mp4mux"_L1).arg(-1));
-    return CreateElement(u"mp4mux"_s, bin);
-  }
+  if (mime_type.isEmpty()) return QString();
 
   // Keep track of all the suitable elements we find and figure out which is the best at the end.
   QList<SuitableElement> suitable_elements_;
@@ -137,15 +130,35 @@ GstElement *Transcoder::CreateElementForMimeType(GstElementFactoryListType eleme
   gst_plugin_feature_list_free(features);
   gst_caps_unref(target_caps);
 
-  if (suitable_elements_.isEmpty()) return nullptr;
+  if (suitable_elements_.isEmpty()) return QString();
 
   // Sort by rank
   std::sort(suitable_elements_.begin(), suitable_elements_.end());
   const SuitableElement &best = suitable_elements_.last();
 
-  Q_EMIT LogLine(QStringLiteral("Using '%1' (rank %2)").arg(best.name_).arg(best.rank_));
+  if (best_rank) *best_rank = best.rank_;
 
-  if (best.name_ == "lamemp3enc"_L1) {
+  return best.name_;
+
+}
+
+GstElement *Transcoder::CreateElementForMimeType(GstElementFactoryListType element_type, const QString &mime_type, GstElement *bin) {
+
+  if (mime_type.isEmpty()) return nullptr;
+
+  // HACK: Force mp4mux because it doesn't set any useful src caps
+  if (mime_type == "audio/mp4"_L1) {
+    Q_EMIT LogLine(QStringLiteral("Using '%1' (rank %2)").arg("mp4mux"_L1).arg(-1));
+    return CreateElement(u"mp4mux"_s, bin);
+  }
+
+  int best_rank = 0;
+  const QString best_name = BestElementForMimeType(element_type, mime_type, &best_rank);
+  if (best_name.isEmpty()) return nullptr;
+
+  Q_EMIT LogLine(QStringLiteral("Using '%1' (rank %2)").arg(best_name).arg(best_rank));
+
+  if (best_name == "lamemp3enc"_L1) {
     // Special case: we need to add xingmux and id3v2mux to the pipeline when using lamemp3enc because it doesn't write the VBR or ID3v2 headers itself.
 
     Q_EMIT LogLine(u"Adding xingmux and id3v2mux to the pipeline"_s);
@@ -181,7 +194,7 @@ GstElement *Transcoder::CreateElementForMimeType(GstElementFactoryListType eleme
     return mp3bin;
   }
   else {
-    return CreateElement(best.name_, bin);
+    return CreateElement(best_name, bin);
   }
 
 }
@@ -212,8 +225,6 @@ Transcoder::Transcoder(QObject *parent, const QString &settings_postfix)
   if (JobFinishedEvent::sEventType == -1)
     JobFinishedEvent::sEventType = QEvent::registerEventType();
 
-  MigrateSettings();
-
   // Initialize some settings for the lamemp3enc element.
   Settings s;
   s.beginGroup("Transcoder/lamemp3enc"_L1 + settings_postfix_);
@@ -223,6 +234,17 @@ Transcoder::Transcoder(QObject *parent, const QString &settings_postfix)
   }
   if (s.value(TranscoderSettings::LameMP3Settings::kCbr).isNull()) {
     s.setValue(TranscoderSettings::LameMP3Settings::kCbr, false);
+  }
+
+  s.endGroup();
+
+  // faac uses VBR by default, which ignores the bitrate, so the rate control the AAC options show by default is saved.
+  // The rate control wasn't saved before, so a bitrate saved before is used with ABR too.
+  // The bitrate is not saved here, since the other AAC encoders use the saved bitrate, they keep their own default until the bitrate is saved in the AAC options.
+  s.beginGroup("Transcoder/faac"_L1 + settings_postfix_);
+
+  if (s.value(TranscoderSettings::FaacSettings::kRateControl).isNull()) {
+    s.setValue(TranscoderSettings::FaacSettings::kRateControl, TranscoderSettings::FaacSettings::kRateControlABR);
   }
 
   s.endGroup();
@@ -780,44 +802,6 @@ QMap<QString, float> Transcoder::GetProgress() const {
 
 }
 
-void Transcoder::MigrateSettings() {
-
-  // The WMA options were saved for the GStreamer 0.10 encoder "ffenc_wmav2", which is "avenc_wmav2" now.
-  // Settings which are already saved for the new encoder are kept, they are newer.
-  const QString legacy_prefix = u"ffenc_wmav2"_s;
-  const QString new_prefix = u"avenc_wmav2"_s;
-
-  Settings s;
-  s.beginGroup("Transcoder"_L1);
-  const QStringList groups = s.childGroups();
-  for (const QString &group : groups) {
-    if (!group.startsWith(legacy_prefix)) continue;
-    const QString new_group = new_prefix + group.mid(legacy_prefix.length());
-    s.beginGroup(group);
-    const QStringList keys = s.childKeys();
-    QVariantMap values;
-    for (const QString &key : keys) {
-      values.insert(key, s.value(key));
-    }
-    s.endGroup();
-    for (QVariantMap::const_iterator it = values.constBegin(); it != values.constEnd(); ++it) {
-      const QString new_key = new_group + u'/' + it.key();
-      if (!s.contains(new_key)) {
-        s.setValue(new_key, it.value());
-      }
-    }
-    s.remove(group);
-  }
-
-  // The transcode dialog saves the output format as the caps of the codec, the WMA caps have the version now, so the old caps would not match any format.
-  if (s.value("last_output_format"_L1).toString() == "audio/x-wma"_L1) {
-    s.setValue("last_output_format"_L1, PresetForFileType(Song::FileType::ASF).codec_mimetype_);
-  }
-
-  s.endGroup();
-
-}
-
 bool Transcoder::IsAACEncoder(GObject *object) {
 
   if (!GST_IS_ELEMENT(object)) return false;
@@ -838,6 +822,11 @@ void Transcoder::SetElementProperties(const QString &name, GObject *object) {
   // The AAC options are saved for faac, the other AAC encoders, like fdkaacenc, mfaacenc on Windows and atenc on macOS, only have the bitrate in common with it, the other options don't exist or have other meanings.
   if (name != "faac"_L1 && IsAACEncoder(object)) {
     SetElementPropertiesFromSettings(name, u"faac"_s, object, QStringList() << u"bitrate"_s);
+  }
+
+  // faac uses the bitrate the AAC options show by default, a saved bitrate replaces it below.
+  if (name == "faac"_L1 && g_object_class_find_property(G_OBJECT_GET_CLASS(object), "bitrate")) {
+    g_object_set(object, "bitrate", static_cast<gint>(TranscoderSettings::FaacSettings::kDefaultBitrate), nullptr);
   }
 
   SetElementPropertiesFromSettings(name, name, object);

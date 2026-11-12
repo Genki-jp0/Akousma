@@ -293,6 +293,15 @@ if(WIN32)
   else()
     message(FATAL_ERROR "Missing getopt")
   endif()
+  # getopt-win can be renamed to getopt_win, for example for MinGW, which has its own getopt.h, otherwise getopt.h is used.
+  get_target_property(GETOPT_INCLUDE_DIRS ${GETOPT_LIBRARIES} INTERFACE_INCLUDE_DIRECTORIES)
+  if(GETOPT_INCLUDE_DIRS)
+    set(CMAKE_REQUIRED_INCLUDES ${GETOPT_INCLUDE_DIRS})
+  endif()
+  # Check again on every configure, the result is cached, and the renamed package can be installed in the same place as the old one.
+  unset(HAVE_GETOPT_WIN CACHE)
+  check_include_files(getopt_win.h HAVE_GETOPT_WIN LANGUAGE CXX)
+  unset(CMAKE_REQUIRED_INCLUDES)
 endif()
 
 if(UNIX AND NOT APPLE)
@@ -530,6 +539,7 @@ set(SOURCES
   src/core/networktimeouts.cpp
   src/core/networkproxyfactory.cpp
   src/core/settings.cpp
+  src/core/settingsmigration.cpp
   src/core/settingsprovider.cpp
   src/core/settingstransfer.cpp
   src/core/signalchecker.cpp
@@ -728,6 +738,7 @@ set(SOURCES
   src/playlist/playlistundocommandshuffleitems.cpp
 
   src/queue/queue.cpp
+  src/queue/queuerowsmimedata.cpp
   src/queue/queueview.cpp
 
   src/playlistparsers/asxiniparser.cpp
@@ -843,7 +854,6 @@ set(SOURCES
   src/widgets/fancytabbar.cpp
   src/widgets/fancytabdata.cpp
   src/widgets/favoritewidget.cpp
-  src/widgets/forcescrollperpixel.cpp
   src/widgets/freespacebar.cpp
   src/widgets/groupediconview.cpp
   src/widgets/lineedit.cpp
@@ -1054,6 +1064,7 @@ set(HEADERS
   src/playlist/dynamicplaylistcontrols.h
 
   src/queue/queue.h
+  src/queue/queuerowsmimedata.h
   src/queue/queueview.h
 
   src/playlistparsers/asxiniparser.h
@@ -1177,7 +1188,6 @@ set(HEADERS
   src/widgets/loginstatewidget.h
   src/widgets/searchfield.h
   src/widgets/ratingwidget.h
-  src/widgets/forcescrollperpixel.h
   src/widgets/resizabletextedit.h
 
   src/songeditor/songeditor.h
